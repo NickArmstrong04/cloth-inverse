@@ -14,7 +14,7 @@
 set -uo pipefail  # (no -e: skipped rungs return non-zero from want())
 SPLITS="${1:?usage: ladder.sbatch <splits_dir> [epochs] [rungs e.g. 2,3]}"
 EPOCHS="${2:-300}"
-RUNGS="${3:-0,1,2,3}"
+RUNGS="${3:-0,1,2,3,3b}"
 want() { [[ ",$RUNGS," == *",$1,"* ]]; }
 CODE_DIR="$SLURM_SUBMIT_DIR"
 INV="$(dirname "$CODE_DIR")/inverse"
@@ -30,4 +30,5 @@ want 2 && echo "== rung 2: grid, positions only, unknown pose (SO(3) aug, rotate
 $PY train.py --root "$SPLITS" --model cnn_reg --epochs "$EPOCHS" --amp --tta 8 --no-vel --eval-rotated
 want 3 && echo "== rung 3: unordered point cloud, positions only, unknown pose (D4-symmetric u,v)" && \
 $PY train.py --root "$SPLITS" --model pointtf --epochs "$EPOCHS" --amp --tta 8 --no-vel --eval-rotated --bs 16 --lr 3e-4
+want 3b && echo "== rung 3b: point cloud, scaled model (4096 pts, d=256, 6 layers, 1000 epochs)" && $PY train.py --root "$SPLITS" --model pointtf --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --bs 16 --lr 3e-4     --n-points 4096 --pt-dim 256 --pt-layers 6
 echo "ladder done"

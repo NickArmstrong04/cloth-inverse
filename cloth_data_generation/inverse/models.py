@@ -116,8 +116,9 @@ class PointTF(nn.Module):
     attention pooling -> (2, 7). Input per point: centred position (3) and,
     if present, velocity (3). Global features g are appended after pooling."""
 
-    def __init__(self, cin=6, gdim=6, d=128, layers=4, heads=4, n_points=2048, hidden=256, p_drop=0.1, **_):
+    def __init__(self, cin=6, gdim=6, d=128, layers=4, heads=None, n_points=2048, hidden=256, p_drop=0.1, **_):
         super().__init__()
+        heads = heads or max(4, d // 32)
         self.n_points = n_points
         self.embed = nn.Sequential(nn.Linear(cin, d), nn.GELU(), nn.Linear(d, d))
         layer = nn.TransformerEncoderLayer(d, heads, 2 * d, dropout=p_drop, batch_first=True, norm_first=True,

@@ -46,6 +46,12 @@ def load_split(root: str, split: str, pool: int = 1, cache: bool = True) -> dict
     dataset (~14 MB per sample) is read from HDF5 only once."""
     files = sorted(glob.glob(os.path.join(root, split, "*.h5")))
     assert files, f"no files in {root}/{split}"
+    manifest = os.path.join(root, "dataset_manifest.json")
+    if os.path.exists(manifest):  # written last by package_splits.py: the split must match it exactly
+        want = sorted(e["file"] for e in json.load(open(manifest))["splits"][split])
+        have = sorted(os.path.basename(f) for f in files)
+        assert want == have, (f"{root}/{split} has {len(have)} files but the manifest lists {len(want)}: "
+                              "packaging still in progress or incomplete; wait for package_splits.py to finish")
     names = [os.path.basename(f) for f in files]
     cpath = os.path.join(root, f"{split}_pool{pool}.pt")
     if cache and os.path.exists(cpath):

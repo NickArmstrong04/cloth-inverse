@@ -90,6 +90,8 @@ def main():
     ap.add_argument("--eval-rotated", action="store_true",
                     help="rung 2: evaluate val/test under a fixed random world rotation per sample (unknown pose)")
     ap.add_argument("--n-points", type=int, default=2048, help="pointtf: points sampled per step")
+    ap.add_argument("--pt-dim", type=int, default=128, help="pointtf: embedding width")
+    ap.add_argument("--pt-layers", type=int, default=4, help="pointtf: transformer layers")
     ap.add_argument("--sym", choices=["auto", "on", "off"], default="auto",
                     help="treat (u,v) as defined only up to the sheet's D4 symmetry in loss and metrics "
                          "(auto: on when --eval-rotated, i.e. the pose is unknown)")
@@ -107,6 +109,7 @@ def main():
     args = ap.parse_args()
     out = args.out or (f"runs/{os.path.basename(os.path.normpath(args.root))}_{args.model}_s{args.seed}_e{args.epochs}"
                        + (f"_pool{args.pool}" if args.pool > 1 else "")
+                       + (f"_d{args.pt_dim}L{args.pt_layers}n{args.n_points}" if args.model == "pointtf" else "")
                        + ("_novel" if args.no_vel else "") + ("_evalrot" if args.eval_rotated else "")
                        + ("_noaug" if args.no_aug else "") + ("_norot" if args.no_rot else ""))
     os.makedirs(out, exist_ok=True)
@@ -150,9 +153,12 @@ def main():
     uv_scale = (scaler.mean[:2], scaler.std[:2])
     sym = args.eval_rotated if args.sym == "auto" else (args.sym == "on")
     sym_uv = uv_scale if sym else None
+    if sym and args.tta:
+        print("note: TTA disabled under the D4-symmetric metric (passes may settle on different relabelings)")
+        args.tta = 0
     print(f"symmetric (D4) (u,v) loss/metrics: {sym}", flush=True)
     model = build(args.model, uv_scale=uv_scale, w=args.width, in_size=in_size, cin=cin, gdim=gdim,
-                  n_points=args.n_points).to(dev)
+                  n_points=args.n_points, d=args.pt_dim, layers=args.pt_layers).to(dev)
     amp = torch.autocast("cuda", dtype=torch.bfloat16) if (args.amp and dev.type == "cuda") else contextlib.nullcontext()
     nparam = sum(p.numel() for p in model.parameters())
 
