@@ -54,3 +54,9 @@ Decisions still open (before the next large generation run):
 - Material: paper is plastic; Newton cloth is elastic. Decide whether cloth data informs the
   paper experiment or whether a crease-capable model/simulator is needed.
 - Physics: fix the velocity clamp (substeps) so magnitude becomes identifiable.
+
+## Queued work
+
+- **~8 pm 2026-10-28:** launch `ds512_v1` (512x512, 2000 slots, 2 h tasks of 40, L40S + scavenge),
+  then train on both resolutions and compare. Commands in `cluster/README.md` section 3b
+  with `--nx 512 --chunk 40 --time 02:00:00 --name ds512_v1`.
