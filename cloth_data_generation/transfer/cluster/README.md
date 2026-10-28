@@ -11,22 +11,24 @@ are skipped, rejected attempts are not re-simulated.
 
 ## 1. Get the code onto the cluster
 
+Everything lives under `/home/naa79/scratch_pi_sz622/naa79`:
+
 ```bash
-# first time
-cd ~/project
+cd /home/naa79/scratch_pi_sz622/naa79
 git clone https://github.com/NickArmstrong04/cloth-inverse.git
-ln -s ~/project/cloth-inverse/cloth_data_generation/transfer ~/project/cloth
+cd cloth-inverse/cloth_data_generation/transfer        # this is CODE_DIR
 # later updates
-cd ~/project/cloth-inverse && git pull
+cd /home/naa79/scratch_pi_sz622/naa79/cloth-inverse && git pull
 ```
 
-`~/project/cloth` is the CODE_DIR the scripts auto-detect (the `.venv` and
-`.warp_cache` created inside it are git-ignored).
+Datasets go to `/home/naa79/scratch_pi_sz622/naa79/cloth_data/<name>/`
+(`DATA_DIR` in `cluster.env`). The `.venv` and `.warp_cache` created inside
+CODE_DIR are git-ignored.
 
 ## 2. One-time environment setup (on the login node)
 
 ```bash
-cd ~/project/cloth
+cd /home/naa79/scratch_pi_sz622/naa79/cloth-inverse/cloth_data_generation/transfer
 bash cluster/setup_env.sh
 ```
 
@@ -41,15 +43,18 @@ sinfo -o "%P %a %l %G %D" | sort -u      # partition names, GPU gres, limits
 sacctmgr show assoc user=$USER format=account,partition -P   # your accounts
 ```
 
-Edit `PARTITION`, `CPU_PARTITION`, `ACCOUNT`, `TIME` if they differ.
+Current Bouchet GPU partitions: `gpu` (a40/a5000/l40s/rtx_5000_ada, default
+here), `gpu_h100`, `gpu_h200`, `gpu_devel` (smoke tests), `scavenge_gpu`
+(preemptible). CPU: `day` (24 h) for the merge job. Override per run with
+`--partition gpu_h100`, or edit `cluster.env`.
 
 ## 3. Smoke test, then the real run
 
 ```bash
-# tiny: 4 samples at 128x128, 2 tasks x 2, short time limit
-python3 cluster/submit.py --n 4 --nx 128 --chunk 2 --name smoke128 --time 00:30:00
+# tiny: 4 samples at 128x128, 2 tasks x 2, short time limit, devel GPU partition
+python3 cluster/submit.py --n 4 --nx 128 --chunk 2 --name smoke128 --time 00:30:00 --partition gpu_devel
 python3 cluster/submit.py --status smoke128          # progress, queue, missing slots
-cat ~/scratch/cloth_data/smoke128/slurm/gen_*_0.out  # task log
+cat /home/naa79/scratch_pi_sz622/naa79/cloth_data/smoke128/slurm/gen_*_0.out  # task log
 
 # preview the real thing without submitting
 python3 cluster/submit.py --n 1000 --dry-run
@@ -69,7 +74,7 @@ is bound to its `seed0`, `nx`, `chunk` and sample args.
 ## 4. Outputs
 
 ```
-~/scratch/cloth_data/ds256_1000/
+/home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_1000/
   sample_slot00000_seed100000.h5 ...   passing samples (QC gate: no NaN,
   forces_slot*_seed*.json              stretch<=2, no gross piercing)
   rejected/                            failed attempts (kept for inspection)
@@ -78,14 +83,12 @@ is bound to its `seed0`, `nx`, `chunk` and sample args.
   dataset_summary.json                 QC stats, retries, GPU hours, missing slots
   progress_*.jsonl                     per-task incremental log
   slurm/                               rendered sbatch files, submission.json, logs
-~/scratch/cloth_data/ds256_1000_splits/{train,val,test}/ + dataset_manifest.json
+/home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_1000_splits/{train,val,test}/ + dataset_manifest.json
 ```
 
-Scratch is purged after 60 days. When a dataset is final:
-
-```bash
-rsync -a ~/scratch/cloth_data/ds256_1000_splits ~/project/cloth_datasets/
-```
+Check the retention policy of `scratch_pi_sz622` with your group; if it is
+purged like personal scratch, copy finished `*_splits` directories to a
+persistent location.
 
 ## 5. What changes with resolution
 
@@ -118,7 +121,7 @@ test tells you the real per-sample time on the cluster GPUs, then size
 python3 cluster/submit.py --status ds256_1000
 squeue -u $USER
 sacct -j <ARRAY_JOB_ID> --format=JobID,State,Elapsed,MaxRSS,ExitCode | head
-tail -n 20 ~/scratch/cloth_data/ds256_1000/slurm/gen_<JOBID>_<TASK>.err
+tail -n 20 /home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_1000/slurm/gen_<JOBID>_<TASK>.err
 ```
 
 - `CUDA driver` / `no device` errors in a task: the partition has no GPU or

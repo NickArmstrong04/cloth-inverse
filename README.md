@@ -13,11 +13,13 @@ force vectors (NVIDIA Newton / Warp VBD simulator).
 - `cloth_results/` — reports and metrics from the workstation runs (HDF5
   samples are not tracked; see `cloth_results/inverse_v0/` for metrics).
 
-Cluster quick start:
+Cluster quick start (Bouchet, everything under the PI scratch):
 
 ```bash
-cd ~/project && git clone https://github.com/NickArmstrong04/cloth-inverse.git
-ln -s ~/project/cloth-inverse/cloth_data_generation/transfer ~/project/cloth
-cd ~/project/cloth && bash cluster/setup_env.sh
-python3 cluster/submit.py --n 4 --nx 128 --chunk 2 --name smoke128 --time 00:30:00
+cd /home/naa79/scratch_pi_sz622/naa79
+git clone https://github.com/NickArmstrong04/cloth-inverse.git
+cd cloth-inverse/cloth_data_generation/transfer
+bash cluster/setup_env.sh
+python3 cluster/submit.py --n 4 --nx 128 --chunk 2 --name smoke128 --time 00:30:00 --partition gpu_devel
+python3 cluster/submit.py --status smoke128
 ```
