@@ -153,6 +153,11 @@ python3 cluster/bench.py --dry-run
 python3 cluster/bench.py --types a5000,rtx_5000_ada,a40,l40s,h100,h200
 squeue -u $USER -n cloth_bench
 
+# 2b. Resolution ceiling: one 5-minute job per size, one sample each; the report
+#     marks sizes that did not finish as TIMEOUT or OUT_OF_MEMORY.
+python3 cluster/bench.py --types l40s --nx 128,192,256,320,384,448,512,640,768,896,1024 \
+    --one-job-per-nx --time 00:05:00 --budget-min 5 --repeats 1 --run ceiling_l40s
+
 # 3. Combine: real queue wait of each bench job (sacct), probe history, run time
 #    per sample, GPU utilization, peak memory, Slurm billing weight, and the
 #    estimated time to finish N samples at a resolution with K concurrent tasks.

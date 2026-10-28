@@ -98,8 +98,15 @@ def main() -> None:
                 rows += [json.loads(l) for l in open(rp)]
         jp = os.path.join(run_dir, entries[0][0], "job.json")
         jobinfo = json.load(open(jp)) if os.path.exists(jp) else {}
-        accts = [sacct(i["job_id"]) for _, i in entries if have_sacct and "job_id" in i]
-        accts = [a for a in accts if a]
+        key_state = {}
+        accts = []
+        for key, i in entries:
+            if have_sacct and "job_id" in i:
+                a = sacct(i["job_id"])
+                if a:
+                    accts.append(a)
+                    if i.get("nx") and str(i["nx"]).isdigit():
+                        key_state[int(i["nx"])] = a.get("state", "?")
         acct = {}
         if accts:
             waits = sorted(a["wait_min"] for a in accts if a.get("wait_min") is not None)
@@ -124,7 +131,21 @@ def main() -> None:
             d["util"].append(r.get("util_busy_mean_pct") or 0)
             d["mem"].append(r.get("mem_peak_mb") or 0)
             nxs.add(key)
+        # sizes whose job ended without any result row: record why
+        for nx_, st in key_state.items():
+            if nx_ not in per_nx and st not in ("RUNNING", "PENDING", "COMPLETED"):
+                per_nx[nx_] = {"fail": True, "why": st.split()[0][:9]}
+                nxs.add(nx_)
+            elif nx_ not in per_nx and st in ("RUNNING", "PENDING"):
+                per_nx[nx_] = {"fail": True, "why": st[:9]}
+                nxs.add(nx_)
         table[g] = {"acct": acct, "job": jobinfo, "per_nx": per_nx, "probe_wait": probes.get(g)}
+        # first-sample total wall (process start -> file written, incl. compile + mesh build)
+        first = {}
+        for r in rows:
+            if r.get("rep") == 1 and r.get("rc") == 0 and r.get("wall_total_s"):
+                first.setdefault(r["nx"], r["wall_total_s"])
+        table[g]["first_total"] = first
 
     def nx_key(k):
         base, _, c = str(k).partition("x")
@@ -147,11 +168,18 @@ def main() -> None:
             if not d:
                 cells.append(f"{'-':>9s}")
             elif d.get("fail"):
-                cells.append(f"{'FAIL':>9s}")
+                cells.append(f"{d.get('why', 'FAIL'):>9s}")
             else:
                 cells.append(f"{sorted(d['t'])[len(d['t'])//2]:>9.0f}")
         print(f"{g:22s} {a.get('state','?')[:10]:10s} {fmt_min(a.get('wait_min')):>7s} {fmt_min(t['probe_wait']):>7s} "
               f"{str(a.get('billing') or '?'):>5s} " + " ".join(cells))
+    print("\nfirst sample, total wall s (process start to file written: compile + mesh build + sim + save):")
+    for g, t in table.items():
+        cells = []
+        for n in nxs:
+            v = t.get("first_total", {}).get(nx_num(n)) if "x" not in str(n) else None
+            cells.append(f"{v:>9.0f}" if v else f"{'-':>9s}")
+        print(f"{g:22s} " + " ".join(cells))
     print("\nsamples per 1-hour job (3600 / s_per_sample) / samples measured:")
     for g, t in table.items():
         cells = []
