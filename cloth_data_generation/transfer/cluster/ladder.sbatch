@@ -4,7 +4,7 @@
 #   sbatch cluster/ladder.sbatch <splits_dir> [epochs]
 #SBATCH --job-name=cloth_ladder
 #SBATCH --partition=gpu
-#SBATCH --gpus=l40s:1
+#SBATCH --gpus=1                 # any GPU type (cluster/gpu_adapt.sh adds --data-on-cpu on small cards)
 #SBATCH --exclude=a1125u05n01
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=160G
@@ -21,14 +21,14 @@ INV="$(dirname "$CODE_DIR")/inverse"
 PY="$CODE_DIR/.venv/bin/python"
 cd "$INV"
 echo "ladder on $SPLITS epochs=$EPOCHS host=$(hostname) job=$SLURM_JOB_ID"
-nvidia-smi --query-gpu=name --format=csv,noheader
+source "$CODE_DIR/cluster/gpu_adapt.sh"
 want 0 && echo "== rung 0: grid + velocities + known frame (cnn_reg, dihedral aug)" && \
-$PY train.py --root "$SPLITS" --model cnn_reg --epochs "$EPOCHS" --no-rot --amp --tta 0
+$PY train.py --root "$SPLITS" --model cnn_reg --epochs "$EPOCHS" --no-rot --amp --tta 0 $GPU_EXTRA
 want 1 && echo "== rung 1: grid, positions only, known frame" && \
-$PY train.py --root "$SPLITS" --model cnn_reg --epochs "$EPOCHS" --no-rot --amp --tta 0 --no-vel
+$PY train.py --root "$SPLITS" --model cnn_reg --epochs "$EPOCHS" --no-rot --amp --tta 0 --no-vel $GPU_EXTRA
 want 2 && echo "== rung 2: grid, positions only, unknown pose (SO(3) aug, rotated eval, D4-symmetric u,v)" && \
-$PY train.py --root "$SPLITS" --model cnn_reg --epochs "$EPOCHS" --amp --tta 8 --no-vel --eval-rotated
+$PY train.py --root "$SPLITS" --model cnn_reg --epochs "$EPOCHS" --amp --tta 8 --no-vel --eval-rotated $GPU_EXTRA
 want 3 && echo "== rung 3: unordered point cloud, positions only, unknown pose (D4-symmetric u,v)" && \
-$PY train.py --root "$SPLITS" --model pointtf --epochs "$EPOCHS" --amp --tta 8 --no-vel --eval-rotated --bs 16 --lr 3e-4
-want 3b && echo "== rung 3b: point cloud, scaled model (4096 pts, d=256, 6 layers, 1000 epochs)" && $PY train.py --root "$SPLITS" --model pointtf --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --bs 16 --lr 3e-4     --n-points 4096 --pt-dim 256 --pt-layers 6
+$PY train.py --root "$SPLITS" --model pointtf --epochs "$EPOCHS" --amp --tta 8 --no-vel --eval-rotated --bs 16 --lr 3e-4 $GPU_EXTRA
+want 3b && echo "== rung 3b: point cloud, scaled model (4096 pts, d=256, 6 layers, 1000 epochs)" && $PY train.py --root "$SPLITS" --model pointtf --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --bs 16 --lr 3e-4     --n-points 4096 --pt-dim 256 --pt-layers 6 $GPU_EXTRA
 echo "ladder done"

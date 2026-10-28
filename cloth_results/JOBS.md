@@ -81,6 +81,6 @@ S=/home/naa79/scratch_pi_sz622/naa79/cloth_data/ds768_night_splits
 squeue -u $USER -o "%.10i %.14j %.8T %.10M %R"
 ```
 
-Each training job asks for 160 GB RAM and one L40S; if jobs sit pending on memory, add
+Training jobs are GPU-agnostic (`--gpus=1`, any card; `cluster/gpu_adapt.sh` adds `--data-on-cpu` on cards under 40 GB). Each full-resolution job asks for 160 GB host RAM; if jobs sit pending on memory, add
 `--mem=100G` and `--data-on-cpu` (pool 2/4 jobs need far less, `--mem=60G` is enough).
 Extra throughput: `--partition=scavenge_gpu` on seed repeats (cheap to rerun if preempted).

@@ -9,7 +9,7 @@
 # next to the splits; later runs start in seconds.
 #SBATCH --job-name=cloth_train
 #SBATCH --partition=gpu
-#SBATCH --gpus=l40s:1
+#SBATCH --gpus=1                 # any GPU type (cluster/gpu_adapt.sh adds --data-on-cpu on small cards)
 #SBATCH --exclude=a1125u05n01
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=160G
@@ -20,22 +20,22 @@ set -euo pipefail   # stop at the first failing step (a GPU fault must not look 
 SPLITS="${1:?usage: train.sbatch <splits_dir> [epochs] [extra args]}"
 EPOCHS="${2:-300}"
 shift; shift 2>/dev/null || true
-EXTRA="$*"
+EXTRA="$*"   # GPU_EXTRA (from gpu_adapt.sh) is appended below
 CODE_DIR="$SLURM_SUBMIT_DIR"                                  # transfer/ (where sbatch was run)
 INV="$(dirname "$CODE_DIR")/inverse"                           # cloth_data_generation/inverse
 PY="$CODE_DIR/.venv/bin/python"
 cd "$INV"
 echo "train: $SPLITS  epochs=$EPOCHS  extra='$EXTRA'  host=$(hostname)  job=$SLURM_JOB_ID"
-nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
+source "$CODE_DIR/cluster/gpu_adapt.sh"
 $PY -c "import torch; print('torch', torch.__version__, 'cuda', torch.cuda.is_available())" \
   || { echo "torch missing in venv: run  bash cluster/setup_env.sh --with-torch"; exit 2; }
 TAG="$(basename "$SPLITS")"
 echo "== baselines"
 $PY baselines.py --root "$SPLITS" --out "runs/${TAG}_baselines"
 echo "== cnn_heat, dihedral augmentation"
-$PY train.py --root "$SPLITS" --model cnn_heat --epochs "$EPOCHS" --no-rot --amp $EXTRA
+$PY train.py --root "$SPLITS" --model cnn_heat --epochs "$EPOCHS" --no-rot --amp $EXTRA $GPU_EXTRA
 echo "== cnn_reg, dihedral augmentation"
-$PY train.py --root "$SPLITS" --model cnn_reg --epochs "$EPOCHS" --no-rot --amp $EXTRA
+$PY train.py --root "$SPLITS" --model cnn_reg --epochs "$EPOCHS" --no-rot --amp $EXTRA $GPU_EXTRA
 echo "== cnn_heat, dihedral + 3D rotation augmentation"
-$PY train.py --root "$SPLITS" --model cnn_heat --epochs "$EPOCHS" --amp $EXTRA
+$PY train.py --root "$SPLITS" --model cnn_heat --epochs "$EPOCHS" --amp $EXTRA $GPU_EXTRA
 echo "train done; metrics in $INV/runs/${TAG}_*/metrics.json"
