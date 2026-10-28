@@ -37,7 +37,7 @@ def sh(cmd: list[str]) -> str:
 
 def nodes_by_type() -> tuple[dict, dict]:
     """Return {gtype: {total, used, nodes: {state: n}, node_names}} and {node: gtype}."""
-    text = sh(["scontrol", "show", "node", "-o"])
+    text = sh(["scontrol", "show", "node", "-d", "-o"])  # -d: include GresUsed
     types: dict = {}
     node_type: dict = {}
     for line in text.splitlines():
@@ -48,7 +48,10 @@ def nodes_by_type() -> tuple[dict, dict]:
         used = re.search(r"GresUsed=(\S+)", line)
         state = re.search(r"State=(\S+)", line)
         parts = re.search(r"Partitions=(\S+)", line)
-        st = (state.group(1) if state else "UNKNOWN").split("+")[0].rstrip("*~#$@^-")
+        st_full = (state.group(1) if state else "UNKNOWN").upper()
+        st = st_full.split("+")[0].rstrip("*~#$@^-")
+        if any(k in st_full for k in ("DRAIN", "DOWN", "MAINT", "RESERVED", "NOT_RESPONDING")):
+            st = "down"
         for m in re.finditer(r"gpu:([A-Za-z0-9_]+):(\d+)", gres.group(1)):
             g, n = m.group(1), int(m.group(2))
             u = 0
@@ -129,8 +132,12 @@ def snapshot() -> list[dict]:
     now = dt.datetime.now().isoformat(timespec="minutes")
     for g, d in sorted(types.items(), key=lambda kv: -kv[1]["total"]):
         r = run.get(g, {"jobs": 0, "users": set(), "gpus": 0})
-        down = sum(v for k, v in d["nodes"].items() if k in ("down", "drain", "drained", "draining", "maint", "reserved"))
-        rows.append({"time": now, "gpu": g, "total": d["total"], "used": d["used"], "free": d["total"] - d["used"],
+        down = d["nodes"].get("down", 0)
+        # GresUsed from scontrol is authoritative; if it is absent (0 while jobs hold
+        # GPUs) fall back to the GPUs allocated to running jobs of this type.
+        used = d["used"] if d["used"] > 0 else min(r["gpus"], d["total"])
+        rows.append({"time": now, "gpu": g, "total": d["total"], "used": used, "free": max(0, d["total"] - used),
+                     "used_source": "GresUsed" if d["used"] > 0 else "job allocations",
                      "nodes_idle": d["nodes"].get("idle", 0), "nodes_mixed": d["nodes"].get("mixed", 0),
                      "nodes_alloc": d["nodes"].get("allocated", 0), "nodes_down": down,
                      "running_jobs": r["jobs"], "users": len(r["users"]), "pending_jobs": pend.get(g, 0),
@@ -152,9 +159,14 @@ def print_rows(rows: list[dict]) -> None:
     unt = [r for r in rows if r["gpu"] == "_untyped_pending"]
     if unt:
         print(f"\npending jobs requesting a GPU without a type: {unt[0]['pending_jobs']} (compete for every type)")
-    best = sorted((r for r in rows if not r["gpu"].startswith("_") and r["total"]), key=lambda r: (-r["free"], r["pending_jobs"]))
+    best = sorted((r for r in rows if not r["gpu"].startswith("_") and r["total"]),
+                  key=lambda r: (-(r["free"] - r["pending_jobs"]), -r["free"]))
     if best:
-        print("most open right now: " + ", ".join(f"{r['gpu']} ({r['free']} free, {r['pending_jobs']} pending)" for r in best[:3]))
+        print("most open right now (free minus typed pending): " +
+              ", ".join(f"{r['gpu']} ({r['free']} free, {r['pending_jobs']} pending)" for r in best[:3]))
+    src = {r.get("used_source") for r in rows if not r["gpu"].startswith("_")}
+    if "job allocations" in src:
+        print("note: 'in use' derived from running-job allocations for some types (GresUsed not reported)")
 
 
 def history() -> None:
@@ -165,7 +177,7 @@ def history() -> None:
     for r in rows:
         if not r["gpu"].startswith("_"):
             by.setdefault(r["gpu"], []).append(r)
-    print(f"{len(rows)} snapshots since {rows[0]['time']}")
+    print(f"{len({r['time'] for r in rows})} snapshots since {rows[0]['time']}")
     print(f"{'gpu':24s} {'snaps':>5s} {'median free':>11s} {'min free':>8s} {'% time >=1 free':>15s} {'median pending':>14s}")
     for g, rs in sorted(by.items(), key=lambda kv: -kv[1][0]["total"]):
         fr = sorted(r["free"] for r in rs)
