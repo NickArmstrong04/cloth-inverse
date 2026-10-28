@@ -25,7 +25,18 @@ Datasets go to `/home/naa79/scratch_pi_sz622/naa79/cloth_data/<name>/`
 (`DATA_DIR` in `cluster.env`). The `.venv` and `.warp_cache` created inside
 CODE_DIR are git-ignored.
 
-## 2. One-time environment setup (on the login node)
+## 2. One-time environment setup
+
+Bouchet policy: run Python inside an allocation, not on the login node.
+`sbatch`, `squeue`, `sacct` and `sbatch --test-only` all work from inside an
+allocation, so every command below is run from one:
+
+```bash
+bash cluster/interactive.sh          # CPU allocation (devel, 2 h) for setup / submit / probe / report
+bash cluster/interactive.sh gpu      # 1 GPU on gpu_devel, to try generate_sample.py by hand
+```
+
+Then:
 
 ```bash
 cd /home/naa79/scratch_pi_sz622/naa79/cloth-inverse/cloth_data_generation/transfer
@@ -49,6 +60,9 @@ here), `gpu_h100`, `gpu_h200`, `gpu_devel` (smoke tests), `scavenge_gpu`
 `--partition gpu_h100`, or edit `cluster.env`.
 
 ## 3. Smoke test, then the real run
+
+(Inside `bash cluster/interactive.sh`; `submit.py` only renders scripts and
+calls `sbatch`, the simulations themselves run as batch jobs.)
 
 ```bash
 # tiny: 4 samples at 128x128, 2 tasks x 2, short time limit, devel GPU partition

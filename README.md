@@ -19,6 +19,7 @@ Cluster quick start (Bouchet, everything under the PI scratch):
 cd /home/naa79/scratch_pi_sz622/naa79
 git clone https://github.com/NickArmstrong04/cloth-inverse.git
 cd cloth-inverse/cloth_data_generation/transfer
+bash cluster/interactive.sh          # Python runs inside an allocation, not on the login node
 bash cluster/setup_env.sh
 python3 cluster/submit.py --n 4 --nx 128 --chunk 2 --name smoke128 --time 00:30:00 --partition gpu_devel
 python3 cluster/submit.py --status smoke128
