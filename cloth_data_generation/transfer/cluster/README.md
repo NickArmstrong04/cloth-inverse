@@ -115,7 +115,42 @@ test tells you the real per-sample time on the cluster GPUs, then size
   can be checked on the smoke test: compare `|sum(mass*vel)|` at the force
   end time with `|magnitude*duration*0.85|` summed over the two forces.
 
-## 7. Monitoring and troubleshooting
+## 7. Choosing a GPU type: queue wait vs speed
+
+The scarce resource is usually wall-clock time to a finished dataset, which is
+queue wait plus run time. A slower GPU that starts now often beats an H100
+that waits hours. Three tools (all under `cluster/`, outputs in `bench/`):
+
+```bash
+# 1. How long would a 1-GPU job wait right now, per GPU type? (no job submitted:
+#    uses Slurm's own estimate via `sbatch --test-only` + free-GPU counts)
+python3 cluster/queue_probe.py --time 12:00:00
+python3 cluster/queue_probe.py --time 12:00:00 --watch 1800 &   # log every 30 min for a day
+python3 cluster/queue_probe.py --history                        # median / p90 wait per type
+
+# 2. How fast is each GPU type at each resolution? One job per type, same forces,
+#    nx = 64..384 by default, 2 repeats (the first includes kernel compilation).
+python3 cluster/bench.py --dry-run
+python3 cluster/bench.py --types a5000,rtx_5000_ada,a40,l40s,h100,h200
+squeue -u $USER -n cloth_bench
+
+# 3. Combine: real queue wait of each bench job (sacct), probe history, run time
+#    per sample, GPU utilization, peak memory, Slurm billing weight, and the
+#    estimated time to finish N samples at a resolution with K concurrent tasks.
+python3 cluster/bench_report.py --n 1000 --nx 256 --concurrent 16
+```
+
+The report ranks GPU types by total time (wait + run) and also shows
+fairshare cost in billing-hours, so the "sweet spot" is explicit. GPU types
+and partitions are listed in `cluster/gpu_types.py`; `--partition scavenge_gpu`
+on `bench.py` / `queue_probe.py` tests the preemptible pool. Peak memory per
+resolution tells you which GPUs can run 384 or 512 grids at all.
+
+Then run production with e.g. `submit.py --partition gpu --max-concurrent 24`
+(the `gpu` partition has four GPU types; add `#SBATCH --gpus=l40s:1`-style
+targeting by setting `GPUS=l40s:1` in `cluster.env` if one type wins clearly).
+
+## 8. Monitoring and troubleshooting
 
 ```bash
 python3 cluster/submit.py --status ds256_1000

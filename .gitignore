@@ -11,3 +11,4 @@ __pycache__/
 cloth_results/dataset100/
 cloth_results/dataset/
 cloth_results/batch32/
+cloth_data_generation/transfer/bench/
