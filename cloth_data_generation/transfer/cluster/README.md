@@ -142,6 +142,11 @@ python3 cluster/queue_probe.py --time 12:00:00
 python3 cluster/queue_probe.py --time 12:00:00 --watch 1800 &   # log every 30 min for a day
 python3 cluster/queue_probe.py --history                        # median / p90 wait per type
 
+# 1b. Who is using what right now? GPUs total / in use / free per type, running
+#     jobs and distinct users holding each type, pending requests per type.
+python3 cluster/gpu_usage.py
+python3 cluster/gpu_usage.py --watch 600 &     # log every 10 min; --history summarizes
+
 # 2. How fast is each GPU type at each resolution? One job per type, same forces,
 #    nx = 64..384 by default, 2 repeats (the first includes kernel compilation).
 python3 cluster/bench.py --dry-run
