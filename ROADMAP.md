@@ -37,7 +37,16 @@ against the privileged ceiling. Keep the privileged model as upper bound / teach
 | 4 | rendered depth / RGB views with occlusion, domain randomization | to build | |
 | 5 | real observations (paper scan / SAM on photos) | | |
 
+Finding (2026-10-28, ladder run 1): velocities add nothing (rung 1 = 4.3 cm / 14.3 deg vs
+rung 0 = 4.8 / 13.7): the force information is in the shape. Under an unknown pose the
+material coordinates (u, v) are only defined up to the square sheet's 8-element symmetry
+group (90-degree turns and flipping over are proper rotations), so loss and metrics must be
+D4-symmetric (`--sym`, automatic with `--eval-rotated`); the first rung-2/3 numbers (15.7 /
+16.0 cm) were graded against an unlearnable target.
+
 Decisions still open (before the next large generation run):
+- Symmetry breaking for real experiments: the sheet needs an asymmetric cue (marked corner,
+  rectangle, printed pattern) if absolute (u, v) is wanted; otherwise report position up to D4.
 - Label space: predict **impulse** (direction x magnitude x duration) instead of magnitude
   and duration separately; impulse is what the shape determines and what transfers to crash.
 - Loading model: shape the simulated force application to mirror what a bench rig can apply
