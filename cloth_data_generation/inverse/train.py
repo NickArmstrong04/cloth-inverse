@@ -16,6 +16,25 @@ from metrics import pair_metrics, summarize
 from models import build, pair_loss
 
 
+def _rot_from_gen(n, gen):
+    a = torch.randn(n, 3, 3, generator=gen)
+    q, r = torch.linalg.qr(a)
+    q = q * torch.sign(torch.diagonal(r, dim1=-2, dim2=-1)).unsqueeze(-2)
+    q[torch.det(q) < 0, :, 0] *= -1
+    return q
+
+
+def _rotate(x, g, y, R):
+    """Apply per-sample rotations R (N,3,3) to a dataset; works for 3 or 6 channels."""
+    x, g, y = x.clone(), g.clone(), y.clone()
+    nvec = x.shape[1] // 3
+    for k in range(nvec):
+        x[:, 3 * k:3 * k + 3] = torch.einsum("bij,bjhw->bihw", R, x[:, 3 * k:3 * k + 3])
+        g[:, 3 * k:3 * k + 3] = torch.einsum("bij,bj->bi", R, g[:, 3 * k:3 * k + 3])
+    y[:, :, 2:5] = torch.einsum("bij,bkj->bki", R, y[:, :, 2:5])
+    return x, g, y
+
+
 def batched_loss(net, x, g, y, scaler, bs):
     tot, n = 0.0, 0
     for i in range(0, len(x), bs):
@@ -44,10 +63,7 @@ def _predict_batch(model, x, g, scaler, tta=0):
         outs.append(scaler.denorm(p))
         for _ in range(tta):
             R = random_rotation(x.shape[0], x.device)
-            xr = torch.cat([torch.einsum("bij,bjhw->bihw", R, x[:, 0:3]),
-                            torch.einsum("bij,bjhw->bihw", R, x[:, 3:6])], 1)
-            gr = torch.cat([torch.einsum("bij,bj->bi", R, g[:, 0:3]),
-                            torch.einsum("bij,bj->bi", R, g[:, 3:6])], 1)
+            xr, gr, _ = _rotate(x, g, torch.zeros(x.shape[0], 2, 7, device=x.device), R)
             p = scaler.denorm(model(xr, gr)[0].float())
             p[:, :, 2:5] = torch.einsum("bji,bkj->bki", R, p[:, :, 2:5])  # R^T d
             # align slot order to the first prediction before averaging
@@ -68,7 +84,12 @@ def main():
     ap.add_argument("--data-on-cpu", action="store_true",
                     help="keep the dataset in host RAM and move batches (if it does not fit the GPU)")
     ap.add_argument("--eval-every", type=int, default=5)
-    ap.add_argument("--model", default="cnn_reg", choices=["cnn_reg", "cnn_heat"])
+    ap.add_argument("--model", default="cnn_reg", choices=["cnn_reg", "cnn_heat", "pointtf"])
+    ap.add_argument("--no-vel", action="store_true",
+                    help="observation ladder rung 1: drop velocity channels and mean velocity (positions only)")
+    ap.add_argument("--eval-rotated", action="store_true",
+                    help="rung 2: evaluate val/test under a fixed random world rotation per sample (unknown pose)")
+    ap.add_argument("--n-points", type=int, default=2048, help="pointtf: points sampled per step")
     ap.add_argument("--width", type=int, default=32)
     ap.add_argument("--epochs", type=int, default=400)
     ap.add_argument("--bs", type=int, default=16)
@@ -83,6 +104,7 @@ def main():
     args = ap.parse_args()
     out = args.out or (f"runs/{os.path.basename(os.path.normpath(args.root))}_{args.model}_s{args.seed}_e{args.epochs}"
                        + (f"_pool{args.pool}" if args.pool > 1 else "")
+                       + ("_novel" if args.no_vel else "") + ("_evalrot" if args.eval_rotated else "")
                        + ("_noaug" if args.no_aug else "") + ("_norot" if args.no_rot else ""))
     os.makedirs(out, exist_ok=True)
     torch.manual_seed(args.seed)
@@ -92,6 +114,16 @@ def main():
         print(f"device: {torch.cuda.get_device_name(0)} {torch.cuda.get_device_properties(0).total_memory / 1e9:.0f} GB", flush=True)
 
     tr, va, te = (load_split(args.root, s, pool=args.pool) for s in ("train", "val", "test"))
+    if args.no_vel:  # rung 1: positions only (keep tensors contiguous for later indexing)
+        for d in (tr, va, te):
+            d["x"] = d["x"][:, :3].contiguous()
+            d["g"] = d["g"][:, :3].contiguous()
+    cin, gdim = tr["x"].shape[1], tr["g"].shape[1]
+    if args.eval_rotated:  # rung 2: a fixed, seeded random rotation per val/test sample
+        gen = torch.Generator().manual_seed(1234)
+        for d in (va, te):
+            R = _rot_from_gen(len(d["x"]), gen)
+            d["x"], d["g"], d["y"] = _rotate(d["x"], d["g"], d["y"], R)
     in_size = tr["x"].shape[-1]
     print(f"data: train {len(tr['names'])}  val {len(va['names'])}  test {len(te['names'])}  "
           f"input {tuple(tr['x'].shape[1:])}  ({tr['x'].numel() * 4 / 1e9:.1f} GB train)", flush=True)
@@ -113,7 +145,8 @@ def main():
     xte, gte, yte = prep(te)
 
     uv_scale = (scaler.mean[:2], scaler.std[:2])
-    model = build(args.model, uv_scale=uv_scale, w=args.width, in_size=in_size).to(dev)
+    model = build(args.model, uv_scale=uv_scale, w=args.width, in_size=in_size, cin=cin, gdim=gdim,
+                  n_points=args.n_points).to(dev)
     amp = torch.autocast("cuda", dtype=torch.bfloat16) if (args.amp and dev.type == "cuda") else contextlib.nullcontext()
     nparam = sum(p.numel() for p in model.parameters())
 

@@ -60,11 +60,11 @@ class Encoder(nn.Module):
 class CNNReg(nn.Module):
     """Global-pool + MLP, predicts (2, 7) directly (normalized targets)."""
 
-    def __init__(self, w=32, hidden=256, p_drop=0.2, in_size=128):
+    def __init__(self, w=32, hidden=256, p_drop=0.2, in_size=128, cin=6, gdim=6, **_):
         super().__init__()
-        self.enc = Encoder(6, w, in_size)
+        self.enc = Encoder(cin, w, in_size)
         self.head = nn.Sequential(
-            nn.Linear(self.enc.c_out + 6, hidden), nn.GELU(), nn.Dropout(p_drop),
+            nn.Linear(self.enc.c_out + gdim, hidden), nn.GELU(), nn.Dropout(p_drop),
             nn.Linear(hidden, hidden), nn.GELU(), nn.Dropout(p_drop),
             nn.Linear(hidden, 14))
 
@@ -79,14 +79,14 @@ class CNNHeat(nn.Module):
     soft-argmax; the other 5 params regressed from pooled features plus
     heatmap-attended local features."""
 
-    def __init__(self, w=32, hidden=256, p_drop=0.2, uv_scale=None, in_size=128):
+    def __init__(self, w=32, hidden=256, p_drop=0.2, uv_scale=None, in_size=128, cin=6, gdim=6, **_):
         super().__init__()
-        self.enc = Encoder(6, w, in_size)
+        self.enc = Encoder(cin, w, in_size)
         cm = self.enc.c_mid
         self.heat = nn.Sequential(nn.Conv2d(cm, cm, 3, 1, 1), nn.GroupNorm(8, cm), nn.GELU(),
                                   nn.Conv2d(cm, 2, 1))
         self.reg = nn.Sequential(
-            nn.Linear(self.enc.c_out + 6 + cm, hidden), nn.GELU(), nn.Dropout(p_drop),
+            nn.Linear(self.enc.c_out + gdim + cm, hidden), nn.GELU(), nn.Dropout(p_drop),
             nn.Linear(hidden, 5))
         self.uv_scale = uv_scale  # (mean, std) of u,v to emit normalized coords
 
@@ -109,11 +109,46 @@ class CNNHeat(nn.Module):
         return torch.cat([uv, rest], -1), prob
 
 
+class PointTF(nn.Module):
+    """Observation-ladder rung 3: an UNORDERED point cloud. Each step samples
+    ``n_points`` random grid points (random subset + random order), so the model
+    never sees the material indexing. Per-point MLP -> transformer encoder ->
+    attention pooling -> (2, 7). Input per point: centred position (3) and,
+    if present, velocity (3). Global features g are appended after pooling."""
+
+    def __init__(self, cin=6, gdim=6, d=128, layers=4, heads=4, n_points=2048, hidden=256, p_drop=0.1, **_):
+        super().__init__()
+        self.n_points = n_points
+        self.embed = nn.Sequential(nn.Linear(cin, d), nn.GELU(), nn.Linear(d, d))
+        layer = nn.TransformerEncoderLayer(d, heads, 2 * d, dropout=p_drop, batch_first=True, norm_first=True,
+                                           activation="gelu")
+        self.tf = nn.TransformerEncoder(layer, layers)
+        self.pool_q = nn.Parameter(torch.randn(1, 4, d) * 0.02)  # 4 learned pooling queries
+        self.pool = nn.MultiheadAttention(d, heads, batch_first=True)
+        self.head = nn.Sequential(nn.Linear(4 * d + gdim, hidden), nn.GELU(), nn.Dropout(p_drop),
+                                  nn.Linear(hidden, 14))
+
+    def forward(self, x, g):
+        B, C, H, W = x.shape
+        pts = x.reshape(B, C, H * W).transpose(1, 2)  # (B, N, C)
+        n = min(self.n_points, H * W)
+        idx = torch.stack([torch.randperm(H * W, device=x.device)[:n] for _ in range(B)])  # fresh subset + order
+        pts = torch.gather(pts, 1, idx.unsqueeze(-1).expand(-1, -1, C))
+        h = self.tf(self.embed(pts))
+        q = self.pool_q.expand(B, -1, -1)
+        pooled, _ = self.pool(q, h, h)
+        f = torch.cat([pooled.reshape(B, -1), g], 1)
+        return self.head(f).view(-1, 2, 7), None
+
+
 def build(name: str, uv_scale=None, **kw):
     if name == "cnn_reg":
         return CNNReg(**kw)
     if name == "cnn_heat":
         return CNNHeat(uv_scale=uv_scale, **kw)
+    if name == "pointtf":
+        kw.pop("in_size", None); kw.pop("w", None)
+        return PointTF(**kw)
     raise ValueError(name)
 
 

@@ -143,35 +143,34 @@ def augment(x, g, y, rotate=True, dihedral=True):
     """Apply a random exact symmetry to a batch. x: (B,6,ny,nx), g: (B,6), y: (B,2,7)."""
     B, dev = x.shape[0], x.device
     x, g, y = x.clone(), g.clone(), y.clone()
+    nvec = x.shape[1] // 3  # 2 with velocities, 1 for positions only
+    xs = [3 * k for k in range(nvec)]  # channel index of the x-component of each vector
+    swap = sum([[3 * k + 1, 3 * k, 3 * k + 2] for k in range(nvec)], [])  # x<->y per vector
     if dihedral:
         for b in range(B):
             if torch.rand(1).item() < 0.5:  # flip u <-> 1-u, x -> -x
                 x[b] = x[b].flip(-1)
-                x[b, 0] *= -1
-                x[b, 3] *= -1
-                g[b, 0] *= -1
-                g[b, 3] *= -1
+                for c in xs:
+                    x[b, c] *= -1
+                    g[b, c] *= -1
                 y[b, :, 0] = 1.0 - y[b, :, 0]
                 y[b, :, 2] *= -1
             if torch.rand(1).item() < 0.5:  # flip v <-> 1-v, y -> -y
                 x[b] = x[b].flip(-2)
-                x[b, 1] *= -1
-                x[b, 4] *= -1
-                g[b, 1] *= -1
-                g[b, 4] *= -1
+                for c in xs:
+                    x[b, c + 1] *= -1
+                    g[b, c + 1] *= -1
                 y[b, :, 1] = 1.0 - y[b, :, 1]
                 y[b, :, 3] *= -1
             if torch.rand(1).item() < 0.5:  # transpose (u,v), swap x<->y
-                x[b] = x[b].transpose(-1, -2).clone()[[1, 0, 2, 4, 3, 5]]
-                g[b] = g[b][[1, 0, 2, 4, 3, 5]]
+                x[b] = x[b].transpose(-1, -2).clone()[swap]
+                g[b] = g[b][swap]
                 y[b, :, [0, 1]] = y[b, :, [1, 0]]
                 y[b, :, [2, 3]] = y[b, :, [3, 2]]
     if rotate:
         R = random_rotation(B, dev)  # (B,3,3)
-        pos = torch.einsum("bij,bjhw->bihw", R, x[:, 0:3])
-        vel = torch.einsum("bij,bjhw->bihw", R, x[:, 3:6])
-        x = torch.cat([pos, vel], 1)
-        g = torch.cat([torch.einsum("bij,bj->bi", R, g[:, 0:3]),
-                       torch.einsum("bij,bj->bi", R, g[:, 3:6])], 1)
+        for k in range(nvec):
+            x[:, 3 * k:3 * k + 3] = torch.einsum("bij,bjhw->bihw", R, x[:, 3 * k:3 * k + 3])
+            g[:, 3 * k:3 * k + 3] = torch.einsum("bij,bj->bi", R, g[:, 3 * k:3 * k + 3])
         y[:, :, 2:5] = torch.einsum("bij,bkj->bki", R, y[:, :, 2:5])
     return x, g, y
