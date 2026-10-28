@@ -30,6 +30,38 @@ class SheetConfig:
     particle_radius: float = 0.002  # ~50% of particle spacing at 128x128
     self_contact_margin: float = 0.001  # ~25% of particle spacing at 128x128
     self_contact_gap: float = 0.0005  # ~12% of particle spacing at 128x128
+    material: str = "cloth"
+    # Plastic bending (see plasticity.py). None = purely elastic (cloth).
+    plastic_yield_curvature: float | None = None  # 1/m; bend past this leaves a crease
+    plastic_rate: float = 1.0  # fraction of the excess bend made permanent per substep
+
+
+# Overrides of the SheetConfig defaults per material. "cloth" is the original
+# dataset sheet and must stay empty so existing datasets reproduce.
+MATERIALS: dict[str, dict] = {
+    "cloth": {},
+    # Light printer-paper-like sheet: lighter, much stiffer in plane (near
+    # inextensible) and in bending, and it creases: bends sharper than the
+    # yield curvature become permanent, so the end state cannot be unfolded
+    # back to flat by elasticity alone. Values are VBD units tuned at 128x128
+    # (see REPORT.md, paper section), not measured paper constants.
+    "paper": {
+        "mass_per_area": 0.08,
+        "tri_ke": 1.0e4,
+        "tri_ka": 1.0e4,
+        "tri_kd": 1.0e2,
+        "edge_ke": 50.0,
+        "edge_kd": 0.0,
+        "plastic_yield_curvature": 20.0,
+        "plastic_rate": 1.0,
+    },
+}
+
+
+def sheet_config(material: str = "cloth", **overrides) -> SheetConfig:
+    if material not in MATERIALS:
+        raise ValueError(f"unknown material {material!r}; choose from {sorted(MATERIALS)}")
+    return SheetConfig(material=material, **(MATERIALS[material] | overrides))
 
 
 def particle_spacing(cfg: SheetConfig) -> tuple[float, float]:

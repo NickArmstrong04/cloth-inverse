@@ -16,7 +16,7 @@
 #SBATCH --time=12:00:00
 #SBATCH --output=train_%j.out
 #SBATCH --error=train_%j.err
-set -uo pipefail
+set -euo pipefail   # stop at the first failing step (a GPU fault must not look like "train done")
 SPLITS="${1:?usage: train.sbatch <splits_dir> [epochs] [extra args]}"
 EPOCHS="${2:-300}"
 shift; shift 2>/dev/null || true

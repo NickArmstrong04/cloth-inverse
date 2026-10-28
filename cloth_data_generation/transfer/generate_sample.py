@@ -13,7 +13,7 @@ import warp as wp
 
 from cloth_sim.forces import ForceParams, default_forces, forces_from_dicts, forces_to_dicts
 from cloth_sim.io import save_sample_h5
-from cloth_sim.sheet import SheetConfig, build_sheet
+from cloth_sim.sheet import MATERIALS, build_sheet, sheet_config
 from cloth_sim.simulate import SimConfig, run_simulation
 
 
@@ -43,9 +43,14 @@ def main() -> None:
                     help="settle delay after forces end when --t-capture unset")
     ap.add_argument("--magnitude", type=float, default=None,
                     help="override both force magnitudes (tuning aid)")
+    ap.add_argument("--material", choices=sorted(MATERIALS), default="cloth",
+                    help="sheet preset (cloth_sim/sheet.py MATERIALS); flags below override it")
+    ap.add_argument("--yield-curvature", type=float, default=None,
+                    help="plastic crease yield curvature [1/m] (paper; 0 = elastic)")
+    ap.add_argument("--plastic-rate", type=float, default=None)
     ap.add_argument("--edge-ke", type=float, default=None)
     ap.add_argument("--tri-ke", type=float, default=None, help="membrane stiffness (also sets tri_ka)")
-    ap.add_argument("--mass-per-area", type=float, default=None, help="kg/m^2 (default 0.2)")
+    ap.add_argument("--mass-per-area", type=float, default=None, help="kg/m^2 (cloth 0.2, paper 0.08)")
     ap.add_argument("--tri-kd", type=float, default=None)
     ap.add_argument("--substeps", type=int, default=None)
     ap.add_argument("--iterations", type=int, default=None)
@@ -73,7 +78,7 @@ def main() -> None:
     t_capture = args.t_capture
     if t_capture is None:
         t_capture = max(f.duration for f in forces) + args.settle
-    sheet = SheetConfig(nx=args.nx, ny=args.ny)
+    sheet = sheet_config(args.material, nx=args.nx, ny=args.ny)
     sim = SimConfig(t_capture=t_capture, device=args.device,
                     ramp_frac=args.ramp, deterministic=args.deterministic,
                     force_every_substep=args.force_every_substep)
@@ -86,6 +91,10 @@ def main() -> None:
         sheet.tri_ka = args.tri_ke
     if args.mass_per_area is not None:
         sheet.mass_per_area = args.mass_per_area
+    if args.yield_curvature is not None:
+        sheet.plastic_yield_curvature = args.yield_curvature or None
+    if args.plastic_rate is not None:
+        sheet.plastic_rate = args.plastic_rate
     if args.margin is not None:
         sheet.self_contact_margin = args.margin
         sim.margin = args.margin
@@ -121,7 +130,7 @@ def main() -> None:
         force_params=forces_to_dicts(forces), sim_config=sim_cfg,
         seed=args.seed, ke=res["ke"], max_speed=res["max_speed"],
         contacts=res["contacts"], frame_dt=res["frame_dt"],
-        momentum=res["momentum"],
+        momentum=res["momentum"], plastic=res["plastic"],
     )
     print(f"saved {args.out}")
     print(f"wall {res['wall_time']:.1f}s frames={len(res['ke'])} "
@@ -129,6 +138,11 @@ def main() -> None:
           f"vmax_max={res['max_speed'].max():.2f} "
           f"contacts_max={res['contacts'].max()} contacts_final={res['contacts'][-1]} "
           f"nan={res['nan_time']} gpu_mem={mem_before}->{mem_after} MB")
+    if res["plastic"] is not None:
+        pl = res["plastic"]
+        print(f"plastic: crease_total={pl['crease_total'][-1]:.3f} rad "
+              f"edges_yielded={pl['edges_yielded'][-1]}/{len(pl['edge_rest_angle'])} "
+              f"yield_angle={pl['yield_angle']:.4f} rad")
 
 
 if __name__ == "__main__":

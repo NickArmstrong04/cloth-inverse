@@ -34,7 +34,8 @@ def save_sample_h5(path: str, *, final_grid: np.ndarray, final_vel: np.ndarray,
                    intermediate_grids: np.ndarray, intermediate_times: np.ndarray,
                    force_params: list[dict], sim_config: dict, seed: int,
                    ke: np.ndarray, max_speed: np.ndarray, contacts: np.ndarray,
-                   frame_dt: float, momentum: np.ndarray | None = None) -> None:
+                   frame_dt: float, momentum: np.ndarray | None = None,
+                   plastic: dict | None = None) -> None:
     with h5py.File(path, "w") as h:
         h.create_dataset("final_grid", data=final_grid)
         h.create_dataset("final_vel", data=final_vel)
@@ -50,6 +51,14 @@ def save_sample_h5(path: str, *, final_grid: np.ndarray, final_vel: np.ndarray,
         if momentum is not None:
             log.create_dataset("momentum", data=momentum)
         log.attrs["frame_dt"] = frame_dt
+        if plastic is not None:
+            # hidden plastic state of paper sheets (not an observable)
+            pg = h.create_group("plastic")
+            for k, v in plastic.items():
+                if isinstance(v, np.ndarray):
+                    pg.create_dataset(k, data=v)
+                else:
+                    pg.attrs[k] = v
         for k, v in collect_versions().items():
             h.attrs[f"pkg_{k}"] = str(v)[:512]
         h.attrs["grid_convention"] = (
@@ -69,5 +78,7 @@ def load_sample_h5(path: str) -> dict:
                                        if isinstance(h["sim_config"][()], bytes)
                                        else h["sim_config"][()])
         out["sim_log"] = {k: h["sim_log"][k][()] for k in h["sim_log"]}
+        if "plastic" in h:
+            out["plastic"] = {k: h["plastic"][k][()] for k in h["plastic"]}
         out["attrs"] = dict(h.attrs)
     return out

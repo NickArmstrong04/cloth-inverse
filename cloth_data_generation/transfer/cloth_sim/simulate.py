@@ -11,6 +11,7 @@ import warp as wp
 import newton
 
 from .forces import ForceParams, build_force_array
+from .plasticity import PlasticHinges
 
 
 @dataclass
@@ -76,6 +77,12 @@ def run_simulation(model, forces: list[ForceParams], sim: SimConfig,
         pipeline = newton.CollisionPipeline(model)
         contacts = pipeline.contacts()
         masses = _host(model.particle_mass).ravel().astype(np.float64)
+        sheet = meta["sheet"]
+        hinges = None
+        if sheet.get("plastic_yield_curvature"):
+            hinges = PlasticHinges(model, sheet["plastic_yield_curvature"],
+                                   min(meta["cell_x"], meta["cell_y"]),
+                                   rate=sheet.get("plastic_rate", 1.0))
 
         def self_contact_count() -> int:
             # VBD detects self-contact internally; read its detector counts.
@@ -97,6 +104,7 @@ def run_simulation(model, forces: list[ForceParams], sim: SimConfig,
         mom_log: list[np.ndarray] = []
         vmax_log: list[float] = []
         contact_log: list[int] = []
+        plastic_log: list[tuple[float, int]] = []
         intermediates: list[np.ndarray] = []
         inter_times: list[float] = []
         dense: list[np.ndarray] = []
@@ -127,6 +135,8 @@ def run_simulation(model, forces: list[ForceParams], sim: SimConfig,
                 pipeline.collide(state_0, contacts)
                 solver.step(state_0, state_1, control, contacts, sim_dt)
                 state_0, state_1 = state_1, state_0
+                if hinges is not None:
+                    hinges.update(state_0)
 
             q = _host(state_0.particle_q).astype(np.float64)
             qd = _host(state_0.particle_qd).astype(np.float64)
@@ -138,6 +148,8 @@ def run_simulation(model, forces: list[ForceParams], sim: SimConfig,
             mom_log.append((masses[:, None] * qd).sum(0))
             vmax_log.append(float(speed.max()))
             contact_log.append(self_contact_count())
+            if hinges is not None:
+                plastic_log.append(hinges.summary())
             if frame in keep:
                 intermediates.append(q.reshape(ny, nx, 3).astype(np.float32))
                 inter_times.append(t)
@@ -165,4 +177,14 @@ def run_simulation(model, forces: list[ForceParams], sim: SimConfig,
         "frame_dt": frame_dt,
         "wall_time": wall,
         "nan_time": nan_hit,
+        # plastic state (None for elastic sheets): per-frame (total crease
+        # angle [rad], yielded edges), final per-edge rest angles, crease map
+        "plastic": None if hinges is None else {
+            "crease_total": np.array([p[0] for p in plastic_log], dtype=np.float64),
+            "edges_yielded": np.array([p[1] for p in plastic_log], dtype=np.int64),
+            "edge_rest_angle": _host(model.edge_rest_angle).astype(np.float32),
+            "edge_indices": _host(model.edge_indices).astype(np.int32),
+            "crease_map": hinges.crease_map(nx, ny),
+            "yield_angle": hinges.yield_angle,
+        },
     }
