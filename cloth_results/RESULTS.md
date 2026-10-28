@@ -5,6 +5,27 @@ two force vectors (position u,v; direction; magnitude; duration). Metrics are me
 the test split with optimal pairing of the two forces; position error is in cm on the
 0.5 m sheet. "Chance" = predicting the training mean.
 
+## 2026-10-28: matrices M1-M3 on ds768_night (cloth_results/JOBS.md), 300 epochs, TTA off, D4-symmetric metric where pose is unknown
+
+| run | rung / setting | pos cm | dir deg | train pos cm |
+|---|---|---|---|---|
+| M1a, M1b | rung 0 (grid + vel, known frame), seeds 1, 2 | 3.9, 4.2 | 13.7, 13.3 | 3.3, 3.9 |
+| M1c, M1d | rung 2 (grid, no vel, unknown pose), seeds 1, 2 | 8.7, 9.3 | 32.8, 34.8 | 8.9, 9.6 |
+| M2a | rung 1 at 384 (pool 2) | 4.5 | 16.4 | 3.9 |
+| M2b | rung 1 at 192 (pool 4) | 5.0 | 17.2 | 4.1 |
+| M3a | rung 3 (point cloud 1024 pts, no vel, unknown pose) | 8.3 | 30.7 | 8.8 |
+
+Reading (ladder run 1 for reference: rung 0 = 4.8 / 13.7, rung 1 = 4.3 / 14.3):
+- Seed-to-seed spread is ~0.4 cm / 0.5 deg at rung 0 and ~0.6 cm / 2 deg at rung 2. Differences
+  smaller than that between rungs or settings are noise.
+- **Unknown pose is the expensive rung**: 4 cm -> 9 cm, 13 deg -> 33 deg, and train ~ test, so the
+  SO(3)-augmented task is not learned with this model/data rather than overfit.
+- Going from the grid to an unordered point cloud (rung 2 -> 3) costs nothing: the 1024-point
+  transformer matches the pose-unknown CNN. The representation is not the bottleneck; pose is.
+- Resolution: 384 loses ~0.3 cm / 2 deg vs 768, 192 loses ~0.7 cm / 3 deg. A 512 dataset is
+  sufficient for the grid model; the pooled runs start to show a train/test gap (3.9 vs 4.5).
+- Magnitude / impulse still at chance in every run (velocity clamp, DATASETS.md).
+
 ## 2026-10-28: ds768_night (768x768, 878 train / 110 val / 110 test), trained on Bouchet L40S
 
 300 epochs, batch 16, bf16, full resolution, ~10 min per model. Code: `cloth_data_generation/inverse`,
