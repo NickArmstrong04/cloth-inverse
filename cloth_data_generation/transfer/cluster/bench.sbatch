@@ -22,6 +22,9 @@ GTYPE="__GTYPE__"
 cd "$CODE_DIR"
 export WARP_CACHE_PATH="${WARP_CACHE_PATH:-$CODE_DIR/.warp_cache}"
 mkdir -p "$OUTDIR"
+if ! .venv/bin/python -c "import numpy, h5py, warp, newton" 2> "$OUTDIR/env_check.err"; then
+  echo "ENVIRONMENT BROKEN: $CODE_DIR/.venv is missing packages. Run: bash cluster/setup_env.sh"; cat "$OUTDIR/env_check.err"; exit 2
+fi
 echo "bench $GTYPE on $(hostname) job $SLURM_JOB_ID start $(date -Is)"
 nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader
 echo "{\"job\": \"$SLURM_JOB_ID\", \"gpu\": \"$GTYPE\", \"node\": \"$(hostname)\", \"gpu_name\": \"$(nvidia-smi --query-gpu=name --format=csv,noheader | head -1)\", \"start\": \"$(date -Is)\"}" > "$OUTDIR/job.json"
@@ -79,7 +82,7 @@ with open(f"{out}/results.jsonl", "a") as f:
     f.write(json.dumps(row) + "\n")
 print(f"nx={nx} rep={r} rc={rc} total {row['wall_total_s']:.1f}s sim {row['sim_wall_s']} util {row['util_busy_mean_pct']} mem {row['mem_peak_mb']} MB")
 PY
-    if [ $RC -ne 0 ]; then echo "nx=$NX failed (rc=$RC, likely OOM); skipping larger sizes"; tail -3 "$OUTDIR/gen_nx${NX}_r${R}.log"; break 2; fi
+    if [ $RC -ne 0 ]; then echo "nx=$NX failed (rc=$RC); see gen_nx${NX}_r${R}.log (CUDA out of memory = GPU too small for this size). Skipping larger sizes."; grep -i -m3 -E "error|memory" "$OUTDIR/gen_nx${NX}_r${R}.log" || tail -3 "$OUTDIR/gen_nx${NX}_r${R}.log"; break 2; fi
   done
 done
 echo "bench done $(date -Is)"

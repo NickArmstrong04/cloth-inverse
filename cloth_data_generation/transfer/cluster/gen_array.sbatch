@@ -33,6 +33,9 @@ cd "$CODE_DIR"
 # Shared compiled-kernel cache so only the first task pays the compile cost.
 export WARP_CACHE_PATH="${WARP_CACHE_PATH:-$CODE_DIR/.warp_cache}"
 mkdir -p "$OUTDIR" "$WARP_CACHE_PATH"
+if ! .venv/bin/python -c "import numpy, h5py, warp, newton" 2>/dev/null; then
+  echo "ENVIRONMENT BROKEN: $CODE_DIR/.venv is missing packages. Run: bash cluster/setup_env.sh"; exit 2
+fi
 
 # One sample at a time per GPU: parallel samples on one GPU gave no speedup.
 .venv/bin/python generate_batch.py \
