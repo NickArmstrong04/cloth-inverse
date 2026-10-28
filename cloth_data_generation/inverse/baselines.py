@@ -17,9 +17,9 @@ from metrics import pair_metrics, summarize
 def features(d: dict) -> np.ndarray:
     x = d["x"].numpy()  # (N,6,ny,nx)
     N = x.shape[0]
-    small = torch.nn.functional.avg_pool2d(d["x"], 8).numpy().reshape(N, -1)  # 6x16x16
+    small = torch.nn.functional.adaptive_avg_pool2d(d["x"], 16).numpy().reshape(N, -1)  # 6x16x16
     g = d["g"].numpy()
-    pos = x[:, 0:3].reshape(N, 3, -1)
+    pos = x[:, 0:3].reshape(N, 3, -1)[:, :, :: max(1, x.shape[-1] * x.shape[-2] // 4096)]  # subsample points
     cov = np.stack([np.cov(p) for p in pos]).reshape(N, -1)  # shape tensor (9)
     ext = np.stack([pos.max(-1) - pos.min(-1)])[0]  # extents (3)
     return np.concatenate([g, cov, ext, small], 1)
@@ -47,9 +47,10 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--root", default="dataset")
     ap.add_argument("--out", default="runs/baselines")
+    ap.add_argument("--pool", type=int, default=1)
     args = ap.parse_args()
     os.makedirs(args.out, exist_ok=True)
-    tr, va, te = (load_split(args.root, s) for s in ("train", "val", "test"))
+    tr, va, te = (load_split(args.root, s, pool=args.pool) for s in ("train", "val", "test"))
     Ytr = canon(tr["y"].numpy())
     res = {}
 

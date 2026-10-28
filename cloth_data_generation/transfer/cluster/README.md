@@ -116,6 +116,22 @@ Sizing: one L40S makes ~12 samples/h at 768 single-process (~306 s each incl.
 setup), more with `JOBS_PER_TASK=2`. Each 768 sample is ~50 MB on disk (final
 state, velocities, 5 intermediates), so 2000 samples is ~100 GB.
 
+## 3c. Training the inverse model on the cluster (full resolution)
+
+```bash
+bash cluster/setup_env.sh --with-torch                        # once (adds PyTorch to the venv)
+sbatch cluster/train.sbatch /home/naa79/scratch_pi_sz622/naa79/cloth_data/ds768_night_splits 300
+tail -f train_<jobid>.out
+```
+
+`train.sbatch` runs the baselines, then the heatmap CNN and the regression CNN
+with dihedral augmentation, then the heatmap CNN with 3D-rotation augmentation,
+all at native 768x768 with bf16 autocast. It asks for 160 GB host RAM and one
+L40S: the dataset is held as float32 tensors (~14 MB per sample) and moved to
+the GPU; pass `--data-on-cpu` as an extra arg if the GPU runs out of memory,
+or `--pool 2` to train on block-averaged 384 grids. Metrics and test
+predictions land in `../inverse/runs/<splits>_<model>_*/`.
+
 ## 4. Outputs
 
 ```

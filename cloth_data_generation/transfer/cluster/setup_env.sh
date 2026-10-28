@@ -31,6 +31,12 @@ uv pip install --python .venv/bin/python \
   "numpy==2.5.4" "h5py==3.16.0" "matplotlib==3.11.2" "imageio==2.38.1" \
   "pillow==13.0.0" "scipy==1.18.1"
 
+if [ "${1:-}" = "--with-torch" ]; then
+  echo "== installing PyTorch (CUDA 12.8 wheels, ~2.5 GB) for the inverse models"
+  uv pip install --python .venv/bin/python torch --index-url https://download.pytorch.org/whl/cu128
+  .venv/bin/python -c "import torch; print('torch', torch.__version__)"
+fi
+
 echo "== import check (CPU only; the GPU is exercised by the first job)"
 .venv/bin/python -c "import warp, newton, h5py, numpy; print('warp', warp.__version__, 'newton', newton.__version__, 'numpy', numpy.__version__)"
 echo "setup done. Next: python3 cluster/submit.py --n 1000 --dry-run"

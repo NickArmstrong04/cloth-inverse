@@ -25,31 +25,44 @@ class Block(nn.Module):
 
 
 class Encoder(nn.Module):
-    """128x128x6 -> feature maps at 1/4 (for heatmaps) and 1/16 (pooled)."""
+    """Material-grid encoder. Downsamples by 2 per block until the map is ~8 px
+    (4 blocks for 128 input, 7 for 768). Returns the map two blocks before the
+    end ("mid", used for heatmaps: 32 px at 128, 24 px at 768) and the final
+    map ("out", pooled for regression). Channel width doubles per block up to 8w.
+    A stride-2 stem is used for inputs above 256 to keep activations affordable."""
 
-    def __init__(self, cin=6, w=32):
+    def __init__(self, cin=6, w=32, in_size=128):
         super().__init__()
-        self.stem = nn.Sequential(nn.Conv2d(cin, w, 3, 1, 1), nn.GroupNorm(8, w), nn.GELU())
-        self.l1 = Block(w, w, 2)          # 64
-        self.l2 = Block(w, 2 * w, 2)      # 32
-        self.l3 = Block(2 * w, 4 * w, 2)  # 16
-        self.l4 = Block(4 * w, 8 * w, 2)  # 8
-        self.c_mid, self.c_out = 2 * w, 8 * w
+        stem_stride = 2 if in_size > 256 else 1
+        size = in_size // stem_stride
+        self.stem = nn.Sequential(nn.Conv2d(cin, w, 3, stem_stride, 1), nn.GroupNorm(8, w), nn.GELU())
+        blocks, c = [], w
+        while size > 8:
+            cout = min(8 * w, c * 2) if blocks else w
+            blocks.append(Block(c, cout, 2))
+            c, size = cout, size // 2
+        assert len(blocks) >= 3, "input too small"
+        self.blocks = nn.ModuleList(blocks)
+        self.c_mid = blocks[-3].c2.out_channels
+        self.c_out = c
+        self.mid_index = len(blocks) - 3
 
     def forward(self, x):
         h = self.stem(x)
-        h = self.l1(h)
-        mid = self.l2(h)
-        out = self.l4(self.l3(mid))
-        return mid, out
+        mid = None
+        for i, b in enumerate(self.blocks):
+            h = b(h)
+            if i == self.mid_index:
+                mid = h
+        return mid, h
 
 
 class CNNReg(nn.Module):
     """Global-pool + MLP, predicts (2, 7) directly (normalized targets)."""
 
-    def __init__(self, w=32, hidden=256, p_drop=0.2):
+    def __init__(self, w=32, hidden=256, p_drop=0.2, in_size=128):
         super().__init__()
-        self.enc = Encoder(6, w)
+        self.enc = Encoder(6, w, in_size)
         self.head = nn.Sequential(
             nn.Linear(self.enc.c_out + 6, hidden), nn.GELU(), nn.Dropout(p_drop),
             nn.Linear(hidden, hidden), nn.GELU(), nn.Dropout(p_drop),
@@ -66,9 +79,9 @@ class CNNHeat(nn.Module):
     soft-argmax; the other 5 params regressed from pooled features plus
     heatmap-attended local features."""
 
-    def __init__(self, w=32, hidden=256, p_drop=0.2, uv_scale=None):
+    def __init__(self, w=32, hidden=256, p_drop=0.2, uv_scale=None, in_size=128):
         super().__init__()
-        self.enc = Encoder(6, w)
+        self.enc = Encoder(6, w, in_size)
         cm = self.enc.c_mid
         self.heat = nn.Sequential(nn.Conv2d(cm, cm, 3, 1, 1), nn.GroupNorm(8, cm), nn.GELU(),
                                   nn.Conv2d(cm, 2, 1))

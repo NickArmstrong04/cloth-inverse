@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import os
 import time
@@ -15,13 +16,31 @@ from metrics import pair_metrics, summarize
 from models import build, pair_loss
 
 
-def predict(model, x, g, scaler, tta=0):
+def batched_loss(net, x, g, y, scaler, bs):
+    tot, n = 0.0, 0
+    for i in range(0, len(x), bs):
+        p, _ = net(x[i:i + bs], g[i:i + bs])
+        tot += pair_loss(p.float(), scaler.norm(y[i:i + bs])).item() * len(p)
+        n += len(p)
+    return tot / max(n, 1)
+
+
+def predict(model, x, g, scaler, tta=0, bs=16):
+    outs = []
+    for i in range(0, len(x), bs):
+        outs.append(_predict_batch(model, x[i:i + bs], g[i:i + bs], scaler, tta))
+    return torch.cat(outs)
+
+
+def _predict_batch(model, x, g, scaler, tta=0):
     """Return raw-scale predictions (N,2,7). With tta>0, average over random
     world rotations (directions rotated back; u,v,mag,dur rotation-invariant)."""
     model.eval()
+    x = x.to(next(model.parameters()).device, non_blocking=True)
     with torch.no_grad():
         outs = []
         p, _ = model(x, g)
+        p = p.float()
         outs.append(scaler.denorm(p))
         for _ in range(tta):
             R = random_rotation(x.shape[0], x.device)
@@ -29,7 +48,7 @@ def predict(model, x, g, scaler, tta=0):
                             torch.einsum("bij,bjhw->bihw", R, x[:, 3:6])], 1)
             gr = torch.cat([torch.einsum("bij,bj->bi", R, g[:, 0:3]),
                             torch.einsum("bij,bj->bi", R, g[:, 3:6])], 1)
-            p = scaler.denorm(model(xr, gr)[0])
+            p = scaler.denorm(model(xr, gr)[0].float())
             p[:, :, 2:5] = torch.einsum("bji,bkj->bki", R, p[:, :, 2:5])  # R^T d
             # align slot order to the first prediction before averaging
             d0 = outs[0][:, :, :2]
@@ -44,6 +63,11 @@ def predict(model, x, g, scaler, tta=0):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--root", default="dataset")
+    ap.add_argument("--pool", type=int, default=1, help="block-average factor on load (1 = full resolution)")
+    ap.add_argument("--amp", action="store_true", help="bf16 autocast (recommended at 768)")
+    ap.add_argument("--data-on-cpu", action="store_true",
+                    help="keep the dataset in host RAM and move batches (if it does not fit the GPU)")
+    ap.add_argument("--eval-every", type=int, default=5)
     ap.add_argument("--model", default="cnn_reg", choices=["cnn_reg", "cnn_heat"])
     ap.add_argument("--width", type=int, default=32)
     ap.add_argument("--epochs", type=int, default=400)
@@ -57,27 +81,40 @@ def main():
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
-    out = args.out or (f"runs/{args.model}_s{args.seed}_e{args.epochs}"
+    out = args.out or (f"runs/{os.path.basename(os.path.normpath(args.root))}_{args.model}_s{args.seed}_e{args.epochs}"
+                       + (f"_pool{args.pool}" if args.pool > 1 else "")
                        + ("_noaug" if args.no_aug else "") + ("_norot" if args.no_rot else ""))
     os.makedirs(out, exist_ok=True)
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
     dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if dev.type == "cuda":
+        print(f"device: {torch.cuda.get_device_name(0)} {torch.cuda.get_device_properties(0).total_memory / 1e9:.0f} GB", flush=True)
 
-    tr, va, te = (load_split(args.root, s) for s in ("train", "val", "test"))
+    tr, va, te = (load_split(args.root, s, pool=args.pool) for s in ("train", "val", "test"))
+    in_size = tr["x"].shape[-1]
+    print(f"data: train {len(tr['names'])}  val {len(va['names'])}  test {len(te['names'])}  "
+          f"input {tuple(tr['x'].shape[1:])}  ({tr['x'].numel() * 4 / 1e9:.1f} GB train)", flush=True)
     scaler = TargetScaler(tr["y"]).to(dev)
-    xstd = tr["x"].std((0, 2, 3), keepdim=True).to(dev)  # per-channel input scale
+    # per-channel input scale from a subsample (full std over 15 GB is slow and unnecessary)
+    sub = tr["x"][:: max(1, len(tr["x"]) // 64)]
+    xstd = sub.std((0, 2, 3), keepdim=True).to(dev)
     gstd = tr["g"].std(0, keepdim=True).to(dev) + 1e-6
+    data_dev = torch.device("cpu") if args.data_on_cpu else dev
 
     def prep(d):
-        return d["x"].to(dev), d["g"].to(dev), d["y"].to(dev)
+        x = d["x"].to(data_dev)
+        if args.data_on_cpu:
+            x = x.pin_memory()
+        return x, d["g"].to(dev), d["y"].to(dev)
 
     xtr, gtr, ytr = prep(tr)
     xva, gva, yva = prep(va)
     xte, gte, yte = prep(te)
 
     uv_scale = (scaler.mean[:2], scaler.std[:2])
-    model = build(args.model, uv_scale=uv_scale, w=args.width).to(dev)
+    model = build(args.model, uv_scale=uv_scale, w=args.width, in_size=in_size).to(dev)
+    amp = torch.autocast("cuda", dtype=torch.bfloat16) if (args.amp and dev.type == "cuda") else contextlib.nullcontext()
     nparam = sum(p.numel() for p in model.parameters())
 
     class Wrapped(torch.nn.Module):
@@ -86,7 +123,7 @@ def main():
             self.m = m
 
         def forward(self, x, g):
-            return self.m(x / xstd, g / gstd)
+            return self.m(x.to(dev, non_blocking=True) / xstd, g / gstd)
 
     net = Wrapped(model)
     opt = torch.optim.AdamW(net.parameters(), lr=args.lr, weight_decay=args.wd)
@@ -101,22 +138,25 @@ def main():
         tot = 0.0
         for k in range(steps_per_epoch):
             idx = perm[k * args.bs:(k + 1) * args.bs]
-            x, g, y = xtr[idx], gtr[idx], ytr[idx]
+            x = xtr[idx.cpu()].to(dev, non_blocking=True) if args.data_on_cpu else xtr[idx]
+            g, y = gtr[idx], ytr[idx]
             if not args.no_aug:
                 x, g, y = augment(x, g, y, rotate=not args.no_rot)
-            pred, _ = net(x, g)
-            loss = pair_loss(pred, scaler.norm(y))
+            with amp:
+                pred, _ = net(x, g)
+            loss = pair_loss(pred.float(), scaler.norm(y))
             opt.zero_grad(set_to_none=True)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(net.parameters(), 1.0)
             opt.step()
             sched.step()
             tot += loss.item()
-        if (ep + 1) % 5 == 0 or ep == args.epochs - 1:
+        if (ep + 1) % args.eval_every == 0 or ep == args.epochs - 1:
             net.eval()
-            with torch.no_grad():
-                vl = pair_loss(net(xva, gva)[0], scaler.norm(yva)).item()
-                tl = pair_loss(net(xtr, gtr)[0], scaler.norm(ytr)).item()
+            with torch.no_grad(), amp:
+                vl = batched_loss(net, xva, gva, yva, scaler, args.bs)
+                ntr = min(len(xtr), 256)  # train loss on a fixed subset (full pass at 768 is slow)
+                tl = batched_loss(net, xtr[:ntr], gtr[:ntr], ytr[:ntr], scaler, args.bs)
             hist.append({"epoch": ep + 1, "train_aug": tot / steps_per_epoch, "train": tl, "val": vl})
             if vl < best:
                 best, best_state = vl, {k: v.detach().clone() for k, v in net.state_dict().items()}
@@ -132,7 +172,8 @@ def main():
     preds_out = []
     for nm, x, g, y, d in (("train", xtr, gtr, ytr, tr), ("val", xva, gva, yva, va), ("test", xte, gte, yte, te)):
         for tta in (0, args.tta if not args.no_rot else 0):
-            p = predict(net, x, g, scaler, tta=tta).cpu().numpy()
+            with amp:
+                p = predict(net, x, g, scaler, tta=tta, bs=args.bs).cpu().numpy()
             m = pair_metrics(p, y.cpu().numpy())
             res[f"{nm}/tta{tta}"] = summarize(m)
             if nm == "test" and tta == args.tta:

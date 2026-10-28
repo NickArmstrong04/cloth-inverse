@@ -30,11 +30,35 @@ import torch
 SHEET_SIZE = 0.5  # m, square sheet
 
 
-def load_split(root: str, split: str) -> dict:
+def _pool(a: np.ndarray, k: int) -> np.ndarray:
+    """Average k x k blocks of a (ny, nx, C) grid in material space (k=1: no-op)."""
+    if k <= 1:
+        return a
+    ny, nx, c = a.shape
+    ny2, nx2 = ny // k, nx // k
+    return a[:ny2 * k, :nx2 * k].reshape(ny2, k, nx2, k, c).mean((1, 3))
+
+
+def load_split(root: str, split: str, pool: int = 1, cache: bool = True) -> dict:
+    """Load a packaged split at full resolution (default) or block-averaged by
+    ``pool``. The assembled tensors are cached next to the split as
+    <split>_pool<k>.pt and reused when the file list is unchanged, so a 768
+    dataset (~14 MB per sample) is read from HDF5 only once."""
     files = sorted(glob.glob(os.path.join(root, split, "*.h5")))
     assert files, f"no files in {root}/{split}"
-    X, G, Y, names = [], [], [], []
-    for p in files:
+    names = [os.path.basename(f) for f in files]
+    cpath = os.path.join(root, f"{split}_pool{pool}.pt")
+    if cache and os.path.exists(cpath):
+        d = torch.load(cpath, weights_only=False, mmap=True)
+        if d.get("names") == names:
+            return d
+    with h5py.File(files[0], "r") as h:
+        ny, nx = h["final_grid"].shape[:2]
+    ny2, nx2 = ny // pool, nx // pool
+    X = torch.empty((len(files), 6, ny2, nx2), dtype=torch.float32)  # preallocate (~14 MB/sample at 768)
+    G = torch.empty((len(files), 6), dtype=torch.float32)
+    Y = torch.empty((len(files), 2, 7), dtype=torch.float32)
+    for i, p in enumerate(files):
         with h5py.File(p, "r") as h:
             pos = h["final_grid"][()].astype(np.float32)  # (ny, nx, 3)
             vel = h["final_vel"][()].astype(np.float32)
@@ -42,13 +66,20 @@ def load_split(root: str, split: str) -> dict:
             fp = json.loads(fp.decode() if isinstance(fp, bytes) else fp)
         c = pos.reshape(-1, 3).mean(0)
         mv = vel.reshape(-1, 3).mean(0)
-        x = np.concatenate([pos - c, vel], axis=-1).transpose(2, 0, 1)  # (6, ny, nx)
-        X.append(x)
-        G.append(np.concatenate([c, mv]))
-        Y.append(encode_forces(fp))
-        names.append(os.path.basename(p))
-    return {"x": torch.tensor(np.stack(X)), "g": torch.tensor(np.stack(G), dtype=torch.float32),
-            "y": torch.tensor(np.stack(Y), dtype=torch.float32), "names": names}
+        pos, vel = _pool(pos, pool), _pool(vel, pool)
+        X[i] = torch.from_numpy(np.concatenate([pos - c, vel], axis=-1).transpose(2, 0, 1).copy())
+        G[i] = torch.from_numpy(np.concatenate([c, mv]).astype(np.float32))
+        Y[i] = torch.from_numpy(encode_forces(fp))
+        if (i + 1) % 100 == 0:
+            print(f"  loaded {i + 1}/{len(files)} {split}", flush=True)
+    d = {"x": X, "g": G, "y": Y, "names": names}
+    if cache:
+        try:
+            torch.save(d, cpath)
+            print(f"  cached {split} -> {cpath} ({X.numel() * 4 / 1e9:.1f} GB)", flush=True)
+        except Exception as e:
+            print(f"  (cache not written: {e})")
+    return d
 
 
 def encode_forces(fp: list[dict]) -> np.ndarray:
