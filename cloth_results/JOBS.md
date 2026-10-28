@@ -125,7 +125,7 @@ QC pass rate and timing, then fill 6000 slots on gpu + scavenge (expect ~50-60% 
 
 | id | job id | status | what | command | result |
 |---|---|---|---|---|---|
-| M7-a | | planned | smoke: one task of 40 samples on gpu, ~20-40 min | `python3 cluster/submit.py --n 40 --name ds256_free --time 01:00:00 --no-merge` then `python3 cluster/submit.py --status ds256_free` | |
+| M7-a | 31178959 | running | smoke: one task of 40 samples on gpu, ~20-40 min | `python3 cluster/submit.py --n 40 --name ds256_free --time 01:00:00 --no-merge` then `python3 cluster/submit.py --status ds256_free` | first 4 slots ok on attempt 1 (RTX 5000 Ada), 15:30 |
 | M7-b | | planned | production: slots 40-5999 (resumes the same name), tasks 1-74 on gpu | `python3 cluster/submit.py --n 6000 --name ds256_free --tasks 1-74 --max-concurrent 40 --no-merge` | |
 | M7-c | | planned | production: tasks 75-149 on scavenge (preemptible, requeued) | `python3 cluster/submit.py --n 6000 --name ds256_free --tasks 75-149 --partition scavenge_gpu --max-concurrent 60 --no-merge` | |
 | M7-d | | planned | package when enough passed | `.venv/bin/python cluster/merge_summaries.py --indir $D/ds256_free && .venv/bin/python package_splits.py --indir $D/ds256_free --outdir $D/ds256_free_splits` | |
