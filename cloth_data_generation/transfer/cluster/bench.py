@@ -43,7 +43,10 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--types", default=",".join(DEFAULT_TYPES))
     ap.add_argument("--nx", default="64,128,192,256,384", help="resolutions, ascending")
-    ap.add_argument("--repeats", type=int, default=2, help="samples per resolution (first one includes kernel compile)")
+    ap.add_argument("--repeats", type=int, default=2,
+                    help="samples per resolution (first one includes kernel compile); 0 = as many as fit in --budget-min")
+    ap.add_argument("--one-job-per-nx", action="store_true",
+                    help="submit a separate job per resolution (each gets the full --time/--budget-min)")
     ap.add_argument("--time", default="03:00:00")
     ap.add_argument("--budget-min", type=int, default=150, help="stop sweeping after this many minutes of work")
     ap.add_argument("--mem", default="32G")
@@ -61,22 +64,31 @@ def main() -> None:
     template = open(os.path.join(HERE, "bench.sbatch")).read()
     types = [t.strip() for t in args.types.split(",") if t.strip()]
     nx_list = " ".join(args.nx.split(","))
-    manifest = {"run": run, "nx": args.nx, "repeats": args.repeats, "sample_args": sample_args, "jobs": {}}
-    print(f"run {run}: types {types}, nx {nx_list}, repeats {args.repeats}, time {args.time}")
+    manifest = {"run": run, "nx": args.nx, "repeats": args.repeats, "sample_args": sample_args,
+                "one_job_per_nx": args.one_job_per_nx, "jobs": {}}
+    print(f"run {run}: types {types}, nx {nx_list}, repeats {args.repeats or 'as many as fit'}, "
+          f"time {args.time}, budget {args.budget_min} min" + (", one job per nx" if args.one_job_per_nx else ""))
+    units = []  # (key, gtype, nx list for the job, outdir)
     for t in types:
         if t not in GPU_TYPES:
             print(f"skip unknown type {t}")
             continue
+        if args.one_job_per_nx:
+            for nx in nx_list.split():
+                units.append((f"{t}/nx{nx}", t, nx, os.path.join(run_dir, t, f"nx{nx}")))
+        else:
+            units.append((t, t, nx_list, os.path.join(run_dir, t)))
+    script = ""
+    for key, t, nxs, outdir in units:
         part = args.partition or GPU_TYPES[t][0]
-        outdir = os.path.join(run_dir, t)
         script = template
         for k, v in {"PARTITION": part, "GTYPE": t, "MEM": args.mem, "TIME": args.time, "OUTDIR": outdir,
                      "ACCOUNT_LINE": f"#SBATCH --account={account}" if account else "", "CODE_DIR": CODE_DIR,
-                     "NX_LIST": nx_list, "REPEATS": args.repeats, "BUDGET_S": args.budget_min * 60,
+                     "NX_LIST": nxs, "REPEATS": args.repeats, "BUDGET_S": args.budget_min * 60,
                      "SAMPLE_ARGS": sample_args}.items():
             script = script.replace(f"__{k}__", str(v))
         path = os.path.join(outdir, "bench.sbatch")
-        print(f"  {t:24s} partition {part:12s} -> {path}")
+        print(f"  {key:30s} partition {part:12s} nx {nxs}")
         if args.dry_run:
             continue
         os.makedirs(outdir, exist_ok=True)
@@ -84,10 +96,11 @@ def main() -> None:
         p = subprocess.run(["sbatch", "--parsable", path], capture_output=True, text=True)
         if p.returncode != 0:
             print("    sbatch failed:", p.stderr.strip())
-            manifest["jobs"][t] = {"error": p.stderr.strip()}
+            manifest["jobs"][key] = {"error": p.stderr.strip(), "gpu": t}
             continue
         job = p.stdout.strip().split(";")[0]
-        manifest["jobs"][t] = {"job_id": job, "partition": part, "submitted": time.strftime("%Y-%m-%dT%H:%M:%S")}
+        manifest["jobs"][key] = {"job_id": job, "gpu": t, "partition": part, "nx": nxs,
+                                 "submitted": time.strftime("%Y-%m-%dT%H:%M:%S")}
         print(f"    submitted job {job}")
     if args.dry_run:
         print("\n(dry run) first job script would be:\n" + script[:1200] + "\n...")

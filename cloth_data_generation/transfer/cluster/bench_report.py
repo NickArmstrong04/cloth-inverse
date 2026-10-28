@@ -86,13 +86,27 @@ def main() -> None:
 
     table = {}
     nxs = set()
-    for g, info in manifest["jobs"].items():
+    # group job entries by GPU type (one-job-per-nx runs have keys like "h100/nx256")
+    groups = {}
+    for key, info in manifest["jobs"].items():
+        groups.setdefault(info.get("gpu") or key.split("/")[0], []).append((key, info))
+    for g, entries in groups.items():
         rows = []
-        rp = os.path.join(run_dir, g, "results.jsonl")
-        if os.path.exists(rp):
-            rows = [json.loads(l) for l in open(rp)]
-        jobinfo = json.load(open(os.path.join(run_dir, g, "job.json"))) if os.path.exists(os.path.join(run_dir, g, "job.json")) else {}
-        acct = sacct(info["job_id"]) if (have_sacct and "job_id" in info) else {}
+        for key, _ in entries:
+            rp = os.path.join(run_dir, key, "results.jsonl")
+            if os.path.exists(rp):
+                rows += [json.loads(l) for l in open(rp)]
+        jp = os.path.join(run_dir, entries[0][0], "job.json")
+        jobinfo = json.load(open(jp)) if os.path.exists(jp) else {}
+        accts = [sacct(i["job_id"]) for _, i in entries if have_sacct and "job_id" in i]
+        accts = [a for a in accts if a]
+        acct = {}
+        if accts:
+            waits = sorted(a["wait_min"] for a in accts if a.get("wait_min") is not None)
+            acct = dict(accts[0])
+            acct["wait_min"] = waits[len(waits) // 2] if waits else None
+            states = {a["state"] for a in accts}
+            acct["state"] = states.pop() if len(states) == 1 else "mixed"
         per_nx = {}
         for r in rows:
             if r["rc"] != 0 or r["sim_wall_s"] is None:
@@ -124,6 +138,17 @@ def main() -> None:
                 cells.append(f"{sorted(d['t'])[len(d['t'])//2]:>9.0f}")
         print(f"{g:22s} {a.get('state','?')[:10]:10s} {fmt_min(a.get('wait_min')):>7s} {fmt_min(t['probe_wait']):>7s} "
               f"{str(a.get('billing') or '?'):>5s} " + " ".join(cells))
+    print("\nsamples per 1-hour job (3600 / s_per_sample) / samples measured:")
+    for g, t in table.items():
+        cells = []
+        for n in nxs:
+            d = t["per_nx"].get(n)
+            if not d or d.get("fail") or not d.get("t"):
+                cells.append(f"{'-':>9s}")
+            else:
+                med = sorted(d["t"])[len(d["t"]) // 2]
+                cells.append(f"{3600/med:6.1f}/{len(d['util']):>2d}")
+        print(f"{g:22s} " + " ".join(cells))
     print("\nGPU utilization (%) / peak memory (GB) while simulating:")
     for g, t in table.items():
         cells = []

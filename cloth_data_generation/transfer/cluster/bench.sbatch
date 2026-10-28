@@ -39,9 +39,12 @@ f = [{"u": 0.12, "v": 0.35, "direction": [1, 0, 0.3], "magnitude": 1.0, "duratio
      {"u": 0.88, "v": 0.65, "direction": [-1, 0, -0.3], "magnitude": 1.0, "duration": 0.5, "sigma_cells": 3*s, "radius_cells": 9*s}]
 json.dump(f, open(out, "w"))
 PY
-  for R in $(seq 1 $REPEATS); do
+  if [ "$REPEATS" -le 0 ]; then RMAX=10000; else RMAX=$REPEATS; fi
+  for R in $(seq 1 $RMAX); do
     ELAPSED=$(( $(date +%s) - T0 ))
-    if [ $ELAPSED -gt $BUDGET_S ]; then echo "budget exhausted at nx=$NX rep=$R"; break 2; fi
+    if [ $ELAPSED -gt $BUDGET_S ]; then echo "budget exhausted at nx=$NX rep=$R after ${ELAPSED}s"; break 2; fi
+    # unlimited mode: stop once the next sample would not fit the budget
+    if [ "$REPEATS" -le 0 ] && [ -n "${LAST_S:-}" ] && [ $(( ELAPSED + LAST_S )) -gt $BUDGET_S ]; then echo "next sample (~${LAST_S}s) would exceed budget; stopping nx=$NX after $((R-1)) samples"; break 2; fi
     UTIL="$OUTDIR/util_nx${NX}_r${R}.csv"
     nvidia-smi --query-gpu=timestamp,utilization.gpu,memory.used --format=csv,noheader,nounits -l 1 > "$UTIL" &
     SMI=$!
@@ -52,6 +55,7 @@ PY
     RC=$?
     S1=$(date +%s.%N)
     kill $SMI 2>/dev/null; wait $SMI 2>/dev/null
+    LAST_S=$(python3 -c "print(int($S1-$S0)+1)")
     .venv/bin/python - "$OUTDIR" "$NX" "$R" "$RC" "$S0" "$S1" "$GTYPE" <<'PY'
 import json, sys, os, h5py, numpy as np
 out, nx, r, rc, s0, s1, g = sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4]), float(sys.argv[5]), float(sys.argv[6]), sys.argv[7]
