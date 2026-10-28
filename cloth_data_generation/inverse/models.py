@@ -152,14 +152,33 @@ def build(name: str, uv_scale=None, **kw):
     raise ValueError(name)
 
 
-def pair_loss(pred_n, y_n, w_dir=1.0):
+def _d4_targets(y_n, uv_mean, uv_std):
+    """The 8 D4 relabelings of the (normalized) target (u, v); other fields unchanged.
+    Returns (8, B, 2, 7)."""
+    u = y_n[..., 0] * uv_std[0] + uv_mean[0]
+    v = y_n[..., 1] * uv_std[1] + uv_mean[1]
+    outs = []
+    for (uu, vv) in ((u, v), (1 - u, v), (u, 1 - v), (1 - u, 1 - v), (v, u), (1 - v, u), (v, 1 - u), (1 - v, 1 - u)):
+        t = y_n.clone()
+        t[..., 0] = (uu - uv_mean[0]) / uv_std[0]
+        t[..., 1] = (vv - uv_mean[1]) / uv_std[1]
+        outs.append(t)
+    return torch.stack(outs)
+
+
+def pair_loss(pred_n, y_n, w_dir=1.0, sym_uv=None):
     """Permutation-invariant loss on normalized targets. pred_n, y_n: (B,2,7).
-    MSE on (u,v,logmag,dur); (1 - cos) on direction."""
+    MSE on (u,v,logmag,dur); (1 - cos) on direction. With ``sym_uv=(mean, std)``
+    of the (u, v) normalization, the target may also be relabeled by any D4
+    symmetry of the sheet (unknown-pose training)."""
     def one(p, t):
         mse = ((p[..., [0, 1, 5, 6]] - t[..., [0, 1, 5, 6]]) ** 2).mean(-1)
         d = F.normalize(p[..., 2:5], dim=-1)
         cos = (d * t[..., 2:5]).sum(-1)
         return mse + w_dir * (1.0 - cos)  # (B,2)
-    l_id = one(pred_n, y_n).sum(-1)
-    l_sw = one(pred_n, y_n.flip(1)).sum(-1)
-    return torch.minimum(l_id, l_sw).mean()
+    targets = _d4_targets(y_n, *sym_uv) if sym_uv is not None else y_n.unsqueeze(0)
+    losses = []
+    for t in targets:
+        losses.append(one(pred_n, t).sum(-1))
+        losses.append(one(pred_n, t.flip(1)).sum(-1))
+    return torch.stack(losses).min(0).values.mean()

@@ -35,11 +35,11 @@ def _rotate(x, g, y, R):
     return x, g, y
 
 
-def batched_loss(net, x, g, y, scaler, bs):
+def batched_loss(net, x, g, y, scaler, bs, sym_uv=None):
     tot, n = 0.0, 0
     for i in range(0, len(x), bs):
         p, _ = net(x[i:i + bs], g[i:i + bs])
-        tot += pair_loss(p.float(), scaler.norm(y[i:i + bs])).item() * len(p)
+        tot += pair_loss(p.float(), scaler.norm(y[i:i + bs]), sym_uv=sym_uv).item() * len(p)
         n += len(p)
     return tot / max(n, 1)
 
@@ -90,6 +90,9 @@ def main():
     ap.add_argument("--eval-rotated", action="store_true",
                     help="rung 2: evaluate val/test under a fixed random world rotation per sample (unknown pose)")
     ap.add_argument("--n-points", type=int, default=2048, help="pointtf: points sampled per step")
+    ap.add_argument("--sym", choices=["auto", "on", "off"], default="auto",
+                    help="treat (u,v) as defined only up to the sheet's D4 symmetry in loss and metrics "
+                         "(auto: on when --eval-rotated, i.e. the pose is unknown)")
     ap.add_argument("--width", type=int, default=32)
     ap.add_argument("--epochs", type=int, default=400)
     ap.add_argument("--bs", type=int, default=16)
@@ -145,6 +148,9 @@ def main():
     xte, gte, yte = prep(te)
 
     uv_scale = (scaler.mean[:2], scaler.std[:2])
+    sym = args.eval_rotated if args.sym == "auto" else (args.sym == "on")
+    sym_uv = uv_scale if sym else None
+    print(f"symmetric (D4) (u,v) loss/metrics: {sym}", flush=True)
     model = build(args.model, uv_scale=uv_scale, w=args.width, in_size=in_size, cin=cin, gdim=gdim,
                   n_points=args.n_points).to(dev)
     amp = torch.autocast("cuda", dtype=torch.bfloat16) if (args.amp and dev.type == "cuda") else contextlib.nullcontext()
@@ -177,7 +183,7 @@ def main():
                 x, g, y = augment(x, g, y, rotate=not args.no_rot)
             with amp:
                 pred, _ = net(x, g)
-            loss = pair_loss(pred.float(), scaler.norm(y))
+            loss = pair_loss(pred.float(), scaler.norm(y), sym_uv=sym_uv)
             opt.zero_grad(set_to_none=True)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(net.parameters(), 1.0)
@@ -187,9 +193,9 @@ def main():
         if (ep + 1) % args.eval_every == 0 or ep == args.epochs - 1:
             net.eval()
             with torch.no_grad(), amp:
-                vl = batched_loss(net, xva, gva, yva, scaler, args.bs)
+                vl = batched_loss(net, xva, gva, yva, scaler, args.bs, sym_uv)
                 ntr = min(len(xtr), 256)  # train loss on a fixed subset (full pass at 768 is slow)
-                tl = batched_loss(net, xtr[:ntr], gtr[:ntr], ytr[:ntr], scaler, args.bs)
+                tl = batched_loss(net, xtr[:ntr], gtr[:ntr], ytr[:ntr], scaler, args.bs, sym_uv)
             hist.append({"epoch": ep + 1, "train_aug": tot / steps_per_epoch, "train": tl, "val": vl})
             if vl < best:
                 best, best_state = vl, {k: v.detach().clone() for k, v in net.state_dict().items()}
@@ -201,13 +207,14 @@ def main():
                 "xstd": xstd.cpu(), "gstd": gstd.cpu()}, os.path.join(out, "model.pt"))
 
     res = {"model": args.model, "params": nparam, "best_val_loss": best, "train_time_s": time.time() - t0,
+           "sym_d4": sym, "no_vel": args.no_vel, "eval_rotated": args.eval_rotated,
            "history": hist}
     preds_out = []
     for nm, x, g, y, d in (("train", xtr, gtr, ytr, tr), ("val", xva, gva, yva, va), ("test", xte, gte, yte, te)):
         for tta in (0, args.tta if not args.no_rot else 0):
             with amp:
                 p = predict(net, x, g, scaler, tta=tta, bs=args.bs).cpu().numpy()
-            m = pair_metrics(p, y.cpu().numpy())
+            m = pair_metrics(p, y.cpu().numpy(), sym=sym)
             res[f"{nm}/tta{tta}"] = summarize(m)
             if nm == "test" and tta == args.tta:
                 for i, name in enumerate(d["names"]):

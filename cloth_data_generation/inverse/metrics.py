@@ -17,16 +17,38 @@ def _err_one(p, t):
     return np.array([pos, ang, mag_rel, dur, imp_rel])
 
 
-def pair_metrics(pred: np.ndarray, true: np.ndarray) -> np.ndarray:
+# The square sheet's symmetry group (D4) acting on material coordinates. Under an
+# unknown rigid pose these 8 relabelings are indistinguishable (90-degree in-plane
+# turns and flipping the sheet over are proper 3D rotations), so (u, v) can only be
+# predicted up to this group; world-frame directions are unaffected.
+D4 = [lambda u, v: (u, v), lambda u, v: (1 - u, v), lambda u, v: (u, 1 - v), lambda u, v: (1 - u, 1 - v),
+      lambda u, v: (v, u), lambda u, v: (1 - v, u), lambda u, v: (v, 1 - u), lambda u, v: (1 - v, 1 - u)]
+
+
+def _relabel(p: np.ndarray, f) -> np.ndarray:
+    q = p.copy()
+    q[:, 0], q[:, 1] = f(p[:, 0], p[:, 1])
+    return q
+
+
+def pair_metrics(pred: np.ndarray, true: np.ndarray, sym: bool = False) -> np.ndarray:
     """pred/true: (N,2,7) raw-scale. Returns (N,5) mean-over-forces metrics
     [pos_cm, dir_deg, mag_rel, dur_s, impulse_rel] using the better pairing
-    (chosen by position + direction cost)."""
+    (chosen by position + direction cost). With ``sym=True`` the prediction's
+    (u, v) may additionally be relabeled by any element of D4 (unknown-pose
+    evaluation)."""
     out = []
+    relabels = D4 if sym else D4[:1]
     for p, t in zip(pred, true):
-        a = np.stack([_err_one(p[0], t[0]), _err_one(p[1], t[1])])
-        b = np.stack([_err_one(p[0], t[1]), _err_one(p[1], t[0])])
-        ca, cb = a[:, 0].sum() + a[:, 1].sum() / 10, b[:, 0].sum() + b[:, 1].sum() / 10
-        out.append((a if ca <= cb else b).mean(0))
+        best, best_cost = None, None
+        for f in relabels:
+            q = _relabel(p, f)
+            for pairing in ((0, 1), (1, 0)):
+                e = np.stack([_err_one(q[0], t[pairing[0]]), _err_one(q[1], t[pairing[1]])])
+                cost = e[:, 0].sum() + e[:, 1].sum() / 10
+                if best_cost is None or cost < best_cost:
+                    best, best_cost = e, cost
+        out.append(best.mean(0))
     return np.stack(out)
 
 
