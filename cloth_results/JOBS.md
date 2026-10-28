@@ -95,12 +95,19 @@ The bench profile (`cluster.env`: 256 grid, `--table`, `--loading pusher`) gener
 for cloth and paper with paired seeds. Smoke first (per-sample time sets CHUNK/TIME), then
 production on any GPU type. Replaces the queued free-floating ds512 run (J-004, dropped).
 
+Workstation smoke rounds 1-5 (DATASETS.md): the profile is mechanically complete but every
+sample that crumpled against the table under gravity went NaN. So the order is: M6-a/b smoke
+(expect failures; they supply force configs and timing), then **M6-0**, the solver sweep on
+those configs, then production with the winning flags in `SAMPLE_ARGS`.
+
 | id | job id | status | what | command | result |
 |---|---|---|---|---|---|
-| M6-a | | planned | smoke: 4 cloth samples, bench profile, devel GPU | `python3 cluster/submit.py --n 4 --chunk 2 --name smoke256_bench --time 00:30:00 --partition gpu_devel` | |
+| M6-0 | | planned | solver sweep for the bench scenario: 7 settings x 8 configs (cloth), one job per setting | `D=/home/naa79/scratch_pi_sz622/naa79/cloth_data; python3 cluster/stability.py --dataset smoke256_bench --forces-dir $D/smoke256_bench --all-configs --base-flags="--table" --settings "base=;sub60=--substeps 60;sub120=--substeps 120;ke1e4=--contact-ke 1e4;sub60ke1e4=--substeps 60 --contact-ke 1e4;it40=--iterations 40;stiff=--tri-ke 1e4 --substeps 60" --time 02:00:00` then `--report` | |
+| M6-0p | | planned | same sweep on paper configs | as M6-0 with `--dataset smoke256_bench_paper --forces-dir $D/smoke256_bench_paper --material paper --run stability_bench_paper` | |
+| M6-a | | planned | smoke: 4 cloth samples, bench profile, devel GPU (also feeds M6-0) | `python3 cluster/submit.py --n 4 --chunk 2 --name smoke256_bench --time 00:30:00 --partition gpu_devel` | |
 | M6-b | | planned | smoke: 4 paper samples, same seeds | `python3 cluster/submit.py --n 4 --chunk 2 --material paper --name smoke256_bench_paper --time 00:30:00 --partition gpu_devel` | |
-| M6-c | | planned | production cloth, 3000 slots, any GPU | `python3 cluster/submit.py --n 3000 --name ds256_bench --max-concurrent 40` | |
-| M6-d | | planned | production paper, 3000 slots, paired seeds | `python3 cluster/submit.py --n 3000 --name ds256_bench_paper --material paper --max-concurrent 40` | |
+| M6-c | | blocked on M6-0 | production cloth, 3000 slots, any GPU; add the winning sweep flags to SAMPLE_ARGS first | `python3 cluster/submit.py --n 3000 --name ds256_bench --max-concurrent 40` | |
+| M6-d | | blocked on M6-0p | production paper, 3000 slots, paired seeds | `python3 cluster/submit.py --n 3000 --name ds256_bench_paper --material paper --max-concurrent 40` | |
 | M6-e | | planned | ladder on ds256_bench (rungs 0-3) once packaged | `sbatch cluster/ladder.sbatch /home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_bench_splits 300` | |
 | M6-f | | planned | ladder on ds256_bench_paper | `sbatch cluster/ladder.sbatch /home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_bench_paper_splits 300` | |
 

@@ -169,11 +169,17 @@ def qc_sample_h5(path: str, stretch_max: float = 2.0,
 
         cfg = json.loads(h["sim_config"][()])
     rest_h = cfg["sheet"]["size_x"] / (cfg["nx"] - 1)
+    smap = edge_stretch_map(final, rest_h)
     metrics = {
         "nan_time": cfg.get("nan_time"),
         "ke_final": float(ke[-1]),
         "vmax_max": float(vm.max()),
-        "stretch_max": float(edge_stretch_map(final, rest_h).max()),
+        "stretch_max": float(smap.max()),
+        # diagnostics (not gated): in-plane compression and out-of-plane relief. On a
+        # table a sheet can slide and compress without buckling (height ~0); a healthy
+        # crumple has height of several cm.
+        "stretch_min": float(smap.min()),
+        "height": float(np.ptp(final[..., 2])),
     }
     if metrics["nan_time"] is not None:
         reasons.append(f"NaN at t={metrics['nan_time']}")

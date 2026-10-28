@@ -29,35 +29,48 @@ STRETCH_MAX = {"cloth": 2.0, "paper": 1.3}
 
 
 LOADINGS = ("free", "pusher")
+MAG_RANGE = {"free": (np.log(0.3), np.log(2.5)), "pusher": (np.log(0.1), np.log(1.0))}  # log-uniform, N
 
 
-def sample_direction(rng: np.random.Generator, loading: str) -> np.ndarray:
-    """free: uniform on the sphere (original datasets).
-    pusher: what a finger/pusher on a table can apply: a tangential push (uniform
-    heading) tilted 10-60 deg into the sheet (-z), never a pull. Pair with --table."""
-    if loading == "free":
-        d = rng.normal(size=3)
-        return d / np.linalg.norm(d)
-    th = rng.uniform(0.0, 2.0 * np.pi)
-    ph = np.deg2rad(rng.uniform(10.0, 60.0))
-    return np.array([np.cos(ph) * np.cos(th), np.cos(ph) * np.sin(th), -np.sin(ph)])
+def sample_direction(rng: np.random.Generator, loading: str, u: float = 0.5, v: float = 0.5) -> np.ndarray:
+    """free: uniform on the sphere (original datasets). For pusher the direction is
+    assigned pairwise in sample_forces (the two pushes oppose each other)."""
+    d = rng.normal(size=3)
+    return d / np.linalg.norm(d)
+
+
+def _pusher_pair(rng: np.random.Generator, f1: dict, f2: dict) -> None:
+    """Two-hands scrunch on a table: each patch pushes toward the other (+-30 deg
+    heading jitter), tilted 0-20 deg into the table, never a pull. A single push
+    stronger than table friction (0.1 N paper, 0.25 N cloth) just slides the sheet
+    (smoke test 2026-10-28); opposing pushes cancel the net force and compress the
+    sheet between the patches so it buckles against the table."""
+    for a, b in ((f1, f2), (f2, f1)):
+        th = np.arctan2(b["v"] - a["v"], b["u"] - a["u"]) + np.deg2rad(rng.uniform(-30.0, 30.0))
+        ph = np.deg2rad(rng.uniform(0.0, 20.0))
+        a["direction"] = [float(np.cos(ph) * np.cos(th)), float(np.cos(ph) * np.sin(th)), float(-np.sin(ph))]
 
 
 def sample_forces(rng: np.random.Generator, res_scale: float = 1.0,
                   loading: str = "free") -> list[dict]:
-    """Broad dataset distribution: full (u,v) coverage, directions per
-    ``loading`` (see sample_direction), log-uniform magnitudes (incl. weak
-    folds), same-side pushes allowed, plus a 15% near-symmetric branch. Min
-    material separation 0.2 keeps the two patches distinct. Forces depend only
-    on the seed, so cloth and paper datasets with the same seed0 are paired.
+    """Broad dataset distribution: full (u,v) coverage, log-uniform magnitudes
+    (range per loading, MAG_RANGE), plus a 15% near-symmetric branch. Min material
+    separation 0.2 keeps the two patches distinct. free: uniform-sphere directions,
+    same-side pushes allowed (original datasets). pusher: the two pushes oppose
+    each other (_pusher_pair). Forces depend only on the seed, so cloth and paper
+    datasets with the same seed0 are paired.
     """
     def one():
-        d = sample_direction(rng, loading)
+        d = sample_direction(rng, loading)  # drawn first: keeps legacy seeds reproducible
+        u, v = float(rng.uniform(0.05, 0.95)), float(rng.uniform(0.05, 0.95))
         return {
-            "u": float(rng.uniform(0.05, 0.95)),
-            "v": float(rng.uniform(0.05, 0.95)),
+            "u": u,
+            "v": v,
             "direction": [float(x) for x in d],
-            "magnitude": float(np.exp(rng.uniform(np.log(0.3), np.log(2.5)))),
+            # free flight: the whole sheet accelerates, 0.3-2.5 N folds it. On a table
+            # friction anchors the sheet and the same force tears the patch out (smoke
+            # test 2026-10-28: 1.2-2 N tore cloth and NaN'd paper, 0.5-0.85 N were fine).
+            "magnitude": float(np.exp(rng.uniform(*MAG_RANGE[loading]))),
             "duration": float(rng.uniform(0.3, 0.7)),
             "sigma_cells": 3.0 * res_scale, "radius_cells": 9.0 * res_scale,
         }
@@ -68,13 +81,17 @@ def sample_forces(rng: np.random.Generator, res_scale: float = 1.0,
         f2["v"] = f1["v"]
         d = np.array(f1["direction"])
         f2["direction"] = [float(-d[0]), float(d[1]), float(d[2])]
-        return [f1, f2]
-    for _ in range(100):
-        f1, f2 = one(), one()
-        dist = ((f1["u"] - f2["u"]) ** 2 + (f1["v"] - f2["v"]) ** 2) ** 0.5
-        if dist >= 0.2:
-            return [f1, f2]
-    return [f1, f2]
+        pair = [f1, f2]
+    else:
+        for _ in range(100):
+            f1, f2 = one(), one()
+            dist = ((f1["u"] - f2["u"]) ** 2 + (f1["v"] - f2["v"]) ** 2) ** 0.5
+            if dist >= 0.2:
+                break
+        pair = [f1, f2]
+    if loading == "pusher":
+        _pusher_pair(rng, pair[0], pair[1])
+    return pair
 
 
 def run_one(slot: int, seed: int, outdir: str, extra: list[str],
@@ -197,12 +214,17 @@ def main() -> None:
     if args.table:
         extra += ["--table"]
     # Physical consistency across resolutions: the 128-grid reference has a
-    # 3.937 mm cell, Gaussian patch sigma 3 cells, self-contact margin 1.0 mm
-    # (~25% of spacing) and gap 0.5 mm. Scale patch size in cells and shrink
-    # margin/gap with the cell so the physics stays comparable.
+    # 3.937 mm cell, Gaussian patch sigma 3 cells, particle radius 2.0 mm (~50%
+    # of spacing), self-contact margin 1.0 mm (~25%) and gap 0.5 mm. Scale patch
+    # size in cells and shrink radius/margin/gap with the cell so the physics
+    # stays comparable. (Until 2026-10-28 the radius was NOT scaled: at 256 it
+    # equalled the spacing and at 768 it was 3 cells, so compressed sheets had
+    # every neighbour in permanent contact; bench smoke tests exploded at 256
+    # and 44% of ds768_night attempts tore.)
     res_scale = 1.0 if args.no_res_scaling else args.nx / 128.0
     if not args.no_res_scaling and args.nx != 128:
-        extra += ["--margin", f"{1.0e-3 / res_scale:.6g}",
+        extra += ["--radius", f"{2.0e-3 / res_scale:.6g}",
+                  "--margin", f"{1.0e-3 / res_scale:.6g}",
                   "--gap", f"{0.5e-3 / res_scale:.6g}"]
     tag = f"{args.slot0:05d}"
     check_pierce = (args.nx <= 256) if args.pierce_qc == "auto" else (args.pierce_qc == "on")

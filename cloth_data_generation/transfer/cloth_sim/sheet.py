@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 
+import numpy as np
 import warp as wp
 
 import newton
@@ -39,6 +40,12 @@ class SheetConfig:
     table: bool = False
     gravity: float = 9.81  # m/s^2, only with table=True
     table_friction: float = 0.5  # ground-plane friction coefficient
+    # A perfectly flat sheet compressed in its plane never buckles (no out-of-plane
+    # force to seed the fold). Random initial height noise, as a fraction of the cell,
+    # applied with table=True; seeded per sample.
+    z_jitter: float = 0.1
+    jitter_seed: int = 0
+    contact_ke: float | None = None  # particle-shape (table) contact stiffness; None = Newton default 1e3
 
 
 # Overrides of the SheetConfig defaults per material. "cloth" is the original
@@ -111,6 +118,13 @@ def build_sheet(cfg: SheetConfig, device: str = "cuda:0"):
         # Required before finalize() when using SolverVBD.
         builder.color(include_bending=True)
         model = builder.finalize()
+        if cfg.contact_ke is not None:
+            model.soft_contact_ke = cfg.contact_ke
+        if cfg.table and cfg.z_jitter > 0.0:
+            rng = np.random.default_rng(cfg.jitter_seed)
+            q = model.particle_q.numpy().copy()
+            q[:, 2] += rng.uniform(0.0, cfg.z_jitter * min(cell_x, cell_y), size=len(q)).astype(q.dtype)
+            model.particle_q.assign(q)
 
     meta = {
         "nx": nx,

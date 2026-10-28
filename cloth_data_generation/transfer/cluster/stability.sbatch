@@ -26,12 +26,12 @@ if ! .venv/bin/python -c "import numpy, h5py, warp, newton" 2>/dev/null; then ec
 echo "stability $SETTING ($EXTRA) nx=$NX on $(hostname) job $SLURM_JOB_ID"
 nvidia-smi --query-gpu=name --format=csv,noheader
 SCALE=$(python3 -c "print($NX/128)")
-MARGIN=$(python3 -c "print(1.0e-3/$SCALE)"); GAP=$(python3 -c "print(0.5e-3/$SCALE)")
+MARGIN=$(python3 -c "print(1.0e-3/$SCALE)"); GAP=$(python3 -c "print(0.5e-3/$SCALE)"); RADIUS=$(python3 -c "print(2.0e-3/$SCALE)")
 for FJ in "$FORCES_DIR"/forces_*.json; do
   B=$(basename "$FJ" .json)
   OUT="$OUTDIR/${B}.h5"
   S0=$(date +%s.%N)
-  .venv/bin/python generate_sample.py --seed 1 --nx $NX --ny $NX --margin $MARGIN --gap $GAP --force-every-substep \
+  .venv/bin/python generate_sample.py --seed 1 --nx $NX --ny $NX --radius $RADIUS --margin $MARGIN --gap $GAP --force-every-substep \
       --force-json "$FJ" --out "$OUT" $EXTRA > "$OUTDIR/${B}.log" 2>&1
   RC=$?
   S1=$(date +%s.%N)
@@ -44,7 +44,7 @@ p = f"{out}/{b}.h5"
 if rc == 0 and os.path.exists(p):
     import h5py, numpy as np
     from cloth_sim.validate import qc_sample_h5
-    qc = qc_sample_h5(p, check_pierce=False)
+    qc = qc_sample_h5(p, check_pierce=False, stretch_max=(1.3 if "paper" in extra else 2.0))
     row.update({"ok": qc["ok"], "reasons": qc["reasons"], **{k: v for k, v in qc["metrics"].items() if v is not None}})
     with h5py.File(p) as h:
         cfg = json.loads(h["sim_config"][()]); row["sim_wall_s"] = cfg["wall_time_s"]

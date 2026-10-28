@@ -6,3 +6,27 @@
 | ds768_night | Bouchet `/home/naa79/scratch_pi_sz622/naa79/cloth_data/ds768_night` | 768x768 | 1,115 of 3,000 slots (final, 2026-10-28; all arrays finished, 888 rejected attempts) | `--force-every-substep`, non-deterministic, seeds 100000+slot, piercing QC skipped, margin/gap scaled to 0.167/0.083 mm | 2026-10-28 overnight, L40S + A5000 via `gpu` and `scavenge_gpu` arrays | ~57 MB per sample (~62 GB). 860 rejected attempts: 611 stretch (median 4.0x, i.e. real tearing) + 158 NaN, ~44% failure rate. Passing set is marginal: stretch 50/90/99th pct = 1.37/1.83/1.99, 35% above 1.5. Peak speed is 0.38 m/s in EVERY sample: the VBD per-substep displacement clamp (tied to the self-contact margin) caps velocity; at 768 the scaled margin makes the cap ~0.4 m/s, so force patches cannot move and the membrane tears. Stability sweep (`cluster/stability.py`, substeps 60/90/150, iterations 40) submitted 2026-10-28 to find a stable setting. |
 
 Packaging: `cluster/merge_summaries.py --indir <dir>` then `package_splits.py --indir <dir> --outdir <dir>_splits` (8:1:1; test split carries final state only). Slots are independent, so a partially finished dataset is valid; re-running `submit.py` with the same `--name` fills missing slots.
+
+## Bench-profile smoke tests on the workstation (2026-10-28, 256 grid, RTX 4070 Ti SUPER)
+
+Scenario for the real-world story: sheet on a table under gravity (`--table`), two pusher-like
+forces (`--loading pusher`). 2-4 samples per round, scratch only, not a dataset.
+
+| round | loading | cloth | paper | lesson |
+|---|---|---|---|---|
+| 1 | tangential pushes, random heading, 10-60 deg down, 0.3-2.5 N | 0.5/0.85 N: flat, stretched to 0.9 m (pulled apart), 115 s; 2/1.2 N: torn | 0.5/0.85 N: slid and rotated, 3 mm lift; 2/1.2 N: NaN | outward pushes drag the sheet apart; >1 N tears a friction-anchored sheet; ground plane holds (z >= 0 in healthy runs); peak speed 0.7-0.8 m/s, so the 256 margin lifts the 0.38 m/s clamp seen at 768 |
+| 2 | pushes toward the sheet centre, 0-30 deg down, 0.1-1 N, 0.1-cell z-jitter | 0.19/0.31 N: torn, 7 cm through the table, 85k contacts; 0.77/0.43 N: healthy, 2 cm crumple | 0.19/0.31 N: NaN at 0.45 s; 0.77/0.43 N: perfectly flat, no creases, slid | a single push stronger than table friction (0.1 N paper, 0.25 N cloth) slides the sheet instead of compressing it; the samples that did crumple against the table stressed VBD self-contact (same failure as 44% of the 768 run) |
+| 3 | the two pushes oppose each other (two-hands scrunch), 0-20 deg down, 0.1-1 N, 60 substeps | 0.11/0.53 N: NaN at 0.72 s, 230k contacts, 2 m/s | 0.21/0.20 N: NaN at 0.4 s | the sheet now buckles against the table and VBD self-contact explodes even at 60 substeps. Cause found: the particle (self-contact) radius was never scaled with resolution: 2 mm = 50% of the 128 spacing, but 100% of the 256 cell and 3 cells at 768, so any compressed region has every neighbour in permanent contact. `generate_batch.py` now scales the radius with margin and gap (`--radius`). This likely also explains the 768 tearing and the velocity clamp (DATASETS.md above) |
+| 4 | as round 3, radius scaled to 1 mm, 30 substeps | NaN at 0.75 s (162k contacts, 1.1 m/s) | NaN at 0.58 s | later and slower than round 3, so the radius matters but is not the root cause; round 5 separates ground contact from gravity stacking |
+| 5 | cloth seed 1 as round 4, (a) no table, (b) table with gravity 0 | (a) survives: stretch 6.1 / 0.52, 33 cm high; (b) survives: stretch 6.0 / 0.39, 19 cm high, 139 s | | the ground plane itself is fine; **gravity pressing the crumpled layers onto the table is what sends VBD to NaN**. Also: opposing 0.1-0.5 N pushes already over-stretch the cloth (6x = torn), the same tearing mode as the free datasets; the cloth preset (tri_ke 1e3) is far more stretchable than real cloth |
+
+**Status of the bench profile (2026-10-28 evening):** mechanically complete (table, gravity,
+friction, opposing pusher forces, paired materials, 256 default, radius/margin/gap scaled,
+QC height/compression diagnostics) but **not yet simulable**: 0 of 6 table+gravity samples
+survived. The solver settings for a sheet crumpled against a table (substeps, table contact
+stiffness, membrane stiffness, iterations) must come from a sweep on the cluster, not from
+single workstation samples: `cloth_results/JOBS.md` matrix M6-0. Until it passes, production
+stays on hold; `cluster.env` carries the bench profile as the target.
+
+Per-sample wall time at 256, 30 substeps: 90-120 s when the sheet stays smooth, ~300 s when
+it crumples (contact cost); 60 substeps roughly doubles it.

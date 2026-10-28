@@ -14,6 +14,16 @@ Default settings compared (generate_sample.py flags):
   sub150  : --substeps 150
   it40    : --iterations 40
 Add your own with --settings 'label=flags;label2=flags'.
+
+Bench profile (table + gravity, 2026-10-28): every bench smoke sample on the
+workstation went NaN once the sheet crumpled against the table, so sweep the
+solver on the bench scenario before any production run. --forces-dir takes any
+directory of forces_*.json (e.g. a smoke dataset, no failures needed) and
+--base-flags are added to every setting (use the = form, argparse otherwise eats the leading --):
+  python3 cluster/stability.py --dataset smoke256_bench --forces-dir \
+      $DATA/smoke256_bench --all-configs --base-flags="--table" \
+      --settings "base=;sub60=--substeps 60;sub120=--substeps 120;ke1e4=--contact-ke 1e4;\
+sub60ke1e4=--substeps 60 --contact-ke 1e4;it40=--iterations 40;stiff=--tri-ke 1e4 --substeps 60"
 """
 
 from __future__ import annotations
@@ -95,6 +105,10 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--dataset", required=True, help="dataset name under DATA_DIR (source of failed configs)")
     ap.add_argument("--n-configs", type=int, default=12)
+    ap.add_argument("--forces-dir", default=None, help="use the forces_*.json in this directory instead of failed configs")
+    ap.add_argument("--all-configs", action="store_true", help="with --forces-dir: every config, not n-configs")
+    ap.add_argument("--base-flags", default="", help="generate_sample.py flags added to every setting, e.g. '--table --material paper'")
+    ap.add_argument("--material", default="cloth", help="forwarded to every setting")
     ap.add_argument("--nx", type=int, default=None, help="default: from cluster.env NX")
     ap.add_argument("--settings", default=DEFAULT_SETTINGS)
     ap.add_argument("--time", default="04:00:00")
@@ -116,9 +130,15 @@ def main() -> None:
         return
 
     nx = args.nx or int(cfg.get("NX", 768))
-    configs = pick_failed_configs(dataset_dir, args.n_configs, args.seed)
+    if args.forces_dir:
+        configs = sorted(glob.glob(os.path.join(args.forces_dir, "forces_*.json")))
+        if not args.all_configs:
+            random.Random(args.seed).shuffle(configs); configs = configs[:args.n_configs]
+    else:
+        configs = pick_failed_configs(dataset_dir, args.n_configs, args.seed)
     if not configs:
-        sys.exit(f"no failed force configs found in {dataset_dir}")
+        sys.exit(f"no force configs found ({args.forces_dir or dataset_dir})")
+    base = (args.base_flags + (f" --material {args.material}" if args.material != "cloth" else "")).strip()
     forces_dir = os.path.join(run_dir, "forces")
     print(f"run {run}: {len(configs)} failed configs from {args.dataset}, nx={nx}")
     if not args.dry_run:
@@ -128,7 +148,8 @@ def main() -> None:
     account = cfg.get("ACCOUNT", "")
     exclude = cfg.get("EXCLUDE_NODES", "")
     template = open(os.path.join(HERE, "stability.sbatch")).read()
-    manifest = {"run": run, "dataset": args.dataset, "nx": nx, "configs": [os.path.basename(c) for c in configs], "jobs": {}}
+    manifest = {"run": run, "dataset": args.dataset, "nx": nx, "base_flags": base,
+                "configs": [os.path.basename(c) for c in configs], "jobs": {}}
     for item in args.settings.split(";"):
         label, _, flags = item.partition("=")
         label, flags = label.strip(), flags.strip()
@@ -136,7 +157,7 @@ def main() -> None:
         script = template
         for k, v in {"PARTITION": args.partition or cfg.get("PARTITION", "gpu"), "GPUS": args.gpus or cfg.get("GPUS", "1"),
                      "TIME": args.time, "OUTDIR": outdir, "CODE_DIR": CODE_DIR, "NX": nx, "SETTING": label,
-                     "EXTRA": flags, "FORCES_DIR": forces_dir,
+                     "EXTRA": (base + " " + flags).strip(), "FORCES_DIR": forces_dir,
                      "ACCOUNT_LINE": f"#SBATCH --account={account}" if account else "",
                      "EXCLUDE_LINE": f"#SBATCH --exclude={exclude}" if exclude else ""}.items():
             script = script.replace(f"__{k}__", str(v))

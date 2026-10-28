@@ -56,8 +56,15 @@ def main() -> None:
                     help="bench scenario: gravity and a ground plane under the sheet")
     ap.add_argument("--gravity", type=float, default=None, help="m/s^2 with --table (default 9.81)")
     ap.add_argument("--friction", type=float, default=None, help="table friction coefficient (default 0.5)")
+    ap.add_argument("--contact-ke", type=float, default=None,
+                    help="table contact stiffness (Newton soft_contact_ke, default 1e3); sweep aid")
+    ap.add_argument("--z-jitter", type=float, default=None,
+                    help="initial height noise as a fraction of the cell with --table (default 0.1)")
     ap.add_argument("--substeps", type=int, default=None)
     ap.add_argument("--iterations", type=int, default=None)
+    ap.add_argument("--radius", type=float, default=None,
+                    help="particle (self-contact) radius [m]; default 2 mm = 50%% of the 128-grid "
+                         "spacing. Scale with the cell at other resolutions (generate_batch does)")
     ap.add_argument("--margin", type=float, default=None)
     ap.add_argument("--gap", type=float, default=None)
     ap.add_argument("--ramp", type=float, default=0.15)
@@ -88,10 +95,15 @@ def main() -> None:
                     force_every_substep=args.force_every_substep)
     if args.table:
         sheet.table = True
+        sheet.jitter_seed = args.seed
     if args.gravity is not None:
         sheet.gravity = args.gravity
     if args.friction is not None:
         sheet.table_friction = args.friction
+    if args.contact_ke is not None:
+        sheet.contact_ke = args.contact_ke
+    if args.z_jitter is not None:
+        sheet.z_jitter = args.z_jitter
     if args.edge_ke is not None:
         sheet.edge_ke = args.edge_ke
     if args.tri_kd is not None:
@@ -105,6 +117,8 @@ def main() -> None:
         sheet.plastic_yield_curvature = args.yield_curvature or None
     if args.plastic_rate is not None:
         sheet.plastic_rate = args.plastic_rate
+    if args.radius is not None:
+        sheet.particle_radius = args.radius
     if args.margin is not None:
         sheet.self_contact_margin = args.margin
         sim.margin = args.margin
