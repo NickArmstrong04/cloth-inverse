@@ -78,7 +78,8 @@ Decisions still open (before the next large generation run):
 
 ## Queued work
 
-- ds512_v1 (free-floating, 512) is dropped: resolution barely matters and the free-floating
-  scenario is not the target. Next generation run is the bench profile, cloth and paper
-  paired (`cloth_results/JOBS.md` matrix M6): smoke on gpu_devel, then 3000 slots each.
+- Decision 2026-10-28 evening: the bench (table + gravity) profile goes NaN when the sheet
+  crumples against the table (DATASETS.md); parked behind a solver sweep (JOBS.md M6-0).
+  Generation continues with free-floating cloth at 256 for volume (JOBS.md matrix M7,
+  `ds256_free`, 6000 slots), since the inverse model is data-limited at known pose.
 - M5 (unknown-pose cost, yaw-only rung) still runs on ds768_night; its conclusions carry over.

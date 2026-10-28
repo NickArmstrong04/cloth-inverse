@@ -115,6 +115,25 @@ Check on the smoke output before production (`python3 cluster/submit.py --status
 and the task logs): QC pass rate, per-sample wall time, peak speed (should exceed the 0.38 m/s
 clamp seen at 768), and that the sheet stayed on the table (final z >= -particle radius).
 
+## Matrix M7: free-flight cloth at 256, volume (decided 2026-10-28 evening)
+
+Why: the bench (table) scenario is parked until a solver sweep passes; the free-floating
+scenario is proven and the inverse model is data-limited at known pose (RESULTS.md). 256 is
+~9x cheaper per sample than 768 at a 0.3-0.7 cm cost. Radius/margin/gap scale with the cell
+(new), so this is a new dataset, not an extension of ds768_night. Smoke one task first for the
+QC pass rate and timing, then fill 6000 slots on gpu + scavenge (expect ~50-60% to pass).
+
+| id | job id | status | what | command | result |
+|---|---|---|---|---|---|
+| M7-a | | planned | smoke: one task of 40 samples on gpu, ~20-40 min | `python3 cluster/submit.py --n 40 --name ds256_free --time 01:00:00 --no-merge` then `python3 cluster/submit.py --status ds256_free` | |
+| M7-b | | planned | production: slots 40-5999 (resumes the same name), tasks 1-74 on gpu | `python3 cluster/submit.py --n 6000 --name ds256_free --tasks 1-74 --max-concurrent 40 --no-merge` | |
+| M7-c | | planned | production: tasks 75-149 on scavenge (preemptible, requeued) | `python3 cluster/submit.py --n 6000 --name ds256_free --tasks 75-149 --partition scavenge_gpu --max-concurrent 60 --no-merge` | |
+| M7-d | | planned | package when enough passed | `.venv/bin/python cluster/merge_summaries.py --indir $D/ds256_free && .venv/bin/python package_splits.py --indir $D/ds256_free --outdir $D/ds256_free_splits` | |
+| M7-e | | planned | ladder on it (rungs 0-3, any GPU) | `sbatch cluster/ladder.sbatch $D/ds256_free_splits 300` | |
+
+`D=/home/naa79/scratch_pi_sz622/naa79/cloth_data`. The M7-a run must be submitted first with the
+same name: `submit.py` binds the name to nx/seed0/chunk/args and later calls only fill missing slots.
+
 ## Submitting a whole matrix at once
 
 ```bash
