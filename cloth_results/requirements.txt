@@ -1,0 +1,10 @@
+# Pinned runtime dependencies (see requirements_full.txt for all 117 packages)
+newton==1.7.0
+warp-lang==1.18.0
+warp-nn==0.4.1
+numpy==2.5.4
+h5py==3.16.0
+matplotlib==3.11.2
+imageio==2.38.1
+pillow==13.0.0
+scipy==1.18.1

@@ -1,0 +1,13 @@
+# simulation outputs and large binaries
+*.h5
+*.gif
+*.png
+*.tgz
+*.pt
+__pycache__/
+*.pyc
+.venv/
+.warp_cache/
+cloth_results/dataset100/
+cloth_results/dataset/
+cloth_results/batch32/

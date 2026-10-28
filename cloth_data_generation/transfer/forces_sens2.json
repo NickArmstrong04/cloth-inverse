@@ -1,0 +1,6 @@
+[
+  {"u": 0.12, "v": 0.35, "direction": [1.0, 0.15, 0.45],
+   "magnitude": 1.0, "duration": 0.5, "sigma_cells": 3.0, "radius_cells": 9.0},
+  {"u": 0.88, "v": 0.65, "direction": [-1.0, -0.15, -0.45],
+   "magnitude": 1.01, "duration": 0.5, "sigma_cells": 3.0, "radius_cells": 9.0}
+]
