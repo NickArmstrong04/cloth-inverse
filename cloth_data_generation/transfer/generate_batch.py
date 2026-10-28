@@ -116,6 +116,13 @@ def run_one(slot: int, seed: int, outdir: str, extra: list[str],
         if p.returncode != 0:
             attempts.append({"seed": aseed, "ok": False, "wall": wall,
                              "error": p.stderr[-1000:]})
+            fatal = ("primary context" in p.stderr or "CUDA driver" in p.stderr
+                     or "no CUDA-capable device" in p.stderr or "ModuleNotFoundError" in p.stderr)
+            if fatal:
+                # the GPU/environment is broken for this process; retrying other
+                # seeds cannot help, and a resubmission (resume) will redo the slot
+                return {"slot": slot, "seed": seed, "ok": False, "attempts": attempts,
+                        "file": None, "fatal": True}
             continue
         qc = qc_sample_h5(opath, check_pierce=check_pierce)
         attempts.append({"seed": aseed, "ok": qc["ok"], "wall": wall,
@@ -177,6 +184,9 @@ def main() -> None:
         for fut in concurrent.futures.as_completed(futs):
             r = fut.result()
             results.append(r)
+            if r.get("fatal"):
+                for f in futs:
+                    f.cancel()
             att = len(r["attempts"])
             print(f"slot {r['slot']}: ok={r['ok']} attempts={att} "
                   f"seed={r['seed']} file={r['file']}", flush=True)
@@ -199,6 +209,12 @@ def main() -> None:
             json.dump(summary, f, indent=2)
     print(f"batch: {ok}/{args.n} ok, total {total:.1f}s "
           f"({total/max(ok,1):.1f}s per sample at {args.jobs} jobs)")
+    if any(r.get("fatal") for r in results):
+        print("FATAL: GPU or environment unusable on this node (see attempts[].error); "
+              "resubmit with --resume, excluding this node if it repeats", file=sys.stderr)
+        sys.exit(3)
+    if ok == 0 and args.n > 0:
+        sys.exit(2)
 
 
 if __name__ == "__main__":
