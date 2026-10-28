@@ -140,6 +140,31 @@ mesh edge), `crease_map` (ny, nx), and per-frame `crease_total` /
 `edges_yielded`. Tune the crease with `--sample-args="--force-every-substep
 --yield-curvature 35"` (lower = creases more easily; 0 = elastic paper).
 
+## 3d. Bench profile (256 grid, table + gravity, pusher forces, cloth and paper)
+
+The real-world story (ROADMAP.md) needs a sheet on a table pushed by a rig,
+observed by a camera. The bench profile in `cluster.env` generates that:
+`NX=256` (384 lost ~0.3 cm and 192 ~0.7 cm against 768 in the inverse
+model, RESULTS.md, while a 256 sample is ~9x fewer particles than 768),
+`BATCH_ARGS=--loading pusher --table` (two pusher-like forces, 10-60 deg
+into the table, never a pull; gravity 9.81 and a ground plane with friction
+0.5), `--force-every-substep`. Forces depend only on the seed, so a cloth
+and a paper dataset submitted with the same `seed0` are **paired**: the same
+loading on both materials.
+
+```bash
+# smoke: 4 samples of each material on the devel partition
+python3 cluster/submit.py --n 4 --chunk 2 --name smoke256_bench --time 00:30:00 --partition gpu_devel
+python3 cluster/submit.py --n 4 --chunk 2 --material paper --name smoke256_bench_paper --time 00:30:00 --partition gpu_devel
+# production, paired: same n and seed0, any GPU type
+python3 cluster/submit.py --n 3000 --name ds256_bench --gpus 1 --max-concurrent 40
+python3 cluster/submit.py --n 3000 --name ds256_bench_paper --material paper --gpus 1 --max-concurrent 40
+python3 cluster/submit.py --status ds256_bench
+```
+
+The merge job packages each dataset into `<name>_splits`. Legacy free-floating
+datasets are reproduced with `--batch-args ''` and `--nx 768` (or 128).
+
 ## 3c. Training the inverse model on the cluster (full resolution)
 
 ```bash

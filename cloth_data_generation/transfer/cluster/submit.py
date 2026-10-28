@@ -137,6 +137,8 @@ def main() -> None:
     ap.add_argument("--seed0", type=int)
     ap.add_argument("--name", help="dataset directory name under DATA_DIR (default ds<nx>_<n>)")
     ap.add_argument("--sample-args", help="override SAMPLE_ARGS (quote it)")
+    ap.add_argument("--batch-args", help="override BATCH_ARGS: generate_batch.py flags such as "
+                                         "'--loading pusher --table' (quote it; '' = none)")
     ap.add_argument("--partition")
     ap.add_argument("--account")
     ap.add_argument("--time")
@@ -168,6 +170,7 @@ def main() -> None:
     material = args.material or cfg.get("MATERIAL") or "cloth"
     name = args.name or f"ds{nx}_{args.n}" + ("" if material == "cloth" else f"_{material}")
     sample_args = args.sample_args if args.sample_args is not None else cfg.get("SAMPLE_ARGS", "")
+    batch_args = args.batch_args if args.batch_args is not None else cfg.get("BATCH_ARGS", "")
     account = args.account if args.account is not None else cfg.get("ACCOUNT", "")
     outdir = os.path.join(data_dir, name)
     logdir = os.path.join(outdir, "slurm")
@@ -196,8 +199,8 @@ def main() -> None:
     if os.path.exists(sub_path):
         prev = json.load(open(sub_path))
         for k, v in (("seed0", seed0), ("nx", nx), ("chunk", chunk), ("sample_args", sample_args),
-                     ("material", material)):
-            if prev.get(k, "cloth" if k == "material" else None) != v:
+                     ("material", material), ("batch_args", batch_args)):
+            if prev.get(k, {"material": "cloth", "batch_args": ""}.get(k)) != v:
                 sys.exit(f"{name} was submitted with {k}={prev.get(k)!r}, now {v!r}. "
                          f"Use a different --name or match the previous settings.")
 
@@ -214,7 +217,7 @@ def main() -> None:
         "GPUS": args.gpus or cfg.get("GPUS", "1"), "CPUS": cfg.get("CPUS", "4"), "JOBS": jobs,
         "MEM": args.mem or cfg.get("MEM", "24G"), "TIME": args.time or cfg.get("TIME", "12:00:00"),
         "ARRAY": array, "CHUNK": chunk, "SEED0": seed0, "NX": nx, "SAMPLE_ARGS": sample_args,
-        "MATERIAL": material})
+        "MATERIAL": material, "BATCH_ARGS": batch_args})
     merge = render(os.path.join(HERE, "merge.sbatch"), common | {
         "CPU_PARTITION": cfg.get("CPU_PARTITION", "day"), "EXPECT_N": args.n})
 
@@ -225,6 +228,7 @@ def main() -> None:
     print(f"code      : {code_dir}")
     print(f"samples   : n={args.n}  nx={nx}  material={material}  seed0={seed0}  chunk={chunk}  -> {n_tasks} tasks, submitting {len(tasks)}")
     print(f"array     : --array={array}")
+    print(f"batch args : {batch_args or '(none)'}")
     print(f"sample args: {sample_args or '(none)'}   gpus={args.gpus or cfg.get('GPUS', '1')}  "
           f"jobs/task={jobs}  partition={args.partition or cfg.get('PARTITION', 'gpu')}"
           + (f"  exclude={exclude}" if exclude else ""))
@@ -251,7 +255,7 @@ def main() -> None:
         if out.returncode != 0:
             print("merge submission failed (array still running):", out.stderr)
     json.dump({"time": stamp, "n": args.n, "nx": nx, "material": material, "seed0": seed0, "chunk": chunk,
-               "sample_args": sample_args, "tasks": tasks, "array": array,
+               "sample_args": sample_args, "batch_args": batch_args, "tasks": tasks, "array": array,
                "array_job_id": job, "merge_job_id": merge_job, "outdir": outdir},
               open(sub_path, "w"), indent=2)
     print(f"submitted array job {job}" + (f", merge job {merge_job}" if merge_job else ""))

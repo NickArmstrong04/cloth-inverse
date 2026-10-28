@@ -1,7 +1,15 @@
-# Cloth deformation sample pipeline (Newton/Warp prototype)
+# Sheet deformation sample pipeline (Newton/Warp)
 
-One end-to-end GPU sample: flat 128x128 cloth sheet + two force vectors
--> deformed state at fixed capture time, saved material-indexed to HDF5.
+One GPU sample: a flat cloth or paper sheet + two force vectors -> deformed
+state at a fixed capture time, saved material-indexed to HDF5. Two scenarios:
+
+- **free** (original datasets): zero gravity, free-floating sheet, force
+  directions uniform on the sphere.
+- **bench** (`--table`, `--loading pusher`; the target for the real-world
+  story): the sheet rests on a table under gravity and is pushed by two
+  pusher-like forces tilted into the table, i.e. what a bench rig can apply
+  and measure. Same pipeline, QC, resume and packaging; cloth and paper
+  datasets with the same `seed0` share force configurations (paired).
 
 ## 1. Prerequisites (inside WSL2 Ubuntu)
 
@@ -57,12 +65,18 @@ cd ~/cloth
 .venv/bin/python generate_sample.py --seed 0 --out sample_seed0.h5
 # custom forces
 .venv/bin/python generate_sample.py --seed 1 --force-json my_forces.json --out s1.h5
+# bench scenario, 256 grid, paper: table + gravity, pusher-style forces
+.venv/bin/python generate_sample.py --seed 1 --nx 256 --ny 256 --margin 0.0005 --gap 0.00025 \
+  --force-every-substep --table --material paper --force-json f.json --out s1.h5
 # validate: renders + maps + animation + self-intersection count
-.venv/bin/python validate_sample.py sample_seed0.h5 --outdir val_sample0
+.venv/bin/python tools/validate_sample.py sample_seed0.h5 --outdir val_sample0
 # analyses
-.venv/bin/python analyze_repro.py --ref A.h5 --rerun B.h5 --sens1 C.h5 --sens2 D.h5
+.venv/bin/python tools/analyze_repro.py --ref A.h5 --rerun B.h5 --sens1 C.h5 --sens2 D.h5
 # batch of 32 with random forces, 8 parallel workers
 .venv/bin/python generate_batch.py --n 32 --jobs 8 --outdir batch
+# bench dataset at 256: table + gravity, pusher forces, paper
+.venv/bin/python generate_batch.py --n 32 --jobs 2 --nx 256 --material paper --loading pusher --table \
+  --outdir bench32_paper --sample-args=--force-every-substep
 # dataset: 100 deterministic samples, QC gate + retries, 2 workers
 .venv/bin/python generate_batch.py --n 100 --jobs 2 --seed0 2000 \
   --outdir dataset100 --sample-args "--deterministic"
@@ -83,7 +97,10 @@ Key flags for `generate_sample.py`: `--nx/--ny` (default 128),
 `--deterministic` (bit-exact repeats, ~10x slower), `--device`,
 `--material {cloth,paper}` (paper: stiff sheet with plastic creases,
 `--yield-curvature`, `--plastic-rate`; also on `generate_batch.py` and
-`cluster/submit.py`, see `cluster/README.md` section 3b').
+`cluster/submit.py`, see `cluster/README.md` section 3b'),
+`--table` (+ `--gravity`, `--friction`): bench scenario.
+`generate_batch.py` adds `--loading {free,pusher}` (force-direction model)
+and `--table`; both are forwarded by `cluster/submit.py` via `BATCH_ARGS`.
 
 ## 5. Layout
 
@@ -92,9 +109,14 @@ Key flags for `generate_sample.py`: `--nx/--ny` (default 128),
 - `cloth_sim/simulate.py` — VBD time loop + per-frame log
 - `cloth_sim/io.py` — HDF5 save/load
 - `cloth_sim/validate.py` — renders, maps, piercing-count metric
-- `generate_sample.py`, `generate_batch.py`, `validate_sample.py`,
+- `generate_sample.py`, `generate_batch.py`, `package_splits.py` — the pipeline
+- `tools/` — one-off diagnostics, run from this directory as
+  `python tools/<name>.py`: `validate_sample.py` (renders, maps, animation),
   `analyze_repro.py`, `make_force_video.py` (dense re-run + GIF with live
-  force arrows; see `sample_seed0_forces.gif`)
+  force arrows), `test_pierce.py` (unit test of the piercing metric),
+  `check_splits.py`, `diag_intersect.py`, `time_qc.py`, `probe_state.py`;
+  `tools/forces/` holds the hand-made force configs from the tuning study
+- `cluster/` — Slurm submission, training jobs, run summaries (its README)
 
 ## 6. HDF5 contents
 

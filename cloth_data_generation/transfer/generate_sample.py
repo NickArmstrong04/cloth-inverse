@@ -52,6 +52,10 @@ def main() -> None:
     ap.add_argument("--tri-ke", type=float, default=None, help="membrane stiffness (also sets tri_ka)")
     ap.add_argument("--mass-per-area", type=float, default=None, help="kg/m^2 (cloth 0.2, paper 0.08)")
     ap.add_argument("--tri-kd", type=float, default=None)
+    ap.add_argument("--table", action="store_true",
+                    help="bench scenario: gravity and a ground plane under the sheet")
+    ap.add_argument("--gravity", type=float, default=None, help="m/s^2 with --table (default 9.81)")
+    ap.add_argument("--friction", type=float, default=None, help="table friction coefficient (default 0.5)")
     ap.add_argument("--substeps", type=int, default=None)
     ap.add_argument("--iterations", type=int, default=None)
     ap.add_argument("--margin", type=float, default=None)
@@ -82,6 +86,12 @@ def main() -> None:
     sim = SimConfig(t_capture=t_capture, device=args.device,
                     ramp_frac=args.ramp, deterministic=args.deterministic,
                     force_every_substep=args.force_every_substep)
+    if args.table:
+        sheet.table = True
+    if args.gravity is not None:
+        sheet.gravity = args.gravity
+    if args.friction is not None:
+        sheet.table_friction = args.friction
     if args.edge_ke is not None:
         sheet.edge_ke = args.edge_ke
     if args.tri_kd is not None:

@@ -1,5 +1,7 @@
 """Probe Newton 1.7.0 state/contact APIs on CUDA (tiny 4x3-cell cloth)."""
 
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))  # run from transfer/: python tools/<name>.py
 import numpy as np
 import warp as wp
 

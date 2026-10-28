@@ -28,15 +28,31 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 STRETCH_MAX = {"cloth": 2.0, "paper": 1.3}
 
 
-def sample_forces(rng: np.random.Generator, res_scale: float = 1.0) -> list[dict]:
-    """Broad dataset distribution: full (u,v) coverage, uniform-sphere
-    directions, log-uniform magnitudes (incl. weak folds), same-side pushes
-    allowed, plus a 15% near-symmetric branch. Min material separation 0.2
-    keeps the two patches distinct.
+LOADINGS = ("free", "pusher")
+
+
+def sample_direction(rng: np.random.Generator, loading: str) -> np.ndarray:
+    """free: uniform on the sphere (original datasets).
+    pusher: what a finger/pusher on a table can apply: a tangential push (uniform
+    heading) tilted 10-60 deg into the sheet (-z), never a pull. Pair with --table."""
+    if loading == "free":
+        d = rng.normal(size=3)
+        return d / np.linalg.norm(d)
+    th = rng.uniform(0.0, 2.0 * np.pi)
+    ph = np.deg2rad(rng.uniform(10.0, 60.0))
+    return np.array([np.cos(ph) * np.cos(th), np.cos(ph) * np.sin(th), -np.sin(ph)])
+
+
+def sample_forces(rng: np.random.Generator, res_scale: float = 1.0,
+                  loading: str = "free") -> list[dict]:
+    """Broad dataset distribution: full (u,v) coverage, directions per
+    ``loading`` (see sample_direction), log-uniform magnitudes (incl. weak
+    folds), same-side pushes allowed, plus a 15% near-symmetric branch. Min
+    material separation 0.2 keeps the two patches distinct. Forces depend only
+    on the seed, so cloth and paper datasets with the same seed0 are paired.
     """
     def one():
-        d = rng.normal(size=3)
-        d = d / np.linalg.norm(d)
+        d = sample_direction(rng, loading)
         return {
             "u": float(rng.uniform(0.05, 0.95)),
             "v": float(rng.uniform(0.05, 0.95)),
@@ -64,7 +80,7 @@ def sample_forces(rng: np.random.Generator, res_scale: float = 1.0) -> list[dict
 def run_one(slot: int, seed: int, outdir: str, extra: list[str],
             max_attempts: int = 3, resume: bool = False,
             res_scale: float = 1.0, check_pierce: bool = True,
-            stretch_max: float = 2.0) -> dict:
+            stretch_max: float = 2.0, loading: str = "free") -> dict:
     """Run one dataset slot (with QC-gated retries).
 
     With ``resume=True`` a slot whose passing HDF5 already exists in
@@ -98,7 +114,7 @@ def run_one(slot: int, seed: int, outdir: str, extra: list[str],
     for attempt in range(max_attempts):
         aseed = seed if attempt == 0 else seed + 50000 + attempt
         rng = np.random.default_rng(10_000 + aseed)
-        forces = sample_forces(rng, res_scale)
+        forces = sample_forces(rng, res_scale, loading)
         fpath = os.path.join(outdir, f"forces_slot{slot:04d}_seed{aseed}.json")
         with open(fpath, "w") as f:
             json.dump(forces, f, indent=2)
@@ -155,6 +171,11 @@ def main() -> None:
     ap.add_argument("--nx", type=int, default=128)
     ap.add_argument("--material", choices=sorted(STRETCH_MAX), default="cloth",
                     help="sheet preset forwarded to generate_sample.py (paper = plastic creasing)")
+    ap.add_argument("--loading", choices=LOADINGS, default="free",
+                    help="force-direction model: free (uniform sphere, original) or pusher "
+                         "(tangential push tilted into the sheet, what a bench rig applies)")
+    ap.add_argument("--table", action="store_true",
+                    help="bench scenario: gravity + ground plane (forwarded to generate_sample.py)")
     ap.add_argument("--ny", type=int, default=None, help="default: nx")
     ap.add_argument("--pierce-qc", choices=["auto", "on", "off"], default="auto",
                     help="self-piercing QC check (CPU, slow at high res); auto = on for nx<=256")
@@ -173,6 +194,8 @@ def main() -> None:
     extra += ["--nx", str(args.nx), "--ny", str(ny)]
     if args.material != "cloth":
         extra += ["--material", args.material]
+    if args.table:
+        extra += ["--table"]
     # Physical consistency across resolutions: the 128-grid reference has a
     # 3.937 mm cell, Gaussian patch sigma 3 cells, self-contact margin 1.0 mm
     # (~25% of spacing) and gap 0.5 mm. Scale patch size in cells and shrink
@@ -189,7 +212,7 @@ def main() -> None:
     with concurrent.futures.ProcessPoolExecutor(max_workers=args.jobs) as ex:
         futs = {ex.submit(run_one, args.slot0 + k, args.seed0 + args.slot0 + k,
                           args.outdir, extra, 3, args.resume, res_scale, check_pierce,
-                          STRETCH_MAX[args.material]): k
+                          STRETCH_MAX[args.material], args.loading): k
                 for k in range(args.n)}
         for fut in concurrent.futures.as_completed(futs):
             r = fut.result()
@@ -212,6 +235,7 @@ def main() -> None:
                "jobs": args.jobs, "slot0": args.slot0, "seed0": args.seed0,
                "nx": args.nx, "ny": ny, "res_scale": res_scale, "pierce_qc": check_pierce,
                "material": args.material, "stretch_max": STRETCH_MAX[args.material],
+               "loading": args.loading, "table": args.table,
                "sample_args": extra,
                "distribution": sample_forces.__doc__,
                "results": results}

@@ -1,5 +1,25 @@
 # Roadmap: inverting forces from deformed geometry
 
+The story: (1) successful prediction in a virtual environment, for cloth and for paper;
+(2) ingest a real-world scene with SAM or similar Meta tools and state how to undo the
+deformation; (3) a broader or more technical system. Decided 2026-10-28.
+
+## Data generation for that story (the bench profile, 2026-10-28)
+
+What the first datasets lacked for the real-world target, and what changed:
+
+| gap | fix | where |
+|---|---|---|
+| free-floating, zero-gravity sheet | sheet on a table under gravity, friction 0.5 | `--table` (sheet.py) |
+| forces pull from any direction | two pusher-like pushes, 10-60 deg into the table, never a pull | `--loading pusher` (generate_batch.py) |
+| cloth only | cloth and paper datasets with the same seeds (paired loading) | `--material`, same `seed0` |
+| 768 grid, ~5 min a sample | 256 grid (resolution cost ~0.3-0.7 cm, RESULTS.md), ~9x fewer particles | `NX=256` in cluster.env |
+| magnitude unlearnable (velocity clamp) | the clamp scales with the self-contact margin, 3x looser at 256; verify on the smoke test, else raise substeps | stability sweep J-002 |
+| magnitude x duration labels | predict impulse (what the shape determines) | loader/metrics already report impulse |
+
+Still open: observation rung 4 (rendered depth/RGB with occlusion, domain randomisation),
+which is what the SAM stage consumes.
+
 ## Stage 1 (current): show that an ML model can invert the force on a simulated cloth
 
 Status 2026-10-28: done for position and direction with privileged inputs
@@ -58,6 +78,7 @@ Decisions still open (before the next large generation run):
 
 ## Queued work
 
-- **~8 pm 2026-10-28:** launch `ds512_v1` (512x512, 2000 slots, 2 h tasks of 40, L40S + scavenge),
-  then train on both resolutions and compare. Commands in `cluster/README.md` section 3b
-  with `--nx 512 --chunk 40 --time 02:00:00 --name ds512_v1`.
+- ds512_v1 (free-floating, 512) is dropped: resolution barely matters and the free-floating
+  scenario is not the target. Next generation run is the bench profile, cloth and paper
+  paired (`cloth_results/JOBS.md` matrix M6): smoke on gpu_devel, then 3000 slots each.
+- M5 (unknown-pose cost, yaw-only rung) still runs on ds768_night; its conclusions carry over.

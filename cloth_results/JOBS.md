@@ -15,7 +15,7 @@ paste the output into a chat with Claude to update this file. Per-run metrics in
 | J-001 | arrays `cloth_gen` | 2026-10-27 night | done | ds768_night: 3000 slots at 768, L40S + scavenge | README 3b | 1,115 samples, DATASETS.md |
 | J-002 | | 2026-10-28 | running | stability sweep substeps 60/90/150 on failed force configs; find a setting where the velocity clamp does not tear the sheet (magnitude identifiability) | `cluster/stability.py --dataset ds768_night` then `--report` | |
 | J-003 | 31144541 (earlier attempts 31134453, 31139874, 31140657 cancelled) | 2026-10-28 | running (rung 3b) | ladder run 2, rungs 0,1,2,3,3b sequentially (D4-symmetric metric, TTA off), one GPU | `sbatch cluster/ladder.sbatch $S 300` | rungs 0/1/2/3 = 3.9/12.8, 4.5/15.9, 8.5/32.8, 8.3/31.1 (cm/deg); RESULTS.md |
-| J-004 | | | planned | ds512_v1 generation tonight (~8 pm): 2000 slots at 512, L40S + scavenge; resolution comparison and a second dataset | ROADMAP "Queued work" | |
+| J-004 | | | dropped | ds512_v1 free-floating generation; superseded by the bench profile (M6) after the resolution result | | |
 
 Submitted 2026-10-28 ~13:00: M1 (31153218-24), M2 (31153226-28), M3 (31153239-42), M1a-d ran on L40S; the other ten were resubmitted ~13:30 as GPU-agnostic jobs (31155587-96) after an in-queue scontrol edit cancelled them (sacct: CANCELLED, never assigned). GPU-agnostic placement worked: runs landed on RTX 5000 Ada (32 GB, data on CPU), A40, A5000 (24 GB, data on CPU) and L40S.
 
@@ -87,6 +87,26 @@ the answer hold for the point cloud. Pooled inputs where possible (cheap, any GP
 | M5-e | | planned | rung 3 default pointtf, 1000 ep (epochs alone, vs 3b's bigger model) | `sbatch --job-name=M5e cluster/run.sbatch $S --model pointtf --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --bs 16 --lr 3e-4 --out runs/M5e` | |
 | M5-f | | planned | rung 3 pointtf, yaw-only pose, 1000 ep | `sbatch --job-name=M5f cluster/run.sbatch $S --model pointtf --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --yaw-only --bs 16 --lr 3e-4 --out runs/M5f` | |
 | M5-g | | planned | stability sweep report (J-002) | `python3 cluster/stability.py --dataset ds768_night --report` | |
+
+## Matrix M6: bench-profile data generation (the new story, 2026-10-28)
+
+Why: the real-world target is a sheet on a table pushed by a rig and seen by a camera.
+The bench profile (`cluster.env`: 256 grid, `--table`, `--loading pusher`) generates that
+for cloth and paper with paired seeds. Smoke first (per-sample time sets CHUNK/TIME), then
+production on any GPU type. Replaces the queued free-floating ds512 run (J-004, dropped).
+
+| id | job id | status | what | command | result |
+|---|---|---|---|---|---|
+| M6-a | | planned | smoke: 4 cloth samples, bench profile, devel GPU | `python3 cluster/submit.py --n 4 --chunk 2 --name smoke256_bench --time 00:30:00 --partition gpu_devel` | |
+| M6-b | | planned | smoke: 4 paper samples, same seeds | `python3 cluster/submit.py --n 4 --chunk 2 --material paper --name smoke256_bench_paper --time 00:30:00 --partition gpu_devel` | |
+| M6-c | | planned | production cloth, 3000 slots, any GPU | `python3 cluster/submit.py --n 3000 --name ds256_bench --max-concurrent 40` | |
+| M6-d | | planned | production paper, 3000 slots, paired seeds | `python3 cluster/submit.py --n 3000 --name ds256_bench_paper --material paper --max-concurrent 40` | |
+| M6-e | | planned | ladder on ds256_bench (rungs 0-3) once packaged | `sbatch cluster/ladder.sbatch /home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_bench_splits 300` | |
+| M6-f | | planned | ladder on ds256_bench_paper | `sbatch cluster/ladder.sbatch /home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_bench_paper_splits 300` | |
+
+Check on the smoke output before production (`python3 cluster/submit.py --status smoke256_bench`
+and the task logs): QC pass rate, per-sample wall time, peak speed (should exceed the 0.38 m/s
+clamp seen at 768), and that the sheet stayed on the table (final z >= -particle radius).
 
 ## Submitting a whole matrix at once
 

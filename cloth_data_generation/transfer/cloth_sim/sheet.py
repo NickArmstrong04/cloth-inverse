@@ -34,6 +34,11 @@ class SheetConfig:
     # Plastic bending (see plasticity.py). None = purely elastic (cloth).
     plastic_yield_curvature: float | None = None  # 1/m; bend past this leaves a crease
     plastic_rate: float = 1.0  # fraction of the excess bend made permanent per substep
+    # Bench scenario: sheet resting on a table under gravity (the real-world setting the
+    # inverse model is meant for). False = the original free-floating, zero-gravity sheet.
+    table: bool = False
+    gravity: float = 9.81  # m/s^2, only with table=True
+    table_friction: float = 0.5  # ground-plane friction coefficient
 
 
 # Overrides of the SheetConfig defaults per material. "cloth" is the original
@@ -69,10 +74,12 @@ def particle_spacing(cfg: SheetConfig) -> tuple[float, float]:
 
 
 def build_sheet(cfg: SheetConfig, device: str = "cuda:0"):
-    """Build a free-floating flat sheet at z=0 centered on the origin.
+    """Build a flat sheet at z=0 centered on the origin.
 
-    Zero gravity, no ground plane, no fixed particles. Returns
-    ``(model, meta)`` where meta records the grid mapping.
+    Default: free-floating, zero gravity, no ground plane, no fixed particles.
+    ``cfg.table``: gravity along -z and a ground plane just under the sheet, so it
+    rests on a table and forces scrunch it against the table (bench scenario).
+    Returns ``(model, meta)`` where meta records the grid mapping.
     """
     nx, ny = cfg.nx, cfg.ny
     cell_x, cell_y = particle_spacing(cfg)
@@ -80,7 +87,11 @@ def build_sheet(cfg: SheetConfig, device: str = "cuda:0"):
 
     with wp.ScopedDevice(device):
         builder = newton.ModelBuilder()
-        builder.gravity = [0.0, 0.0, 0.0]
+        builder.gravity = [0.0, 0.0, -cfg.gravity] if cfg.table else [0.0, 0.0, 0.0]
+        if cfg.table:
+            # plane one particle radius below the sheet so the resting sheet is in contact
+            builder.default_shape_cfg.mu = cfg.table_friction
+            builder.add_ground_plane(height=-cfg.particle_radius)
         builder.add_cloth_grid(
             pos=wp.vec3(-cfg.size_x / 2.0, -cfg.size_y / 2.0, 0.0),
             rot=wp.quat_identity(),

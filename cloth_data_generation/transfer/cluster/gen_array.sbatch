@@ -28,6 +28,7 @@ SEED0=__SEED0__
 NX=__NX__
 MATERIAL=__MATERIAL__
 SAMPLE_ARGS="__SAMPLE_ARGS__"
+BATCH_ARGS="__BATCH_ARGS__"      # generate_batch.py flags, e.g. --loading pusher --table
 JOBS=__JOBS__
 
 SLOT0=$(( SLURM_ARRAY_TASK_ID * CHUNK ))
@@ -45,7 +46,7 @@ fi
 # JOBS samples at a time on this GPU (set JOBS_PER_TASK in cluster.env; 1 if the GPU is already saturated).
 .venv/bin/python generate_batch.py \
   --n "$CHUNK" --jobs "$JOBS" --slot0 "$SLOT0" --seed0 "$SEED0" --nx "$NX" --material "$MATERIAL" \
-  --outdir "$OUTDIR" --resume \
+  --outdir "$OUTDIR" --resume $BATCH_ARGS \
   ${SAMPLE_ARGS:+--sample-args="$SAMPLE_ARGS"}
 
 echo "task $SLURM_ARRAY_TASK_ID done"

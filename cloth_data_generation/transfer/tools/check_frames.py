@@ -1,5 +1,7 @@
 """Save one late frame of the force GIF as PNG for inspection."""
 
+import os as _os, sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))  # run from transfer/: python tools/<name>.py
 from PIL import Image
 
 im = Image.open(
