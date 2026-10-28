@@ -116,6 +116,30 @@ Sizing: one L40S makes ~12 samples/h at 768 single-process (~306 s each incl.
 setup), more with `JOBS_PER_TASK=2`. Each 768 sample is ~50 MB on disk (final
 state, velocities, 5 intermediates), so 2000 samples is ~100 GB.
 
+## 3b'. Paper sheets (plastic creasing, not fully reversible)
+
+Same two-force scenario, `--material paper` sheet (`cloth_sim/sheet.py`
+`MATERIALS`): lighter (0.08 kg/m^2), 10x stiffer in plane, 5x stiffer in
+bending, and bends sharper than a yield curvature (50 /m) become permanent
+creases (`cloth_sim/plasticity.py`). Cloth and elastic sheets spring back to
+flat once the forces stop; creased paper stays folded, so the end state no
+longer determines the forces uniquely. Same pipeline, QC (stretch limit 1.3),
+resume and merge; datasets get a `_paper` suffix.
+
+```bash
+# smoke: 4 samples at 128 on the devel partition
+python3 cluster/submit.py --n 4 --nx 128 --chunk 2 --material paper --name smoke128_paper \
+    --time 00:30:00 --partition gpu_devel
+# production at 768 (same profile as the cloth run) -> cloth_data/ds768_3000_paper
+python3 cluster/submit.py --n 3000 --material paper --max-concurrent 40
+```
+
+Each paper HDF5 also carries a `plastic/` group (hidden state, withheld from
+the test split): `edge_rest_angle` and `edge_indices` (final crease angle per
+mesh edge), `crease_map` (ny, nx), and per-frame `crease_total` /
+`edges_yielded`. Tune the crease with `--sample-args="--force-every-substep
+--yield-curvature 35"` (lower = creases more easily; 0 = elastic paper).
+
 ## 3c. Training the inverse model on the cluster (full resolution)
 
 ```bash

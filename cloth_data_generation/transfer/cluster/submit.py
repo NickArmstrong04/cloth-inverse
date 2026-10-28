@@ -8,6 +8,7 @@ Examples (from the copied transfer/ directory):
   python3 cluster/submit.py --n 1000 --name ds256_1000  # again later = resume
   python3 cluster/submit.py --status ds256_1000         # progress + queue
   python3 cluster/submit.py --n 1000 --tasks 3,7-9      # re-run specific tasks
+  python3 cluster/submit.py --n 1000 --material paper   # creasing paper sheet -> ds768_1000_paper
 
 Only the Python standard library is used, so it runs with the login node's
 python3. Settings come from cluster/cluster.env; flags override them.
@@ -131,6 +132,8 @@ def main() -> None:
     ap.add_argument("--n", type=int, help="total number of samples (slots 0..n-1)")
     ap.add_argument("--nx", type=int)
     ap.add_argument("--chunk", type=int, help="samples per array task")
+    ap.add_argument("--material", choices=["cloth", "paper"],
+                    help="sheet preset (default MATERIAL in cluster.env, else cloth)")
     ap.add_argument("--seed0", type=int)
     ap.add_argument("--name", help="dataset directory name under DATA_DIR (default ds<nx>_<n>)")
     ap.add_argument("--sample-args", help="override SAMPLE_ARGS (quote it)")
@@ -162,7 +165,8 @@ def main() -> None:
     nx = args.nx or int(cfg.get("NX", 256))
     chunk = args.chunk or int(cfg.get("CHUNK", 25))
     seed0 = args.seed0 if args.seed0 is not None else int(cfg.get("SEED0", 100000))
-    name = args.name or f"ds{nx}_{args.n}"
+    material = args.material or cfg.get("MATERIAL") or "cloth"
+    name = args.name or f"ds{nx}_{args.n}" + ("" if material == "cloth" else f"_{material}")
     sample_args = args.sample_args if args.sample_args is not None else cfg.get("SAMPLE_ARGS", "")
     account = args.account if args.account is not None else cfg.get("ACCOUNT", "")
     outdir = os.path.join(data_dir, name)
@@ -191,8 +195,9 @@ def main() -> None:
     sub_path = os.path.join(logdir, "submission.json")
     if os.path.exists(sub_path):
         prev = json.load(open(sub_path))
-        for k, v in (("seed0", seed0), ("nx", nx), ("chunk", chunk), ("sample_args", sample_args)):
-            if prev.get(k) != v:
+        for k, v in (("seed0", seed0), ("nx", nx), ("chunk", chunk), ("sample_args", sample_args),
+                     ("material", material)):
+            if prev.get(k, "cloth" if k == "material" else None) != v:
                 sys.exit(f"{name} was submitted with {k}={prev.get(k)!r}, now {v!r}. "
                          f"Use a different --name or match the previous settings.")
 
@@ -208,7 +213,8 @@ def main() -> None:
         "PARTITION": args.partition or cfg.get("PARTITION", "gpu"),
         "GPUS": args.gpus or cfg.get("GPUS", "1"), "CPUS": cfg.get("CPUS", "4"), "JOBS": jobs,
         "MEM": args.mem or cfg.get("MEM", "24G"), "TIME": args.time or cfg.get("TIME", "12:00:00"),
-        "ARRAY": array, "CHUNK": chunk, "SEED0": seed0, "NX": nx, "SAMPLE_ARGS": sample_args})
+        "ARRAY": array, "CHUNK": chunk, "SEED0": seed0, "NX": nx, "SAMPLE_ARGS": sample_args,
+        "MATERIAL": material})
     merge = render(os.path.join(HERE, "merge.sbatch"), common | {
         "CPU_PARTITION": cfg.get("CPU_PARTITION", "day"), "EXPECT_N": args.n})
 
@@ -217,7 +223,7 @@ def main() -> None:
     merge_path = os.path.join(logdir, f"merge_{stamp}.sbatch")
     print(f"dataset   : {outdir}")
     print(f"code      : {code_dir}")
-    print(f"samples   : n={args.n}  nx={nx}  seed0={seed0}  chunk={chunk}  -> {n_tasks} tasks, submitting {len(tasks)}")
+    print(f"samples   : n={args.n}  nx={nx}  material={material}  seed0={seed0}  chunk={chunk}  -> {n_tasks} tasks, submitting {len(tasks)}")
     print(f"array     : --array={array}")
     print(f"sample args: {sample_args or '(none)'}   gpus={args.gpus or cfg.get('GPUS', '1')}  "
           f"jobs/task={jobs}  partition={args.partition or cfg.get('PARTITION', 'gpu')}"
@@ -244,7 +250,7 @@ def main() -> None:
         merge_job = out.stdout.strip().split(";")[0] if out.returncode == 0 else None
         if out.returncode != 0:
             print("merge submission failed (array still running):", out.stderr)
-    json.dump({"time": stamp, "n": args.n, "nx": nx, "seed0": seed0, "chunk": chunk,
+    json.dump({"time": stamp, "n": args.n, "nx": nx, "material": material, "seed0": seed0, "chunk": chunk,
                "sample_args": sample_args, "tasks": tasks, "array": array,
                "array_job_id": job, "merge_job_id": merge_job, "outdir": outdir},
               open(sub_path, "w"), indent=2)

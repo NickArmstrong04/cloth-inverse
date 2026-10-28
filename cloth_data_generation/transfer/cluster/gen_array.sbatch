@@ -26,11 +26,12 @@ OUTDIR="__OUTDIR__"
 CHUNK=__CHUNK__
 SEED0=__SEED0__
 NX=__NX__
+MATERIAL=__MATERIAL__
 SAMPLE_ARGS="__SAMPLE_ARGS__"
 JOBS=__JOBS__
 
 SLOT0=$(( SLURM_ARRAY_TASK_ID * CHUNK ))
-echo "task $SLURM_ARRAY_TASK_ID on $(hostname): slots $SLOT0..$((SLOT0 + CHUNK - 1)) nx=$NX seed0=$SEED0"
+echo "task $SLURM_ARRAY_TASK_ID on $(hostname): slots $SLOT0..$((SLOT0 + CHUNK - 1)) nx=$NX material=$MATERIAL seed0=$SEED0"
 nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader || true
 
 cd "$CODE_DIR"
@@ -43,7 +44,7 @@ fi
 
 # JOBS samples at a time on this GPU (set JOBS_PER_TASK in cluster.env; 1 if the GPU is already saturated).
 .venv/bin/python generate_batch.py \
-  --n "$CHUNK" --jobs "$JOBS" --slot0 "$SLOT0" --seed0 "$SEED0" --nx "$NX" \
+  --n "$CHUNK" --jobs "$JOBS" --slot0 "$SLOT0" --seed0 "$SEED0" --nx "$NX" --material "$MATERIAL" \
   --outdir "$OUTDIR" --resume \
   ${SAMPLE_ARGS:+--sample-args="$SAMPLE_ARGS"}
 

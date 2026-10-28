@@ -80,7 +80,10 @@ Key flags for `generate_sample.py`: `--nx/--ny` (default 128),
 `--t-capture` (default: max force duration + `--settle 0.7`),
 `--magnitude` (override), `--edge-ke`, `--substeps`, `--iterations`,
 `--margin/--gap` (self-contact), `--ramp` (force envelope, default 0.15),
-`--deterministic` (bit-exact repeats, ~10x slower), `--device`.
+`--deterministic` (bit-exact repeats, ~10x slower), `--device`,
+`--material {cloth,paper}` (paper: stiff sheet with plastic creases,
+`--yield-curvature`, `--plastic-rate`; also on `generate_batch.py` and
+`cluster/submit.py`, see `cluster/README.md` section 3b').
 
 ## 5. Layout
 

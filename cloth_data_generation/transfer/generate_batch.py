@@ -23,6 +23,10 @@ import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
+# QC stretch limit per material: paper is near-inextensible (healthy runs
+# ~1.05), so a stretch cloth tolerates means a torn or exploded paper sheet.
+STRETCH_MAX = {"cloth": 2.0, "paper": 1.3}
+
 
 def sample_forces(rng: np.random.Generator, res_scale: float = 1.0) -> list[dict]:
     """Broad dataset distribution: full (u,v) coverage, uniform-sphere
@@ -59,7 +63,8 @@ def sample_forces(rng: np.random.Generator, res_scale: float = 1.0) -> list[dict
 
 def run_one(slot: int, seed: int, outdir: str, extra: list[str],
             max_attempts: int = 3, resume: bool = False,
-            res_scale: float = 1.0, check_pierce: bool = True) -> dict:
+            res_scale: float = 1.0, check_pierce: bool = True,
+            stretch_max: float = 2.0) -> dict:
     """Run one dataset slot (with QC-gated retries).
 
     With ``resume=True`` a slot whose passing HDF5 already exists in
@@ -79,7 +84,7 @@ def run_one(slot: int, seed: int, outdir: str, extra: list[str],
         if done:
             opath = done[-1]
             aseed = int(os.path.basename(opath).split("_seed")[1].split(".")[0])
-            qc = qc_sample_h5(opath, check_pierce=check_pierce)
+            qc = qc_sample_h5(opath, check_pierce=check_pierce, stretch_max=stretch_max)
             attempts.append({"seed": aseed, "ok": qc["ok"], "wall": None,
                              "qc": qc["metrics"], "reasons": qc["reasons"],
                              "resumed": True})
@@ -100,7 +105,7 @@ def run_one(slot: int, seed: int, outdir: str, extra: list[str],
         opath = os.path.join(outdir, f"sample_slot{slot:04d}_seed{aseed}.h5")
         rpath = os.path.join(rej, os.path.basename(opath))
         if resume and os.path.exists(rpath):
-            qc = qc_sample_h5(rpath, check_pierce=check_pierce)
+            qc = qc_sample_h5(rpath, check_pierce=check_pierce, stretch_max=stretch_max)
             attempts.append({"seed": aseed, "ok": False, "wall": None,
                              "qc": qc["metrics"], "reasons": qc["reasons"],
                              "resumed": True})
@@ -124,7 +129,7 @@ def run_one(slot: int, seed: int, outdir: str, extra: list[str],
                 return {"slot": slot, "seed": seed, "ok": False, "attempts": attempts,
                         "file": None, "fatal": True}
             continue
-        qc = qc_sample_h5(opath, check_pierce=check_pierce)
+        qc = qc_sample_h5(opath, check_pierce=check_pierce, stretch_max=stretch_max)
         attempts.append({"seed": aseed, "ok": qc["ok"], "wall": wall,
                          "qc": qc["metrics"], "reasons": qc["reasons"]})
         if qc["ok"]:
@@ -148,6 +153,8 @@ def main() -> None:
                     help="first slot index handled by this process (job arrays: "
                          "each task takes slots slot0..slot0+n-1)")
     ap.add_argument("--nx", type=int, default=128)
+    ap.add_argument("--material", choices=sorted(STRETCH_MAX), default="cloth",
+                    help="sheet preset forwarded to generate_sample.py (paper = plastic creasing)")
     ap.add_argument("--ny", type=int, default=None, help="default: nx")
     ap.add_argument("--pierce-qc", choices=["auto", "on", "off"], default="auto",
                     help="self-piercing QC check (CPU, slow at high res); auto = on for nx<=256")
@@ -164,6 +171,8 @@ def main() -> None:
     extra = args.sample_args.split() if args.sample_args else []
     ny = args.ny or args.nx
     extra += ["--nx", str(args.nx), "--ny", str(ny)]
+    if args.material != "cloth":
+        extra += ["--material", args.material]
     # Physical consistency across resolutions: the 128-grid reference has a
     # 3.937 mm cell, Gaussian patch sigma 3 cells, self-contact margin 1.0 mm
     # (~25% of spacing) and gap 0.5 mm. Scale patch size in cells and shrink
@@ -179,7 +188,8 @@ def main() -> None:
     results = []
     with concurrent.futures.ProcessPoolExecutor(max_workers=args.jobs) as ex:
         futs = {ex.submit(run_one, args.slot0 + k, args.seed0 + args.slot0 + k,
-                          args.outdir, extra, 3, args.resume, res_scale, check_pierce): k
+                          args.outdir, extra, 3, args.resume, res_scale, check_pierce,
+                          STRETCH_MAX[args.material]): k
                 for k in range(args.n)}
         for fut in concurrent.futures.as_completed(futs):
             r = fut.result()
@@ -201,6 +211,7 @@ def main() -> None:
     summary = {"n": args.n, "ok": ok, "total_wall_s": total,
                "jobs": args.jobs, "slot0": args.slot0, "seed0": args.seed0,
                "nx": args.nx, "ny": ny, "res_scale": res_scale, "pierce_qc": check_pierce,
+               "material": args.material, "stretch_max": STRETCH_MAX[args.material],
                "sample_args": extra,
                "distribution": sample_forces.__doc__,
                "results": results}

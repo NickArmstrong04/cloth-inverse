@@ -100,3 +100,50 @@
    excluded); whole-triangle containment would be missed (negligible).
 6. No gravity, no ground, self-collision ON, external forces only --
    problem definition unchanged.
+
+## Paper sheet: plastic creasing (2026-10-28)
+
+Goal: the same two-force scenario on a paper-like sheet whose response is
+not fully reversible. `--material paper` (`cloth_sim/sheet.py` `MATERIALS`):
+mass 0.08 kg/m^2, tri_ke = tri_ka = 1e4 (10x cloth), edge_ke 50 (5x), plus
+plastic bending hinges (`cloth_sim/plasticity.py`). After every substep, any
+interior edge bent more than a yield angle away from its rest angle drags the
+rest angle along (perfect plasticity, rate 1). VBD reads
+`model.edge_rest_angle` on every solve, so the solver itself is untouched.
+Yield is a curvature (default 50 /m, i.e. 2 cm radius) converted to an angle
+with the cell spacing, so creases yield at the same load at every resolution.
+Overhead is a single edge kernel per substep (19.5 s vs 19.3 s per sample at 128).
+
+Yield sweep, default forces, 128x128, 3 s settle (`--force-every-substep`):
+
+| yield [1/m] | edges yielded | creases > 0.5 rad | crease share in top 5% edges | compaction at force end -> t=3.5 s |
+|---|---|---|---|---|
+| cloth (elastic) | - | - | - | 0.90 -> 1.01 |
+| 0 (elastic paper) | 0 | 0 | - | 0.88 -> 1.00 |
+| 20 | 45% | 31 | 0.37 (diffuse) | 0.82 -> 0.96 |
+| **50 (default)** | 12% | 100 | 0.75 (localized lines) | 0.89 -> 0.95 |
+| 100 | 0.5% | 0 | - | 0.88 -> 1.00 |
+
+Compaction = mean over random material pairs of current / rest distance
+(1 = unfolded). Elastic sheets spring back to flat within ~0.6 s of the forces
+ending; creased paper stays folded. Paper stretch stays ~1.04-1.07 (cloth
+1.65), so the paper QC stretch limit is 1.3 instead of 2.0.
+
+Caveats: (1) the momentum/velocity-cap issue of the cloth runs applies
+unchanged (peak speed 0.67 m/s at 256), so force magnitude is still weakly
+identifiable; (2) material constants are VBD units tuned for crease
+behaviour, not measured paper; (3) the end state still rings during the
+settle (compaction oscillates by ~0.03), so the capture time matters more
+than for cloth; (4) rest angles are clamped to +-2.8 rad because VBD does not
+wrap the atan2 branch cut, so a crease folded completely flat is
+slightly under-represented.
+
+Dataset-distribution batch (`generate_batch.py --material paper`, random
+forces, seeds 5000+): 128x128 8/8 passed first try (~60 s each single, ~20 s
+amortised at 4 workers); 256x256 4/4 slots passed, with 1 retry (stretch 1.57,
+torn), 75-84 s of simulation each, plus the CPU piercing QC. Stretch 1.02-1.08,
+peak speed 1.4-1.6 m/s (128) / 0.66-0.73 m/s (256). At capture time paper
+compaction is 0.77-0.94 with 125-977 sharp (>0.5 rad) crease edges per sample
+at 128. At 256 there are more creased edges (233-1289) because the existing
+pipeline does not scale edge_ke with resolution, so bending is effectively
+softer at higher resolution; this affects cloth equally.

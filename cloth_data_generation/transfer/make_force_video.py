@@ -6,7 +6,7 @@ import os
 import warp as wp
 
 from cloth_sim.forces import default_forces, forces_to_dicts
-from cloth_sim.sheet import SheetConfig, build_sheet
+from cloth_sim.sheet import MATERIALS, build_sheet, sheet_config
 from cloth_sim.simulate import SimConfig, run_simulation
 from cloth_sim.validate import save_force_animation
 
@@ -17,14 +17,19 @@ def main() -> None:
     ap.add_argument("--capture-every", type=int, default=2)
     ap.add_argument("--nx", type=int, default=128)
     ap.add_argument("--ny", type=int, default=128)
+    ap.add_argument("--material", choices=sorted(MATERIALS), default="cloth")
+    ap.add_argument("--settle", type=float, default=0.7,
+                    help="seconds after the forces end (paper: try 2-3 to see the creases hold)")
+    ap.add_argument("--force-every-substep", action="store_true")
     args = ap.parse_args()
 
     wp.init()
     forces = default_forces()
-    sheet = SheetConfig(nx=args.nx, ny=args.ny)
-    t_capture = max(f.duration for f in forces) + 0.7
+    sheet = sheet_config(args.material, nx=args.nx, ny=args.ny)
+    t_capture = max(f.duration for f in forces) + args.settle
     sim = SimConfig(t_capture=t_capture, ramp_frac=0.15,
-                    capture_every=args.capture_every)
+                    capture_every=args.capture_every,
+                    force_every_substep=args.force_every_substep)
     model, meta = build_sheet(sheet)
     res = run_simulation(model, forces, sim, meta)
     print(f"dense frames: {len(res['dense_times'])} wall={res['wall_time']:.1f}s")
