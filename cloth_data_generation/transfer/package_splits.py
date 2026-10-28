@@ -1,6 +1,6 @@
 """Package batch samples into 8:1:1 train/val/test splits.
 
-Train and validation keep intermediate states; test files carry ONLY the
+Train and validation files are hard-linked (no copy); test files carry ONLY the
 final state (final_grid, final_vel) plus labels/config, so the test split
 evaluates inference from the end state alone.
 """
@@ -25,6 +25,8 @@ def main() -> None:
     ap.add_argument("--split-seed", type=int, default=7)
     ap.add_argument("--ratios", default="8,1,1")
     args = ap.parse_args()
+    if os.path.isdir(args.outdir):
+        shutil.rmtree(args.outdir)  # start clean (a previous interrupted run leaves partial files)
 
     ratios = np.array([float(x) for x in args.ratios.split(",")])
     ratios = ratios / ratios.sum()
@@ -59,7 +61,13 @@ def main() -> None:
                     h_out.attrs["split"] = "test"
                     h_out.attrs["note"] = "intermediates withheld"
             else:
-                shutil.copy2(src, os.path.join(sdir, name))
+                dst = os.path.join(sdir, name)
+                if os.path.exists(dst):
+                    os.remove(dst)
+                try:
+                    os.link(src, dst)  # hard link: instant, no extra disk (same filesystem)
+                except OSError:
+                    shutil.copy2(src, dst)
             with h5py.File(src, "r") as h:
                 fp = h["force_params"][()]
                 fp = fp.decode() if isinstance(fp, bytes) else fp
