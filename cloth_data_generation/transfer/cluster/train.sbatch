@@ -10,6 +10,7 @@
 #SBATCH --job-name=cloth_train
 #SBATCH --partition=gpu
 #SBATCH --gpus=l40s:1
+#SBATCH --exclude=a1125u05n01
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=160G
 #SBATCH --time=12:00:00
