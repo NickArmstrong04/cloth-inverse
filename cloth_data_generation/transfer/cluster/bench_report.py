@@ -111,6 +111,7 @@ def main() -> None:
         for r in rows:
             if r["rc"] != 0 or r["sim_wall_s"] is None:
                 per_nx.setdefault(r["nx"], {"fail": True})
+                nxs.add(r["nx"])
                 continue
             d = per_nx.setdefault(r["nx"], {"t": [], "util": [], "mem": []})
             if r["rep"] > 1 or len([x for x in rows if x["nx"] == r["nx"]]) == 1:
