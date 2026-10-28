@@ -25,6 +25,7 @@ import os
 
 import h5py
 import numpy as np
+import math
 import torch
 
 SHEET_SIZE = 0.5  # m, square sheet
@@ -134,8 +135,16 @@ class TargetScaler:
         return z * self.std + self.mean
 
 
-def random_rotation(n: int, dev) -> torch.Tensor:
-    """Uniform random rotation matrices (n, 3, 3) via QR of Gaussians."""
+def random_rotation(n: int, dev, yaw_only: bool = False) -> torch.Tensor:
+    """Uniform random rotation matrices (n, 3, 3) via QR of Gaussians.
+    yaw_only: rotations about the sheet normal (z) only, i.e. the support plane is known
+    and only the in-plane heading is unknown (rung 1.5, a bench with a table)."""
+    if yaw_only:
+        th = torch.rand(n, device=dev) * (2 * math.pi)
+        c, s = torch.cos(th), torch.sin(th)
+        R = torch.zeros(n, 3, 3, device=dev)
+        R[:, 0, 0], R[:, 0, 1], R[:, 1, 0], R[:, 1, 1], R[:, 2, 2] = c, -s, s, c, 1.0
+        return R
     a = torch.randn(n, 3, 3, device=dev)
     q, r = torch.linalg.qr(a)
     s = torch.sign(torch.diagonal(r, dim1=-2, dim2=-1))
@@ -145,7 +154,7 @@ def random_rotation(n: int, dev) -> torch.Tensor:
     return q
 
 
-def augment(x, g, y, rotate=True, dihedral=True):
+def augment(x, g, y, rotate=True, dihedral=True, yaw_only=False):
     """Apply a random exact symmetry to a batch. x: (B,6,ny,nx), g: (B,6), y: (B,2,7)."""
     B, dev = x.shape[0], x.device
     x, g, y = x.clone(), g.clone(), y.clone()
@@ -174,7 +183,7 @@ def augment(x, g, y, rotate=True, dihedral=True):
                 y[b, :, [0, 1]] = y[b, :, [1, 0]]
                 y[b, :, [2, 3]] = y[b, :, [3, 2]]
     if rotate:
-        R = random_rotation(B, dev)  # (B,3,3)
+        R = random_rotation(B, dev, yaw_only)  # (B,3,3)
         for k in range(nvec):
             x[:, 3 * k:3 * k + 3] = torch.einsum("bij,bjhw->bihw", R, x[:, 3 * k:3 * k + 3])
             g[:, 3 * k:3 * k + 3] = torch.einsum("bij,bj->bi", R, g[:, 3 * k:3 * k + 3])

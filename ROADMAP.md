@@ -31,9 +31,10 @@ against the privileged ceiling. Keep the privileged model as upper bound / teach
 | rung | what the model sees | flag / model | status |
 |---|---|---|---|
 | 0 | indexed grid, positions + velocities, known frame | `cnn_reg` (baseline) | 4.8 cm / 13.7 deg |
-| 1 | indexed grid, positions only | `--no-vel` | built, to run |
-| 2 | + unknown rigid pose | `--no-vel` + SO(3) aug + `--eval-rotated` | built, to run |
-| 3 | unordered point cloud (no grid), positions only, unknown pose | `--model pointtf` | built, to run |
+| 1 | indexed grid, positions only | `--no-vel` | 4.5 cm / 15.9 deg (overfits: data-limited) |
+| 1.5 | + unknown in-plane heading, known support plane | `--yaw-only` | built (M5) |
+| 2 | + unknown rigid pose | `--no-vel` + SO(3) aug + `--eval-rotated` | 8.5 cm / 32.8 deg at 300 ep; 5.9 / 24.1 at 192 res, 1000 ep (underfits: epochs-limited) |
+| 3 | unordered point cloud (no grid), positions only, unknown pose | `--model pointtf` | 8.3 cm / 31.1 deg = rung 2 (representation is free) |
 | 4 | rendered depth / RGB views with occlusion, domain randomization | to build | |
 | 5 | real observations (paper scan / SAM on photos) | | |
 

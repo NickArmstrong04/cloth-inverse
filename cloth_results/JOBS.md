@@ -14,7 +14,7 @@ paste the output into a chat with Claude to update this file. Per-run metrics in
 |---|---|---|---|---|---|---|
 | J-001 | arrays `cloth_gen` | 2026-10-27 night | done | ds768_night: 3000 slots at 768, L40S + scavenge | README 3b | 1,115 samples, DATASETS.md |
 | J-002 | | 2026-10-28 | running | stability sweep substeps 60/90/150 on failed force configs; find a setting where the velocity clamp does not tear the sheet (magnitude identifiability) | `cluster/stability.py --dataset ds768_night` then `--report` | |
-| J-003 | 31144541 (earlier attempts 31134453, 31139874) | 2026-10-28 | running | ladder run 2, rungs 0,1,2,3,3b sequentially (D4-symmetric metric, TTA off), one GPU | `sbatch cluster/ladder.sbatch $S 300` | ROADMAP ladder table |
+| J-003 | 31144541 (earlier attempts 31134453, 31139874, 31140657 cancelled) | 2026-10-28 | running (rung 3b) | ladder run 2, rungs 0,1,2,3,3b sequentially (D4-symmetric metric, TTA off), one GPU | `sbatch cluster/ladder.sbatch $S 300` | rungs 0/1/2/3 = 3.9/12.8, 4.5/15.9, 8.5/32.8, 8.3/31.1 (cm/deg); RESULTS.md |
 | J-004 | | | planned | ds512_v1 generation tonight (~8 pm): 2000 slots at 512, L40S + scavenge; resolution comparison and a second dataset | ROADMAP "Queued work" | |
 
 Submitted 2026-10-28 ~13:00: M1 (31153218-24), M2 (31153226-28), M3 (31153239-42), M1a-d ran on L40S; the other ten were resubmitted ~13:30 as GPU-agnostic jobs (31155587-96) after an in-queue scontrol edit cancelled them (sacct: CANCELLED, never assigned). GPU-agnostic placement worked: runs landed on RTX 5000 Ada (32 GB, data on CPU), A40, A5000 (24 GB, data on CPU) and L40S.
@@ -31,8 +31,8 @@ the cheapest levers before more data.
 | M1-b | 31153219 | done | rung 0 seed 2 | `sbatch --job-name=M1b cluster/run.sbatch $S --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --seed 2 --out runs/M1b` | test 4.2 cm / 13.3 deg (train 3.9 / 12.1) |
 | M1-c | 31153220 | done | rung 2 seed 1 | `sbatch --job-name=M1c cluster/run.sbatch $S --model cnn_reg --epochs 300 --amp --tta 0 --no-vel --eval-rotated --seed 1 --out runs/M1c` | test 8.7 cm / 32.8 deg (train 8.9 / 33.9) |
 | M1-d | 31153221 | done | rung 2 seed 2 | `sbatch --job-name=M1d cluster/run.sbatch $S --model cnn_reg --epochs 300 --amp --tta 0 --no-vel --eval-rotated --seed 2 --out runs/M1d` | test 9.3 cm / 34.8 deg (train 9.6 / 36.6) |
-| M1-e | 31155587 (resubmitted; 31153222 lost to scontrol TresPerJob update) | running | rung 1, width 48 | `sbatch --job-name=M1e cluster/run.sbatch $S --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --no-vel --width 48 --out runs/M1e` | |
-| M1-f | 31155588 (resubmitted; 31153223 lost to scontrol TresPerJob update) | running | rung 1, width 64 | `sbatch --job-name=M1f cluster/run.sbatch $S --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --no-vel --width 64 --out runs/M1f` | |
+| M1-e | 31155587 (resubmitted; 31153222 lost to scontrol TresPerJob update) | done | rung 1, width 48 | `sbatch --job-name=M1e cluster/run.sbatch $S --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --no-vel --width 48 --out runs/M1e` | test 4.5 cm / 16.1 deg (train 2.3): overfits, no gain; 25 min on A40 |
+| M1-f | 31155588 (resubmitted; 31153223 lost to scontrol TresPerJob update) | done | rung 1, width 64 | `sbatch --job-name=M1f cluster/run.sbatch $S --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --no-vel --width 64 --out runs/M1f` | test 4.4 cm / 15.3 deg (train 1.4): overfits harder, no gain; 28 min |
 | M1-g | 31155589 (resubmitted; 31153224 lost to scontrol TresPerJob update) | running | rung 2, 1000 epochs | `sbatch --job-name=M1g cluster/run.sbatch $S --model cnn_reg --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --out runs/M1g` | |
 
 ## Matrix M2: how much resolution is needed (direction 2: images / depth; and the 512 run)
@@ -46,7 +46,7 @@ first, then more.
 |---|---|---|---|---|---|
 | M2-a | 31155590 (resubmitted; 31153226 lost to scontrol TresPerJob update) | done | rung 1 at 384 (pool 2) | `sbatch --job-name=M2a cluster/run.sbatch $S --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --no-vel --pool 2 --out runs/M2a` | test 4.5 cm / 16.4 deg (train 3.9 / 12.4), 7 min on RTX 5000 Ada |
 | M2-b | 31155591 (resubmitted; 31153227 lost to scontrol TresPerJob update) | done | rung 1 at 192 (pool 4) | `sbatch --job-name=M2b cluster/run.sbatch $S --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --no-vel --pool 4 --out runs/M2b` | test 5.0 cm / 17.2 deg (train 4.1 / 13.3), 7 min |
-| M2-c | 31155592 (resubmitted; 31153228 lost to scontrol TresPerJob update) | running | rung 2 at 192 (pool 4), 1000 epochs (cheap at this size) | `sbatch --job-name=M2c cluster/run.sbatch $S --model cnn_reg --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --pool 4 --out runs/M2c` | |
+| M2-c | 31155592 (resubmitted; 31153228 lost to scontrol TresPerJob update) | done | rung 2 at 192 (pool 4), 1000 epochs (cheap at this size) | `sbatch --job-name=M2c cluster/run.sbatch $S --model cnn_reg --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --pool 4 --out runs/M2c` | test 5.9 cm / 24.1 deg (train 6.2): 3x epochs = big gain at rung 2; 27 min on A5000 (data on CPU) |
 
 ## Matrix M3: point-cloud model (direction 3: non-grid representations)
 
@@ -56,9 +56,9 @@ the ladder is not a sweep; points, width and depth are the knobs.
 | id | job id | status | what | command | result |
 |---|---|---|---|---|---|
 | M3-a | 31155593 (resubmitted; 31153239 lost to scontrol TresPerJob update) | done | pointtf 1024 pts, d128, 4 layers | `sbatch --job-name=M3a cluster/run.sbatch $S --model pointtf --epochs 300 --amp --tta 0 --no-vel --eval-rotated --bs 16 --lr 3e-4 --n-points 1024 --out runs/M3a` | test 8.3 cm / 30.7 deg (train 8.8 / 35.2, val 8.6 / 29.3): underfits; 6 min on L40S |
-| M3-b | 31155594 (resubmitted; 31153240 lost to scontrol TresPerJob update) | running | pointtf 8192 pts, d128, 4 layers, bs 8 | `sbatch --job-name=M3b cluster/run.sbatch $S --model pointtf --epochs 300 --amp --tta 0 --no-vel --eval-rotated --bs 8 --lr 3e-4 --n-points 8192 --out runs/M3b` | |
-| M3-c | 31155595 (resubmitted; 31153241 lost to scontrol TresPerJob update) | running | pointtf 2048 pts, d256, 4 layers | `sbatch --job-name=M3c cluster/run.sbatch $S --model pointtf --epochs 300 --amp --tta 0 --no-vel --eval-rotated --bs 16 --lr 3e-4 --pt-dim 256 --out runs/M3c` | |
-| M3-d | 31155596 (resubmitted; 31153242 lost to scontrol TresPerJob update) | running | pointtf 2048 pts, d128, 8 layers | `sbatch --job-name=M3d cluster/run.sbatch $S --model pointtf --epochs 300 --amp --tta 0 --no-vel --eval-rotated --bs 16 --lr 3e-4 --pt-layers 8 --out runs/M3d` | |
+| M3-b | 31155594 (resubmitted; 31153240 lost to scontrol TresPerJob update) | done | pointtf 8192 pts, d128, 4 layers, bs 8 | `sbatch --job-name=M3b cluster/run.sbatch $S --model pointtf --epochs 300 --amp --tta 0 --no-vel --eval-rotated --bs 8 --lr 3e-4 --n-points 8192 --out runs/M3b` | test 8.2 cm / 30.0 deg (train 8.6); 29 min |
+| M3-c | 31155595 (resubmitted; 31153241 lost to scontrol TresPerJob update) | done | pointtf 2048 pts, d256, 4 layers | `sbatch --job-name=M3c cluster/run.sbatch $S --model pointtf --epochs 300 --amp --tta 0 --no-vel --eval-rotated --bs 16 --lr 3e-4 --pt-dim 256 --out runs/M3c` | test 8.1 cm / 32.1 deg (train 8.6); 10 min |
+| M3-d | 31155596 (resubmitted; 31153242 lost to scontrol TresPerJob update) | done | pointtf 2048 pts, d128, 8 layers | `sbatch --job-name=M3d cluster/run.sbatch $S --model pointtf --epochs 300 --amp --tta 0 --no-vel --eval-rotated --bs 16 --lr 3e-4 --pt-layers 8 --out runs/M3d` | test 8.3 cm / 29.8 deg (train 8.7); 10 min |
 
 ## Matrix M4: paper data (direction 1: plastic creasing)
 
@@ -70,6 +70,23 @@ Runs on scavenge so it never competes with the ladder or ds512.
 |---|---|---|---|---|---|
 | M4-a | | planned | ds256_paper: 400 slots at 256, paper material, scavenge | `python3 cluster/submit.py --n 400 --nx 256 --chunk 20 --material paper --name ds256_paper --partition scavenge_gpu --time 02:00:00 --max-concurrent 20` | |
 | M4-b | | planned | train rung 1 on ds256_paper once packaged | `sbatch --job-name=M4b cluster/run.sbatch /home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_paper_splits --model cnn_reg --epochs 600 --no-rot --amp --tta 0 --no-vel --out runs/M4b` | |
+
+## Matrix M5: where the unknown-pose cost comes from (after M1-M3, 2026-10-28)
+
+Why: rung 2/3 underfit regardless of model size and representation but improve a lot with epochs
+(M2c), and full SO(3) is pessimistic for a bench with a known table plane. Three questions: how far
+does longer training go, how much does a known support plane (yaw-only pose) recover, and does
+the answer hold for the point cloud. Pooled inputs where possible (cheap, any GPU).
+
+| id | job id | status | what | command | result |
+|---|---|---|---|---|---|
+| M5-a | | planned | rung 1.5 (yaw-only pose) at 768, 300 ep | `sbatch --job-name=M5a cluster/run.sbatch $S --model cnn_reg --epochs 300 --amp --tta 0 --no-vel --eval-rotated --yaw-only --out runs/M5a` | |
+| M5-b | | planned | rung 1.5 at 192, 1000 ep (pair with M2c) | `sbatch --job-name=M5b --mem=60G cluster/run.sbatch $S --model cnn_reg --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --yaw-only --pool 4 --out runs/M5b` | |
+| M5-c | | planned | rung 2 at 192, 3000 ep (epoch curve) | `sbatch --job-name=M5c --mem=60G cluster/run.sbatch $S --model cnn_reg --epochs 3000 --amp --tta 0 --no-vel --eval-rotated --pool 4 --out runs/M5c` | |
+| M5-d | | planned | rung 2 at 384, 1000 ep | `sbatch --job-name=M5d --mem=60G cluster/run.sbatch $S --model cnn_reg --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --pool 2 --out runs/M5d` | |
+| M5-e | | planned | rung 3 default pointtf, 1000 ep (epochs alone, vs 3b's bigger model) | `sbatch --job-name=M5e cluster/run.sbatch $S --model pointtf --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --bs 16 --lr 3e-4 --out runs/M5e` | |
+| M5-f | | planned | rung 3 pointtf, yaw-only pose, 1000 ep | `sbatch --job-name=M5f cluster/run.sbatch $S --model pointtf --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --yaw-only --bs 16 --lr 3e-4 --out runs/M5f` | |
+| M5-g | | planned | stability sweep report (J-002) | `python3 cluster/stability.py --dataset ds768_night --report` | |
 
 ## Submitting a whole matrix at once
 

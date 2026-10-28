@@ -9,6 +9,7 @@ import os
 import time
 
 import numpy as np
+import math
 import torch
 
 from data import TargetScaler, augment, decode_forces, load_split, random_rotation
@@ -16,7 +17,13 @@ from metrics import pair_metrics, summarize
 from models import build, pair_loss
 
 
-def _rot_from_gen(n, gen):
+def _rot_from_gen(n, gen, yaw_only=False):
+    if yaw_only:
+        th = torch.rand(n, generator=gen) * (2 * math.pi)
+        c, s = torch.cos(th), torch.sin(th)
+        q = torch.zeros(n, 3, 3)
+        q[:, 0, 0], q[:, 0, 1], q[:, 1, 0], q[:, 1, 1], q[:, 2, 2] = c, -s, s, c, 1.0
+        return q
     a = torch.randn(n, 3, 3, generator=gen)
     q, r = torch.linalg.qr(a)
     q = q * torch.sign(torch.diagonal(r, dim1=-2, dim2=-1)).unsqueeze(-2)
@@ -44,14 +51,14 @@ def batched_loss(net, x, g, y, scaler, bs, sym_uv=None):
     return tot / max(n, 1)
 
 
-def predict(model, x, g, scaler, tta=0, bs=16):
+def predict(model, x, g, scaler, tta=0, bs=16, yaw_only=False):
     outs = []
     for i in range(0, len(x), bs):
-        outs.append(_predict_batch(model, x[i:i + bs], g[i:i + bs], scaler, tta))
+        outs.append(_predict_batch(model, x[i:i + bs], g[i:i + bs], scaler, tta, yaw_only))
     return torch.cat(outs)
 
 
-def _predict_batch(model, x, g, scaler, tta=0):
+def _predict_batch(model, x, g, scaler, tta=0, yaw_only=False):
     """Return raw-scale predictions (N,2,7). With tta>0, average over random
     world rotations (directions rotated back; u,v,mag,dur rotation-invariant)."""
     model.eval()
@@ -62,7 +69,7 @@ def _predict_batch(model, x, g, scaler, tta=0):
         p = p.float()
         outs.append(scaler.denorm(p))
         for _ in range(tta):
-            R = random_rotation(x.shape[0], x.device)
+            R = random_rotation(x.shape[0], x.device, yaw_only)
             xr, gr, _ = _rotate(x, g, torch.zeros(x.shape[0], 2, 7, device=x.device), R)
             p = scaler.denorm(model(xr, gr)[0].float())
             p[:, :, 2:5] = torch.einsum("bji,bkj->bki", R, p[:, :, 2:5])  # R^T d
@@ -101,6 +108,9 @@ def main():
     ap.add_argument("--lr", type=float, default=1e-3)
     ap.add_argument("--wd", type=float, default=1e-2)
     ap.add_argument("--no-aug", action="store_true")
+    ap.add_argument("--yaw-only", action="store_true",
+                    help="rung 1.5: world rotation (aug, --eval-rotated, TTA) about the sheet normal only; "
+                         "known support plane, unknown in-plane heading")
     ap.add_argument("--no-rot", action="store_true",
                     help="dihedral (material-symmetry) augmentation only, no 3D world rotation")
     ap.add_argument("--tta", type=int, default=8)
@@ -110,7 +120,7 @@ def main():
     out = args.out or (f"runs/{os.path.basename(os.path.normpath(args.root))}_{args.model}_s{args.seed}_e{args.epochs}"
                        + (f"_pool{args.pool}" if args.pool > 1 else "")
                        + (f"_d{args.pt_dim}L{args.pt_layers}n{args.n_points}" if args.model == "pointtf" else "")
-                       + ("_novel" if args.no_vel else "") + ("_evalrot" if args.eval_rotated else "")
+                       + ("_novel" if args.no_vel else "") + ("_evalrot" if args.eval_rotated else "") + ("_yaw" if args.yaw_only else "")
                        + ("_noaug" if args.no_aug else "") + ("_norot" if args.no_rot else ""))
     os.makedirs(out, exist_ok=True)
     torch.manual_seed(args.seed)
@@ -128,7 +138,7 @@ def main():
     if args.eval_rotated:  # rung 2: a fixed, seeded random rotation per val/test sample
         gen = torch.Generator().manual_seed(1234)
         for d in (va, te):
-            R = _rot_from_gen(len(d["x"]), gen)
+            R = _rot_from_gen(len(d["x"]), gen, args.yaw_only)
             d["x"], d["g"], d["y"] = _rotate(d["x"], d["g"], d["y"], R)
     in_size = tr["x"].shape[-1]
     print(f"data: train {len(tr['names'])}  val {len(va['names'])}  test {len(te['names'])}  "
@@ -186,7 +196,7 @@ def main():
             x = xtr[idx.cpu()].to(dev, non_blocking=True) if args.data_on_cpu else xtr[idx]
             g, y = gtr[idx], ytr[idx]
             if not args.no_aug:
-                x, g, y = augment(x, g, y, rotate=not args.no_rot)
+                x, g, y = augment(x, g, y, rotate=not args.no_rot, yaw_only=args.yaw_only)
             with amp:
                 pred, _ = net(x, g)
             loss = pair_loss(pred.float(), scaler.norm(y), sym_uv=sym_uv)
@@ -213,13 +223,13 @@ def main():
                 "xstd": xstd.cpu(), "gstd": gstd.cpu()}, os.path.join(out, "model.pt"))
 
     res = {"model": args.model, "params": nparam, "best_val_loss": best, "train_time_s": time.time() - t0,
-           "sym_d4": sym, "no_vel": args.no_vel, "eval_rotated": args.eval_rotated,
+           "sym_d4": sym, "no_vel": args.no_vel, "eval_rotated": args.eval_rotated, "yaw_only": args.yaw_only,
            "history": hist}
     preds_out = []
     for nm, x, g, y, d in (("train", xtr, gtr, ytr, tr), ("val", xva, gva, yva, va), ("test", xte, gte, yte, te)):
         for tta in (0, args.tta if not args.no_rot else 0):
             with amp:
-                p = predict(net, x, g, scaler, tta=tta, bs=args.bs).cpu().numpy()
+                p = predict(net, x, g, scaler, tta=tta, bs=args.bs, yaw_only=args.yaw_only).cpu().numpy()
             m = pair_metrics(p, y.cpu().numpy(), sym=sym)
             res[f"{nm}/tta{tta}"] = summarize(m)
             if nm == "test" and tta == args.tta:
