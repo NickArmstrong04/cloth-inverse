@@ -113,18 +113,31 @@ def main() -> None:
                 per_nx.setdefault(r["nx"], {"fail": True})
                 nxs.add(r["nx"])
                 continue
-            d = per_nx.setdefault(r["nx"], {"t": [], "util": [], "mem": []})
-            if r["rep"] > 1 or len([x for x in rows if x["nx"] == r["nx"]]) == 1:
-                d["t"].append(r["sim_wall_s"])
+            conc = r.get("conc", 1)
+            key = r["nx"] if conc == 1 else f"{r['nx']}x{conc}"
+            d = per_nx.setdefault(key, {"t": [], "util": [], "mem": [], "conc": conc})
+            # effective time per sample: concurrent rounds use the group's wall clock / processes
+            eff = r["group_wall_s"] / conc if conc > 1 and r.get("group_wall_s") else r["sim_wall_s"]
+            same = [x for x in rows if x["nx"] == r["nx"] and x.get("conc", 1) == conc]
+            if (r["rep"] > 1 or len(same) == conc) and r.get("proc", 1) == 1:
+                d["t"].append(eff)  # one entry per round, not per process
             d["util"].append(r.get("util_busy_mean_pct") or 0)
             d["mem"].append(r.get("mem_peak_mb") or 0)
-            nxs.add(r["nx"])
+            nxs.add(key)
         table[g] = {"acct": acct, "job": jobinfo, "per_nx": per_nx, "probe_wait": probes.get(g)}
 
-    nxs = sorted(nxs)
+    def nx_key(k):
+        base, _, c = str(k).partition("x")
+        return (int(base), int(c) if c else 1)
+
+    def nx_num(k):
+        return nx_key(k)[0]
+    nxs = sorted(nxs, key=nx_key)
     print(f"run: {os.path.basename(run_dir)}   (sample args: {manifest.get('sample_args')})\n")
     hdr = f"{'gpu':22s} {'state':10s} {'wait':>7s} {'probe':>7s} {'bill':>5s} " + " ".join(f"{'nx'+str(n):>9s}" for n in nxs)
     print(hdr)
+    if any("x" in str(n) for n in nxs):
+        print("(nx256x3 = three samples at once on one GPU; its s/sample is wall clock / 3)")
     print(" " * 55 + " ".join(f"{'s/sample':>9s}" for _ in nxs))
     for g, t in table.items():
         a = t["acct"]
@@ -148,7 +161,7 @@ def main() -> None:
                 cells.append(f"{'-':>9s}")
             else:
                 med = sorted(d["t"])[len(d["t"]) // 2]
-                cells.append(f"{3600/med:6.1f}/{len(d['util']):>2d}")
+                cells.append(f"{3600/med:6.1f}/{len(d['t']) * d.get('conc', 1):>2d}")
         print(f"{g:22s} " + " ".join(cells))
     print("\nGPU utilization (%) / peak memory (GB) while simulating:")
     for g, t in table.items():
@@ -161,7 +174,8 @@ def main() -> None:
     # scaling exponent per GPU: t ~ particles^alpha
     print("\nscaling exponent alpha (time ~ particles^alpha; 1.0 = linear):")
     for g, t in table.items():
-        pts = [(n * n, sorted(d["t"])[len(d["t"]) // 2]) for n, d in t["per_nx"].items() if d.get("t")]
+        pts = [(nx_num(n) ** 2, sorted(d["t"])[len(d["t"]) // 2]) for n, d in t["per_nx"].items()
+               if d.get("t") and d.get("conc", 1) == 1]
         if len(pts) >= 2:
             xs = [math.log(p) for p, _ in pts]; ys = [math.log(s) for _, s in pts]
             mx, my = sum(xs) / len(xs), sum(ys) / len(ys)
@@ -175,7 +189,8 @@ def main() -> None:
         d = t["per_nx"].get(args.nx)
         if not d or not d.get("t"):
             # interpolate from the two nearest measured sizes using the fitted exponent if possible
-            pts = sorted((n, sorted(v["t"])[len(v["t"]) // 2]) for n, v in t["per_nx"].items() if v.get("t"))
+            pts = sorted((nx_num(n), sorted(v["t"])[len(v["t"]) // 2]) for n, v in t["per_nx"].items()
+                         if v.get("t") and v.get("conc", 1) == 1)
             if len(pts) < 2:
                 print(f"{g:22s}  no data at nx={args.nx}")
                 continue
