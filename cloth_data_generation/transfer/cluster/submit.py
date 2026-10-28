@@ -139,6 +139,9 @@ def main() -> None:
     ap.add_argument("--time")
     ap.add_argument("--mem")
     ap.add_argument("--max-concurrent", type=int)
+    ap.add_argument("--gpus", help="GPU request, e.g. l40s:1 or 1 (override GPUS)")
+    ap.add_argument("--jobs-per-task", type=int, help="concurrent samples per GPU (override JOBS_PER_TASK)")
+    ap.add_argument("--exclude", help="nodes to avoid, comma-separated (override EXCLUDE_NODES)")
     ap.add_argument("--tasks", help="only these array tasks, e.g. 3,7-9 (default: tasks with missing slots)")
     ap.add_argument("--all-tasks", action="store_true", help="submit every task even if its slots are done")
     ap.add_argument("--no-merge", action="store_true", help="do not chain the merge/packaging job")
@@ -196,10 +199,14 @@ def main() -> None:
     if not args.dry_run:
         os.makedirs(logdir, exist_ok=True)
     account_line = f"#SBATCH --account={account}" if account else ""
-    common = {"CODE_DIR": code_dir, "OUTDIR": outdir, "LOGDIR": logdir, "ACCOUNT_LINE": account_line}
+    exclude = args.exclude if args.exclude is not None else cfg.get("EXCLUDE_NODES", "")
+    exclude_line = f"#SBATCH --exclude={exclude}" if exclude else ""
+    jobs = args.jobs_per_task or int(cfg.get("JOBS_PER_TASK", 1) or 1)
+    common = {"CODE_DIR": code_dir, "OUTDIR": outdir, "LOGDIR": logdir, "ACCOUNT_LINE": account_line,
+              "EXCLUDE_LINE": exclude_line}
     gen = render(os.path.join(HERE, "gen_array.sbatch"), common | {
         "PARTITION": args.partition or cfg.get("PARTITION", "gpu"),
-        "GPUS": cfg.get("GPUS", "1"), "CPUS": cfg.get("CPUS", "4"),
+        "GPUS": args.gpus or cfg.get("GPUS", "1"), "CPUS": cfg.get("CPUS", "4"), "JOBS": jobs,
         "MEM": args.mem or cfg.get("MEM", "24G"), "TIME": args.time or cfg.get("TIME", "12:00:00"),
         "ARRAY": array, "CHUNK": chunk, "SEED0": seed0, "NX": nx, "SAMPLE_ARGS": sample_args})
     merge = render(os.path.join(HERE, "merge.sbatch"), common | {
@@ -212,7 +219,9 @@ def main() -> None:
     print(f"code      : {code_dir}")
     print(f"samples   : n={args.n}  nx={nx}  seed0={seed0}  chunk={chunk}  -> {n_tasks} tasks, submitting {len(tasks)}")
     print(f"array     : --array={array}")
-    print(f"sample args: {sample_args or '(none)'}")
+    print(f"sample args: {sample_args or '(none)'}   gpus={args.gpus or cfg.get('GPUS', '1')}  "
+          f"jobs/task={jobs}  partition={args.partition or cfg.get('PARTITION', 'gpu')}"
+          + (f"  exclude={exclude}" if exclude else ""))
     if args.dry_run:
         print("\n--- rendered gen_array.sbatch ---")
         print(gen)

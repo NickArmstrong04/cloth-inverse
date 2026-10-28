@@ -15,7 +15,10 @@
 #SBATCH --array=__ARRAY__
 #SBATCH --output=__LOGDIR__/gen_%A_%a.out
 #SBATCH --error=__LOGDIR__/gen_%A_%a.err
+#SBATCH --requeue
+#SBATCH --open-mode=append
 __ACCOUNT_LINE__
+__EXCLUDE_LINE__
 
 set -euo pipefail
 CODE_DIR="__CODE_DIR__"
@@ -24,6 +27,7 @@ CHUNK=__CHUNK__
 SEED0=__SEED0__
 NX=__NX__
 SAMPLE_ARGS="__SAMPLE_ARGS__"
+JOBS=__JOBS__
 
 SLOT0=$(( SLURM_ARRAY_TASK_ID * CHUNK ))
 echo "task $SLURM_ARRAY_TASK_ID on $(hostname): slots $SLOT0..$((SLOT0 + CHUNK - 1)) nx=$NX seed0=$SEED0"
@@ -37,9 +41,9 @@ if ! .venv/bin/python -c "import numpy, h5py, warp, newton" 2>/dev/null; then
   echo "ENVIRONMENT BROKEN: $CODE_DIR/.venv is missing packages. Run: bash cluster/setup_env.sh"; exit 2
 fi
 
-# One sample at a time per GPU: parallel samples on one GPU gave no speedup.
+# JOBS samples at a time on this GPU (set JOBS_PER_TASK in cluster.env; 1 if the GPU is already saturated).
 .venv/bin/python generate_batch.py \
-  --n "$CHUNK" --jobs 1 --slot0 "$SLOT0" --seed0 "$SEED0" --nx "$NX" \
+  --n "$CHUNK" --jobs "$JOBS" --slot0 "$SLOT0" --seed0 "$SEED0" --nx "$NX" \
   --outdir "$OUTDIR" --resume \
   ${SAMPLE_ARGS:+--sample-args="$SAMPLE_ARGS"}
 

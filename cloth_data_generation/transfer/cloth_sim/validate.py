@@ -150,7 +150,7 @@ def count_self_intersections(grid: np.ndarray, max_pairs: int = 2_000_000) -> di
 
 def qc_sample_h5(path: str, stretch_max: float = 2.0,
                  ke_final_max: float = 1.0, vmax_max: float = 15.0,
-                 pierce_max: int = 100) -> dict:
+                 pierce_max: int = 100, check_pierce: bool = True) -> dict:
     """Automatic quality gate for one sample HDF5.
 
     Fails on NaN/explosion (sim nan flag, extreme final KE or speed),
@@ -183,11 +183,15 @@ def qc_sample_h5(path: str, stretch_max: float = 2.0,
         reasons.append(f"vmax_max {metrics['vmax_max']:.2f} > {vmax_max}")
     if metrics["stretch_max"] > stretch_max:
         reasons.append(f"stretch_max {metrics['stretch_max']:.2f} > {stretch_max}")
-    pierce = count_self_intersections(final)
-    metrics["piercing_pairs"] = pierce["piercing_pairs"]
-    metrics["pairs_checked"] = pierce["pairs_checked"]
-    if pierce["piercing_pairs"] > pierce_max:
-        reasons.append(f"piercing {pierce['piercing_pairs']} > {pierce_max}")
+    if check_pierce:
+        pierce = count_self_intersections(final)
+        metrics["piercing_pairs"] = pierce["piercing_pairs"]
+        metrics["pairs_checked"] = pierce["pairs_checked"]
+        if pierce["piercing_pairs"] > pierce_max:
+            reasons.append(f"piercing {pierce['piercing_pairs']} > {pierce_max}")
+    else:
+        metrics["piercing_pairs"] = None  # skipped (CPU check too slow at high resolution)
+        metrics["pairs_checked"] = None
     return {"ok": not reasons, "metrics": metrics, "reasons": reasons}
 
 

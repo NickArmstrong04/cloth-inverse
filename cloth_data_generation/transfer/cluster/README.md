@@ -85,6 +85,37 @@ Re-running `submit.py` with the same `--name` only submits tasks whose slots
 are incomplete (timeouts, node failures). It refuses to mix settings: a name
 is bound to its `seed0`, `nx`, `chunk` and sample args.
 
+## 3b. Overnight production recipe (768x768 on L40S, maximum throughput)
+
+`cluster.env` now carries the 768 profile: `GPUS=l40s:1`, `CHUNK=10`
+(~1 h per task), `TIME=02:00:00`, `JOBS_PER_TASK=2`, piercing QC off above
+256 (`generate_batch.py --pierce-qc auto`). Submit two arrays over disjoint
+task ranges of the SAME dataset: a normal one on `gpu` and a preemptible one
+on `scavenge_gpu` (tasks are `--requeue`d and resume, so preemption only
+costs the sample in flight).
+
+```bash
+# 3000 slots = 300 tasks of 10. Tasks 0-99 on gpu (L40S), 100-299 on scavenge_gpu.
+python3 cluster/submit.py --n 3000 --name ds768_night --tasks 0-99 --max-concurrent 40 --no-merge
+python3 cluster/submit.py --n 3000 --name ds768_night --tasks 100-299 --partition scavenge_gpu \
+    --max-concurrent 80 --no-merge
+python3 cluster/submit.py --status ds768_night
+```
+
+In the morning, whatever finished is the dataset (slots are independent):
+
+```bash
+python3 cluster/submit.py --status ds768_night            # passing count, missing slots
+scancel -u $USER -n cloth_gen                             # stop the rest if you are done
+.venv/bin/python cluster/merge_summaries.py --indir /home/naa79/scratch_pi_sz622/naa79/cloth_data/ds768_night
+.venv/bin/python package_splits.py --indir /home/naa79/scratch_pi_sz622/naa79/cloth_data/ds768_night \
+    --outdir /home/naa79/scratch_pi_sz622/naa79/cloth_data/ds768_night_splits
+```
+
+Sizing: one L40S makes ~12 samples/h at 768 single-process (~306 s each incl.
+setup), more with `JOBS_PER_TASK=2`. Each 768 sample is ~50 MB on disk (final
+state, velocities, 5 intermediates), so 2000 samples is ~100 GB.
+
 ## 4. Outputs
 
 ```

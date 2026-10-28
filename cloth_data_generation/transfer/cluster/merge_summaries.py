@@ -63,7 +63,7 @@ def main() -> None:
             if a.get("wall"):
                 walls.append(a["wall"])
             for k in qc:
-                if a.get("qc") and k in a["qc"]:
+                if a.get("qc") and a["qc"].get(k) is not None:  # piercing may be skipped (None)
                     qc[k].append(a["qc"][k])
     stats = {k: {"min": float(np.min(v)), "median": float(np.median(v)), "max": float(np.max(v))}
              for k, v in qc.items() if v}

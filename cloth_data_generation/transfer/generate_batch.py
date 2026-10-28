@@ -59,7 +59,7 @@ def sample_forces(rng: np.random.Generator, res_scale: float = 1.0) -> list[dict
 
 def run_one(slot: int, seed: int, outdir: str, extra: list[str],
             max_attempts: int = 3, resume: bool = False,
-            res_scale: float = 1.0) -> dict:
+            res_scale: float = 1.0, check_pierce: bool = True) -> dict:
     """Run one dataset slot (with QC-gated retries).
 
     With ``resume=True`` a slot whose passing HDF5 already exists in
@@ -79,7 +79,7 @@ def run_one(slot: int, seed: int, outdir: str, extra: list[str],
         if done:
             opath = done[-1]
             aseed = int(os.path.basename(opath).split("_seed")[1].split(".")[0])
-            qc = qc_sample_h5(opath)
+            qc = qc_sample_h5(opath, check_pierce=check_pierce)
             attempts.append({"seed": aseed, "ok": qc["ok"], "wall": None,
                              "qc": qc["metrics"], "reasons": qc["reasons"],
                              "resumed": True})
@@ -100,7 +100,7 @@ def run_one(slot: int, seed: int, outdir: str, extra: list[str],
         opath = os.path.join(outdir, f"sample_slot{slot:04d}_seed{aseed}.h5")
         rpath = os.path.join(rej, os.path.basename(opath))
         if resume and os.path.exists(rpath):
-            qc = qc_sample_h5(rpath)
+            qc = qc_sample_h5(rpath, check_pierce=check_pierce)
             attempts.append({"seed": aseed, "ok": False, "wall": None,
                              "qc": qc["metrics"], "reasons": qc["reasons"],
                              "resumed": True})
@@ -117,7 +117,7 @@ def run_one(slot: int, seed: int, outdir: str, extra: list[str],
             attempts.append({"seed": aseed, "ok": False, "wall": wall,
                              "error": p.stderr[-1000:]})
             continue
-        qc = qc_sample_h5(opath)
+        qc = qc_sample_h5(opath, check_pierce=check_pierce)
         attempts.append({"seed": aseed, "ok": qc["ok"], "wall": wall,
                          "qc": qc["metrics"], "reasons": qc["reasons"]})
         if qc["ok"]:
@@ -142,6 +142,8 @@ def main() -> None:
                          "each task takes slots slot0..slot0+n-1)")
     ap.add_argument("--nx", type=int, default=128)
     ap.add_argument("--ny", type=int, default=None, help="default: nx")
+    ap.add_argument("--pierce-qc", choices=["auto", "on", "off"], default="auto",
+                    help="self-piercing QC check (CPU, slow at high res); auto = on for nx<=256")
     ap.add_argument("--no-res-scaling", action="store_true",
                     help="keep 128-grid patch (3/9 cells) and self-contact "
                          "margin/gap (1.0/0.5 mm) regardless of --nx")
@@ -164,12 +166,13 @@ def main() -> None:
         extra += ["--margin", f"{1.0e-3 / res_scale:.6g}",
                   "--gap", f"{0.5e-3 / res_scale:.6g}"]
     tag = f"{args.slot0:05d}"
+    check_pierce = (args.nx <= 256) if args.pierce_qc == "auto" else (args.pierce_qc == "on")
 
     t0 = time.time()
     results = []
     with concurrent.futures.ProcessPoolExecutor(max_workers=args.jobs) as ex:
         futs = {ex.submit(run_one, args.slot0 + k, args.seed0 + args.slot0 + k,
-                          args.outdir, extra, 3, args.resume, res_scale): k
+                          args.outdir, extra, 3, args.resume, res_scale, check_pierce): k
                 for k in range(args.n)}
         for fut in concurrent.futures.as_completed(futs):
             r = fut.result()
@@ -187,7 +190,7 @@ def main() -> None:
     names = [f"batch_summary_{tag}.json"] + (["batch_summary.json"] if args.slot0 == 0 else [])
     summary = {"n": args.n, "ok": ok, "total_wall_s": total,
                "jobs": args.jobs, "slot0": args.slot0, "seed0": args.seed0,
-               "nx": args.nx, "ny": ny, "res_scale": res_scale,
+               "nx": args.nx, "ny": ny, "res_scale": res_scale, "pierce_qc": check_pierce,
                "sample_args": extra,
                "distribution": sample_forces.__doc__,
                "results": results}
