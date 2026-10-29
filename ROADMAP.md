@@ -55,7 +55,8 @@ against the privileged ceiling. Keep the privileged model as upper bound / teach
 | 1.5 | + unknown in-plane heading, known support plane | `--yaw-only` | built (M5) |
 | 2 | + unknown rigid pose | `--no-vel` + SO(3) aug + `--eval-rotated` | 8.5 cm / 32.8 deg at 300 ep; 5.9 / 24.1 at 192 res, 1000 ep (underfits: epochs-limited) |
 | 3 | unordered point cloud (no grid), positions only, unknown pose | `--model pointtf` | 8.3 cm / 31.1 deg = rung 2 (representation is free) |
-| 4 | rendered depth / RGB views with occlusion, domain randomization | to build | |
+| 4a | visible-surface point cloud from one camera (exact depth) | to build (renderer) | see goals 2026-10-29 |
+| 4b | SAM + monocular 3D lifting of the rendered image | to build | proof-of-concept number |
 | 5 | real observations (paper scan / SAM on photos) | | |
 
 Finding (2026-10-28, ladder run 1): velocities add nothing (rung 1 = 4.3 cm / 14.3 deg vs
@@ -75,6 +76,37 @@ Decisions still open (before the next large generation run):
 - Material: paper is plastic; Newton cloth is elastic. Decide whether cloth data informs the
   paper experiment or whether a crease-capable model/simulator is needed.
 - Physics: fix the velocity clamp (substeps) so magnitude becomes identifiable.
+
+## Goals recorded 2026-10-29: single-image proof of concept in zero gravity
+
+Decision: stay in the free-floating (zero-gravity) scenario and do not model the bench yet.
+The proof of concept for "real life" is instead: a compressed simulated cloth, observed by
+**one image** (RGB, optionally with depth), turned into the model's input features by SAM
+and/or other Meta tools (segmentation, monocular 3D lifting). A single view hides the back
+faces and the insides of folds, so some of the surface is always missing; that occlusion is
+the realistic partial observation, computed from the camera rather than assumed.
+
+Standing caveat: **the current models are not sufficient even under perfect conditions.**
+With full, clean, material-indexed input the best test error is 4.5 cm / 14 deg (rung 1) and
+it is data-limited; with unknown pose it is 6-8 cm / 24-33 deg and optimisation-limited
+(RESULTS.md). Every rung below inherits that floor, so the model/data question (JOBS.md M8)
+and the ladder below run in parallel: a perception pipeline on top of an 8 cm model proves
+the plumbing, not the method.
+
+Rung 4 is split so each cost is measured separately:
+
+| rung | input | how it is made | what the gap measures |
+|---|---|---|---|
+| 4a | visible-surface point cloud in the camera frame, exact depth | rasterize the final mesh from a random camera (z-buffer over grid triangles), keep visible vertices; several views per sample (free data multiplication) | cost of seeing one side (vs rung 3) |
+| 4b | point cloud produced by Meta tools from the rendered image | render RGB(-D) of the same views; SAM segments the sheet, VGGT / monocular depth lifts it to 3D; feed the rung-4a model | cost of the perception tools (vs 4a); this is the proof-of-concept number |
+
+Design notes: pose is the camera frame, so the full SO(3) rung applies (not yaw-only); a
+monocular image has no absolute scale, so inputs are normalised by the known 0.5 m sheet
+size at train and test time; the rung-4a model is initialised from the rung-3 model
+(unmasked first, then masked). A learned spatial-connectivity (graph) model is deferred:
+the grid model already uses material connectivity and rung 3 showed dropping it is free;
+world-space kNN wires across self-contacts. Revisit only if rung 4a degrades far more for
+the point model than a masked grid model does.
 
 ## Queued work
 
