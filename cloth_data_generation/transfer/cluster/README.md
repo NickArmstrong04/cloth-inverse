@@ -28,6 +28,9 @@ CODE_DIR are git-ignored.
 ## 2. One-time environment setup
 
 Bouchet policy: run Python inside an allocation, not on the login node.
+One-shot steps (repackaging splits, `check_splits.py`, model-weight downloads)
+go through `sbatch cluster/util.sbatch <command...>` so they cannot be cut off
+when an interactive allocation ends; use `salloc` only for quick manual tries.
 `sbatch`, `squeue`, `sacct` and `sbatch --test-only` all work from inside an
 allocation, so every command below is run from one:
 
