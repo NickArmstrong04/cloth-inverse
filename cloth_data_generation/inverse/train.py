@@ -89,7 +89,7 @@ def predict(model, x, g, scaler, tta=0, bs=16, yaw_only=False, R=None):
         if VIEW is not None:  # fixed camera per sample; predictions come back in the camera frame
             model.eval()
             with torch.no_grad():
-                p, _, _ = forward_batch(model, x[i:i + bs], g[i:i + bs], torch.zeros(len(x[i:i + bs]), 2, 7, device=x.device),
+                p, _, _ = forward_batch(model, x[i:i + bs], g[i:i + bs], torch.zeros(len(x[i:i + bs]), 2, 7, device=g.device),
                                         None, R[i:i + bs])
                 p = scaler.denorm(p.float())
                 p[:, :, 2:5] = torch.nn.functional.normalize(p[:, :, 2:5], dim=-1)
@@ -167,6 +167,8 @@ def main():
                          "(auto: on when --eval-rotated, i.e. the pose is unknown)")
     ap.add_argument("--width", type=int, default=32)
     ap.add_argument("--epochs", type=int, default=400)
+    ap.add_argument("--eval-only", action="store_true",
+                    help="skip training: evaluate the --init checkpoint and write metrics.json (recover a run whose eval crashed)")
     ap.add_argument("--bs", type=int, default=16)
     ap.add_argument("--lr", type=float, default=1e-3)
     ap.add_argument("--wd", type=float, default=1e-2)
@@ -311,7 +313,10 @@ def main():
     net = Wrapped(model)
     opt = torch.optim.AdamW([p for p in net.parameters() if p.requires_grad], lr=args.lr, weight_decay=args.wd)
     steps_per_epoch = max(1, len(xtr) // args.bs)
-    sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=args.lr, total_steps=args.epochs * steps_per_epoch,
+    if args.eval_only:
+        assert args.init, "--eval-only needs --init <model.pt>"
+        args.epochs = 0
+    sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=args.lr, total_steps=max(1, args.epochs * steps_per_epoch),
                                                 pct_start=0.1)
     best, best_state, hist = float("inf"), None, []
     t0 = time.time()
@@ -356,10 +361,13 @@ def main():
             if (ep + 1) % 25 == 0:
                 print(f"ep {ep+1:4d} loss_aug {tot/steps_per_epoch:.4f} train {tl:.4f} val {vl:.4f} "
                       f"best {best:.4f} [{time.time()-t0:.0f}s]", flush=True)
+    if args.eval_only:
+        best_state, best = net.state_dict(), float("nan")
     if best_state is None:
         raise RuntimeError(f"validation loss was never finite (best={best}); check the val split for NaN inputs/targets")
     net.load_state_dict(best_state)
-    torch.save({"state": best_state, "args": vars(args), "scaler": (scaler.mean.cpu(), scaler.std.cpu()),
+    if not args.eval_only:
+        torch.save({"state": best_state, "args": vars(args), "scaler": (scaler.mean.cpu(), scaler.std.cpu()),
                 "xstd": xstd.cpu(), "gstd": gstd.cpu()}, os.path.join(out, "model.pt"))
 
     res = {"model": args.model, "params": nparam, "best_val_loss": best, "train_time_s": time.time() - t0,

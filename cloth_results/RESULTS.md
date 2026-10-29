@@ -5,6 +5,55 @@ two force vectors (position u,v; direction; magnitude; duration). Metrics are me
 the test split with optimal pairing of the two forces; position error is in cm on the
 0.5 m sheet. "Chance" = predicting the training mean.
 
+## 2026-10-29: ds256_free (256x256 free flight, 2,453 train / 306 val / 306 test), matrices M8-M9
+
+cnn_reg width 32 / pointtf d128 L4 as in the ladder; bf16, TTA off, D4-symmetric metric when the
+pose is unknown. Test position / direction; "train" = train-split position error. 1,100-sample rows
+are a random subset of the same train split (`--n-train`). Jobs and commands in `JOBS.md` (M8, M9).
+
+| rung | input / lever | run | test pos / dir | train pos | note |
+|---|---|---|---|---|---|
+| 1 | positions, known pose, 2,453 samples | M8a, M8f (seed 2) | 6.4 / 15.9, 6.1 / 15.0 | 5.3, 4.9 | seed spread 0.3 cm / 0.9 deg |
+| 1 | 1,100-sample subset | M8b | 7.2 / 17.2 | 5.4 | 2.2x data = -0.8 cm |
+| 1 | old ds768_night pooled to 256 (1,100 samples) | M8c | 5.2 / 18.0 | 4.7 | the new data is harder, not just smaller |
+| 1 | + aux force-field loss | M9a | **5.7 / 14.4** | 4.8 | -0.7 cm / -1.5 deg vs M8a, 2x the seed spread |
+| 1 | + post-force frames (4x samples) | M9b | 6.7 / 17.8 | 5.9 | worse; val bottomed at ep ~100 |
+| 1 | + aux + frames | M9c | 6.3 / 14.7 | 4.3 | frames cost 0.6 cm vs aux alone |
+| 1 | frozen DINOv2-S/14 on the grid image, + aux | M9e | 8.8 / 20.2 | 6.2 | generic features hurt by 2.4 cm |
+| 2 | unknown pose, 2,453 samples, 1000 ep | M8d | 6.9 / 21.7 | 6.6 | train = test |
+| 2 | 1,100 subset, 1000 ep | M8e | 7.0 / 22.3 | 6.9 | same as full data |
+| 2 | pointtf + per-point aux, 1000 ep | M9d | 7.6 / 22.3 | 7.2 | 0.6 cm behind the CNN |
+| 4a | one orthographic depth+mask view, scratch CNN, + aux | M9i | 8.5 / 25.0 | 8.5 | first single-view number |
+| 4a | same view, frozen DINOv2 | M9h | 9.2 / 28.2 | 9.0 | pretrained hurts here too |
+| 4a | visible points only, pointtf, 1000 ep | M9f | eval crashed; recovery M9-f2 | | |
+
+Reading:
+- **Rung 1 is still on the data slope, but it is shallow.** 1,100 -> 2,453 samples buys 0.8 cm
+  against a 0.3 cm seed spread, roughly 0.8 cm per doubling. The overnight refill (M10) is worth
+  running but will not reach the old 4.5 cm on its own.
+- **The free-flight 256 dataset is harder than ds768_night.** The same model with 1,100 samples
+  gets 5.2 cm on the old data pooled to 256 (M8c) and 7.2 cm on the new data (M8b). Candidate
+  causes: native 256 simulation vs 768 pooled (coarser dynamics, not just coarser input), and the
+  --force-every-substep impulse fix changing how much the final state encodes. Worth a paired
+  check before the next big dataset (same seeds, both resolutions).
+- **Dense supervision is the lever.** Predicting the force-field map alongside the global target
+  (M9a) is the only change that beats the baseline by more than the seed spread, worth about one
+  doubling of data at no simulation cost. It also makes train/test closer (4.8 vs 5.7). Next: apply
+  it on the unknown-pose line (M9-j) and confirm with a second seed (M9-k).
+- **Frames are not extra data.** Post-force intermediate states carry the same label as their
+  parent and the model overfits them (M9b val rose after ep 100). Rejected unless re-labelled with
+  a time-conditioned target.
+- **Frozen DINOv2 hurts, on the grid and on the rendered view.** ImageNet features do not describe
+  wrinkle geometry at this scale; the from-scratch CNN wins by 2.4 cm (grid) and 0.7 cm (view).
+  Fine-tuning the backbone (`--dino-finetune`) is the remaining variant; low priority.
+- **Unknown pose is still optimisation-limited, not data-limited.** 2.2x data moves rung 2 by
+  0.1 cm (M8e -> M8d) while train = test everywhere. The aux loss and longer schedules are the
+  levers there, not simulation.
+- **First rung-4a number: 8.5 cm / 25 deg** from a single orthographic depth view with unknown
+  pose (M9i), 1.6 cm / 3 deg behind rung 2 (M8d). That is the cost of seeing one side with an
+  oracle visible-point mask; the SAM + monocular-depth version (4b) comes on top of it.
+- Magnitude / impulse at chance everywhere (velocity clamp, DATASETS.md), unchanged.
+
 ## 2026-10-28: observation ladder (run 2) + matrices M1-M3 on ds768_night
 
 All cnn_reg width 32 unless stated, 300 epochs, bf16, TTA off, D4-symmetric metric when the pose is
