@@ -41,6 +41,23 @@ def main() -> None:
                              "attempts": [], "note": "from disk, no summary"}
             from_disk += 1
     assert results, f"nothing found in {args.indir}"
+    # Finiteness QC: a sample whose final state holds NaN/inf passed the generator's checks
+    # once (ds256_free slot 1519, 2026-10-29) and made every val loss NaN. Reject it here so it
+    # is never packaged (train.py also drops such samples defensively).
+    import h5py
+    non_finite = 0
+    for r in results.values():
+        if r["ok"] and r.get("file"):
+            try:
+                with h5py.File(os.path.join(args.indir, r["file"]), "r") as h:
+                    fin = bool(np.isfinite(h["final_grid"][()]).all() and np.isfinite(h["final_vel"][()]).all())
+            except Exception as e:  # unreadable file counts as failed too
+                fin, r["note"] = False, f"unreadable: {e}"
+            if not fin:
+                r["ok"], r["note"] = False, (r.get("note", "") + " non-finite final state").strip()
+                non_finite += 1
+    if non_finite:
+        print(f"rejected {non_finite} sample(s) with a non-finite final state")
     res = [results[k] for k in sorted(results)]
     ok = [r for r in res if r["ok"]]
     n_expect = args.expect_n or (max(results) + 1)

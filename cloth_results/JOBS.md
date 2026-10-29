@@ -176,6 +176,11 @@ present and cached, val empty, no manifest): `package_splits.py` rmtree's the ou
 writes train, val, test, manifest in that order, so an interrupted run (interactive 31289968,
 exit 127, ~12:00) leaves exactly this state. Fix: re-run M8-0 packaging to completion, check
 the three counts and the manifest, then resubmit the same lines (third attempt).
+Repackaged 2026-10-29 ~13:30: 2,453 / 306 / 306 (3,065 passing; 184 missing + 33 failed slots
+remain for a refill). `check_splits.py`: one non-finite val sample, `sample_slot1519_seed101519.h5`
+(final_grid and final_vel), confirming the first failure; train.py drops it, and
+`merge_summaries.py` now rejects non-finite samples so the next package excludes it. DINOv2
+repo + weights cached in ~/.cache/torch/hub.
 
 
 ## Matrix M9: beating the data limit without more simulation (2026-10-29)
