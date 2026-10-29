@@ -153,12 +153,12 @@ the limit and more data will not help.
 | id | job id | status | what | command | result |
 |---|---|---|---|---|---|
 | M8-0 | | done 2026-10-29 | package ds256_free (M7-d) | `D=/home/naa79/scratch_pi_sz622/naa79/cloth_data; .venv/bin/python cluster/merge_summaries.py --indir $D/ds256_free && .venv/bin/python package_splits.py --indir $D/ds256_free --outdir $D/ds256_free_splits` | |
-| M8-a | 31290287 (first attempt 31280929 failed, val NaN) | queued 2026-10-29 12:05 | rung 1 (positions, known pose), all ~2,500 train samples | `sbatch --job-name=M8a --mem=60G cluster/run.sbatch $S2 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --no-vel --out runs/M8a` | |
-| M8-b | 31290288 (first attempt 31280930 failed, val NaN) | queued 2026-10-29 12:05 | rung 1, 1,100-sample subset (size control) | `sbatch --job-name=M8b --mem=60G cluster/run.sbatch $S2 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --no-vel --n-train 1100 --out runs/M8b` | |
+| M8-a | 31290287 (first attempt 31280929 failed, val NaN) | FAILED at start (val split empty) | rung 1 (positions, known pose), all ~2,500 train samples | `sbatch --job-name=M8a --mem=60G cluster/run.sbatch $S2 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --no-vel --out runs/M8a` | |
+| M8-b | 31290288 (first attempt 31280930 failed, val NaN) | FAILED at start (val split empty) | rung 1, 1,100-sample subset (size control) | `sbatch --job-name=M8b --mem=60G cluster/run.sbatch $S2 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --no-vel --n-train 1100 --out runs/M8b` | |
 | M8-c | 31280931 | done | rung 1, old data pooled to 256 (resolution control; compare M1e/M2a) | `sbatch --job-name=M8c --mem=60G cluster/run.sbatch $S --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --no-vel --pool 3 --out runs/M8c` | test 5.2 cm / 18.0 deg (train 4.7 / 14.6, val 4.9 / 16.6), 10 min. Pool 3 of the old data costs 0.7 cm vs M1e/M2a (4.5) |
-| M8-d | 31290289 (first attempt 31280932 failed, val NaN) | queued 2026-10-29 12:05 | rung 2 (unknown pose), all data, 1000 epochs (compare M2c 5.9 cm, M1g) | `sbatch --job-name=M8d --mem=60G cluster/run.sbatch $S2 --model cnn_reg --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --out runs/M8d` | |
-| M8-e | 31290290 (first attempt 31280933 failed, val NaN) | queued 2026-10-29 12:05 | rung 2, 1,100-sample subset | `sbatch --job-name=M8e --mem=60G cluster/run.sbatch $S2 --model cnn_reg --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --n-train 1100 --out runs/M8e` | |
-| M8-f | 31290291 (first attempt 31280934 failed, val NaN) | queued 2026-10-29 12:05 | rung 1 seed repeat (noise floor at this size) | `sbatch --job-name=M8f --mem=60G cluster/run.sbatch $S2 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --no-vel --seed 2 --out runs/M8f` | |
+| M8-d | 31290289 (first attempt 31280932 failed, val NaN) | FAILED at start (val split empty) | rung 2 (unknown pose), all data, 1000 epochs (compare M2c 5.9 cm, M1g) | `sbatch --job-name=M8d --mem=60G cluster/run.sbatch $S2 --model cnn_reg --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --out runs/M8d` | |
+| M8-e | 31290290 (first attempt 31280933 failed, val NaN) | FAILED at start (val split empty) | rung 2, 1,100-sample subset | `sbatch --job-name=M8e --mem=60G cluster/run.sbatch $S2 --model cnn_reg --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --n-train 1100 --out runs/M8e` | |
+| M8-f | 31290291 (first attempt 31280934 failed, val NaN) | FAILED at start (val split empty) | rung 1 seed repeat (noise floor at this size) | `sbatch --job-name=M8f --mem=60G cluster/run.sbatch $S2 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --no-vel --seed 2 --out runs/M8f` | |
 
 Gather: `python3 cluster/summarize_runs.py 'M8*'`.
 
@@ -170,7 +170,12 @@ ds256_free contains at least one sample with non-finite positions/velocities/tar
 Fix committed: `train.py` drops non-finite samples per split with a warning and fails early with a
 clear message if the val loss is never finite; `cluster/check_splits.py <splits_dir>` names the bad
 files. Resubmit M8a/b/d/e/f unchanged after `git pull` (same commands as above). Wasted: ~3.1 GPU-hours.
-Resubmitted with M9/M10 on 2026-10-29 (job ids to fill in from the sbatch output).
+Resubmitted with M9/M10 on 2026-10-29 12:05 (31290287-99): **all 13 failed within seconds**,
+`no files in ds256_free_splits/val`. The splits directory was a half-finished package (train
+present and cached, val empty, no manifest): `package_splits.py` rmtree's the output first and
+writes train, val, test, manifest in that order, so an interrupted run (interactive 31289968,
+exit 127, ~12:00) leaves exactly this state. Fix: re-run M8-0 packaging to completion, check
+the three counts and the manifest, then resubmit the same lines (third attempt).
 
 
 ## Matrix M9: beating the data limit without more simulation (2026-10-29)
@@ -191,15 +196,15 @@ Frames jobs train on ~4x the samples per epoch: expect ~4x the wall time of M8a 
 
 | id | job id | status | what | command | result |
 |---|---|---|---|---|---|
-| M9-a | 31290292 | queued 2026-10-29 12:05 | rung 1 + aux force-field loss (vs M8a) | `sbatch --job-name=M9a --mem=60G cluster/run.sbatch $S2 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --no-vel --aux-w 1 --out runs/M9a` | |
-| M9-b | 31290293 | queued 2026-10-29 12:05 | rung 1 + post-force frames (4x samples) | `sbatch --job-name=M9b --mem=100G --time=08:00:00 cluster/run.sbatch $S2 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --no-vel --frames post --out runs/M9b` | |
-| M9-c | 31290294 | queued 2026-10-29 12:05 | rung 1 + aux + frames | `sbatch --job-name=M9c --mem=100G --time=08:00:00 cluster/run.sbatch $S2 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --no-vel --aux-w 1 --frames post --out runs/M9c` | |
-| M9-d | 31290295 | queued 2026-10-29 12:05 | rung 3 pointtf + per-point aux, 1000 ep (vs M3/M5e) | `sbatch --job-name=M9d --mem=60G cluster/run.sbatch $S2 --model pointtf --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --bs 16 --lr 3e-4 --aux-w 1 --out runs/M9d` | |
-| M9-e | 31290296 | queued 2026-10-29 12:05 | rung 1 with frozen DINOv2 on the grid image (+aux) | `sbatch --job-name=M9e --mem=60G cluster/run.sbatch $S2 --model dino_reg --epochs 300 --no-rot --amp --tta 0 --no-vel --lr 3e-4 --aux-w 1 --out runs/M9e` | |
-| M9-f | 31290297 | queued 2026-10-29 12:05 | rung 4a: pointtf on the visible points of one view, from scratch | `sbatch --job-name=M9f --mem=60G cluster/run.sbatch $S2 --model pointtf --epochs 1000 --amp --tta 0 --no-vel --view --bs 16 --lr 3e-4 --aux-w 1 --out runs/M9f` | |
+| M9-a | 31290292 | FAILED at start (val split empty) | rung 1 + aux force-field loss (vs M8a) | `sbatch --job-name=M9a --mem=60G cluster/run.sbatch $S2 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --no-vel --aux-w 1 --out runs/M9a` | |
+| M9-b | 31290293 | FAILED at start (val split empty) | rung 1 + post-force frames (4x samples) | `sbatch --job-name=M9b --mem=100G --time=08:00:00 cluster/run.sbatch $S2 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --no-vel --frames post --out runs/M9b` | |
+| M9-c | 31290294 | FAILED at start (val split empty) | rung 1 + aux + frames | `sbatch --job-name=M9c --mem=100G --time=08:00:00 cluster/run.sbatch $S2 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --no-vel --aux-w 1 --frames post --out runs/M9c` | |
+| M9-d | 31290295 | FAILED at start (val split empty) | rung 3 pointtf + per-point aux, 1000 ep (vs M3/M5e) | `sbatch --job-name=M9d --mem=60G cluster/run.sbatch $S2 --model pointtf --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --bs 16 --lr 3e-4 --aux-w 1 --out runs/M9d` | |
+| M9-e | 31290296 | FAILED at start (val split empty) | rung 1 with frozen DINOv2 on the grid image (+aux) | `sbatch --job-name=M9e --mem=60G cluster/run.sbatch $S2 --model dino_reg --epochs 300 --no-rot --amp --tta 0 --no-vel --lr 3e-4 --aux-w 1 --out runs/M9e` | |
+| M9-f | 31290297 | FAILED at start (val split empty) | rung 4a: pointtf on the visible points of one view, from scratch | `sbatch --job-name=M9f --mem=60G cluster/run.sbatch $S2 --model pointtf --epochs 1000 --amp --tta 0 --no-vel --view --bs 16 --lr 3e-4 --aux-w 1 --out runs/M9f` | |
 | M9-g | | after M9-d | rung 4a pointtf initialised from rung 3 (curriculum) | `sbatch --job-name=M9g --mem=60G cluster/run.sbatch $S2 --model pointtf --epochs 1000 --amp --tta 0 --no-vel --view --bs 16 --lr 3e-4 --aux-w 1 --init runs/M9d/model.pt --out runs/M9g` | |
-| M9-h | 31290298 | queued 2026-10-29 12:05 | rung 4a: DINOv2 on the rendered depth image (+aux) | `sbatch --job-name=M9h --mem=60G cluster/run.sbatch $S2 --model dino_reg --epochs 300 --amp --tta 0 --no-vel --view --lr 3e-4 --aux-w 1 --out runs/M9h` | |
-| M9-i | 31290299 | queued 2026-10-29 12:05 | rung 4a: from-scratch CNN on the rendered depth image (control for M9-h) | `sbatch --job-name=M9i --mem=60G cluster/run.sbatch $S2 --model cnn_reg --epochs 300 --amp --tta 0 --no-vel --view --aux-w 1 --out runs/M9i` | |
+| M9-h | 31290298 | FAILED at start (val split empty) | rung 4a: DINOv2 on the rendered depth image (+aux) | `sbatch --job-name=M9h --mem=60G cluster/run.sbatch $S2 --model dino_reg --epochs 300 --amp --tta 0 --no-vel --view --lr 3e-4 --aux-w 1 --out runs/M9h` | |
+| M9-i | 31290299 | FAILED at start (val split empty) | rung 4a: from-scratch CNN on the rendered depth image (control for M9-h) | `sbatch --job-name=M9i --mem=60G cluster/run.sbatch $S2 --model cnn_reg --epochs 300 --amp --tta 0 --no-vel --view --aux-w 1 --out runs/M9i` | |
 
 Reading: M9-a/b/c vs M8a say what each lever buys at rung 1; M9-e vs M8a is the pretrained-feature
 test; M9-f/g/h/i are the first rung-4a numbers (gap to rung 3 = cost of seeing one side);
