@@ -33,7 +33,7 @@ the cheapest levers before more data.
 | M1-d | 31153221 | done | rung 2 seed 2 | `sbatch --job-name=M1d cluster/run.sbatch $S --model cnn_reg --epochs 300 --amp --tta 0 --no-vel --eval-rotated --seed 2 --out runs/M1d` | test 9.3 cm / 34.8 deg (train 9.6 / 36.6) |
 | M1-e | 31155587 (resubmitted; 31153222 lost to scontrol TresPerJob update) | done | rung 1, width 48 | `sbatch --job-name=M1e cluster/run.sbatch $S --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --no-vel --width 48 --out runs/M1e` | test 4.5 cm / 16.1 deg (train 2.3): overfits, no gain; 25 min on A40 |
 | M1-f | 31155588 (resubmitted; 31153223 lost to scontrol TresPerJob update) | done | rung 1, width 64 | `sbatch --job-name=M1f cluster/run.sbatch $S --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --no-vel --width 64 --out runs/M1f` | test 4.4 cm / 15.3 deg (train 1.4): overfits harder, no gain; 28 min |
-| M1-g | 31155589 (resubmitted; 31153224 lost to scontrol TresPerJob update) | running | rung 2, 1000 epochs | `sbatch --job-name=M1g cluster/run.sbatch $S --model cnn_reg --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --out runs/M1g` | |
+| M1-g | 31155589 (resubmitted; 31153224 lost to scontrol TresPerJob update) | done | rung 2, 1000 epochs | `sbatch --job-name=M1g cluster/run.sbatch $S --model cnn_reg --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --out runs/M1g` | test 7.8 cm / 26.5 deg (train 8.1 / 26.3, val 7.8 / 22.3): 3x epochs at 768 gives 8.5 -> 7.8 cm; M2c (192, 1000 ep) is still better at 5.9 |
 
 ## Matrix M2: how much resolution is needed (direction 2: images / depth; and the 512 run)
 
@@ -152,15 +152,25 @@ the limit and more data will not help.
 
 | id | job id | status | what | command | result |
 |---|---|---|---|---|---|
-| M8-0 | | planned | package ds256_free (M7-d) | `D=/home/naa79/scratch_pi_sz622/naa79/cloth_data; .venv/bin/python cluster/merge_summaries.py --indir $D/ds256_free && .venv/bin/python package_splits.py --indir $D/ds256_free --outdir $D/ds256_free_splits` | |
-| M8-a | | planned | rung 1 (positions, known pose), all ~2,500 train samples | `sbatch --job-name=M8a --mem=60G cluster/run.sbatch $S2 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --no-vel --out runs/M8a` | |
-| M8-b | | planned | rung 1, 1,100-sample subset (size control) | `sbatch --job-name=M8b --mem=60G cluster/run.sbatch $S2 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --no-vel --n-train 1100 --out runs/M8b` | |
-| M8-c | | planned | rung 1, old data pooled to 256 (resolution control; compare M1e/M2a) | `sbatch --job-name=M8c --mem=60G cluster/run.sbatch $S --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --no-vel --pool 3 --out runs/M8c` | |
-| M8-d | | planned | rung 2 (unknown pose), all data, 1000 epochs (compare M2c 5.9 cm, M1g) | `sbatch --job-name=M8d --mem=60G cluster/run.sbatch $S2 --model cnn_reg --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --out runs/M8d` | |
-| M8-e | | planned | rung 2, 1,100-sample subset | `sbatch --job-name=M8e --mem=60G cluster/run.sbatch $S2 --model cnn_reg --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --n-train 1100 --out runs/M8e` | |
-| M8-f | | planned | rung 1 seed repeat (noise floor at this size) | `sbatch --job-name=M8f --mem=60G cluster/run.sbatch $S2 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --no-vel --seed 2 --out runs/M8f` | |
+| M8-0 | | done 2026-10-29 | package ds256_free (M7-d) | `D=/home/naa79/scratch_pi_sz622/naa79/cloth_data; .venv/bin/python cluster/merge_summaries.py --indir $D/ds256_free && .venv/bin/python package_splits.py --indir $D/ds256_free --outdir $D/ds256_free_splits` | |
+| M8-a | 31280929 | FAILED (val NaN) | rung 1 (positions, known pose), all ~2,500 train samples | `sbatch --job-name=M8a --mem=60G cluster/run.sbatch $S2 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --no-vel --out runs/M8a` | |
+| M8-b | 31280930 | FAILED (val NaN) | rung 1, 1,100-sample subset (size control) | `sbatch --job-name=M8b --mem=60G cluster/run.sbatch $S2 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --no-vel --n-train 1100 --out runs/M8b` | |
+| M8-c | 31280931 | done | rung 1, old data pooled to 256 (resolution control; compare M1e/M2a) | `sbatch --job-name=M8c --mem=60G cluster/run.sbatch $S --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --no-vel --pool 3 --out runs/M8c` | test 5.2 cm / 18.0 deg (train 4.7 / 14.6, val 4.9 / 16.6), 10 min. Pool 3 of the old data costs 0.7 cm vs M1e/M2a (4.5) |
+| M8-d | 31280932 | FAILED (val NaN) | rung 2 (unknown pose), all data, 1000 epochs (compare M2c 5.9 cm, M1g) | `sbatch --job-name=M8d --mem=60G cluster/run.sbatch $S2 --model cnn_reg --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --out runs/M8d` | |
+| M8-e | 31280933 | FAILED (val NaN) | rung 2, 1,100-sample subset | `sbatch --job-name=M8e --mem=60G cluster/run.sbatch $S2 --model cnn_reg --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --n-train 1100 --out runs/M8e` | |
+| M8-f | 31280934 | FAILED (val NaN) | rung 1 seed repeat (noise floor at this size) | `sbatch --job-name=M8f --mem=60G cluster/run.sbatch $S2 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --no-vel --seed 2 --out runs/M8f` | |
 
 Gather: `python3 cluster/summarize_runs.py 'M8*'`.
+
+**2026-10-29 11:30 outcome.** The five runs on `ds256_free_splits` (M8a/b/d/e/f) all trained to the last
+epoch with a finite train loss but `val nan` at every eval, so no checkpoint was saved and the final
+eval exited 1 (`run_3128093x.out`: `... val nan best inf`). M8c (old data) completed. The val split of
+ds256_free contains at least one sample with non-finite positions/velocities/targets; the merge QC
+(stretch / vmax / piercing) does not check finiteness and `package_splits.py` copies whatever passed.
+Fix committed: `train.py` drops non-finite samples per split with a warning and fails early with a
+clear message if the val loss is never finite; `cluster/check_splits.py <splits_dir>` names the bad
+files. Resubmit M8a/b/d/e/f unchanged after `git pull` (same commands as above). Wasted: ~3.1 GPU-hours.
+
 
 ```bash
 bash cluster/interactive.sh      # CPU allocation

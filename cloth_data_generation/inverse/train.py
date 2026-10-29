@@ -133,6 +133,14 @@ def main():
         print(f"device: {torch.cuda.get_device_name(0)} {torch.cuda.get_device_properties(0).total_memory / 1e9:.0f} GB", flush=True)
 
     tr, va, te = (load_split(args.root, s, pool=args.pool) for s in ("train", "val", "test"))
+    for split, d in (("train", tr), ("val", va), ("test", te)):  # a single non-finite sample makes the split loss NaN
+        ok = (torch.isfinite(d["x"]).flatten(1).all(1) & torch.isfinite(d["g"]).all(1) & torch.isfinite(d["y"]).flatten(1).all(1))
+        if not bool(ok.all()):
+            bad = [d["names"][i] for i in (~ok).nonzero().flatten().tolist()]
+            print(f"WARNING: dropping {len(bad)} non-finite {split} sample(s): {bad[:10]}{' ...' if len(bad) > 10 else ''}", flush=True)
+            keep = ok.nonzero().flatten()
+            d["x"], d["g"], d["y"] = d["x"][keep].contiguous(), d["g"][keep].contiguous(), d["y"][keep].contiguous()
+            d["names"] = [d["names"][i] for i in keep.tolist()]
     if args.n_train and args.n_train < len(tr["names"]):
         keep = torch.randperm(len(tr["names"]), generator=torch.Generator().manual_seed(args.seed))[: args.n_train]
         keep = keep.sort().values
@@ -226,6 +234,8 @@ def main():
             if (ep + 1) % 25 == 0:
                 print(f"ep {ep+1:4d} loss_aug {tot/steps_per_epoch:.4f} train {tl:.4f} val {vl:.4f} "
                       f"best {best:.4f} [{time.time()-t0:.0f}s]", flush=True)
+    if best_state is None:
+        raise RuntimeError(f"validation loss was never finite (best={best}); check the val split for NaN inputs/targets")
     net.load_state_dict(best_state)
     torch.save({"state": best_state, "args": vars(args), "scaler": (scaler.mean.cpu(), scaler.std.cpu()),
                 "xstd": xstd.cpu(), "gstd": gstd.cpu()}, os.path.join(out, "model.pt"))
