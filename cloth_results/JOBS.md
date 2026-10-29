@@ -214,7 +214,7 @@ yield: ~480 attempts, ~360 passing samples (+12%). To grow the set materially, r
 
 | id | job id | status | what | command | result |
 |---|---|---|---|---|---|
-| M10-a | | planned | refill ds256_free: 12 tasks, 4 at a time, 2.5 h each | `python3 cluster/submit.py --n 6000 --name ds256_free --chunk 40 --time 02:30:00 --max-concurrent 4 --max-tasks 12 --no-merge` | |
+| M10-a | | cancelled (pending tasks) 2026-10-29 | refill ds256_free: 12 tasks, 4 at a time, 2.5 h each; submitted then cancelled to keep GPUs on the M8/M9 model runs (+360 samples is not decisive; regenerate overnight at 40 concurrent if M8 says data helps) | `python3 cluster/submit.py --n 6000 --name ds256_free --chunk 40 --time 02:30:00 --max-concurrent 4 --max-tasks 12 --no-merge` | |
 | M10-b | | after M10-a | re-merge and re-package (new splits; M8/M9 runs used the 2026-10-29 package) | `D=/home/naa79/scratch_pi_sz622/naa79/cloth_data; .venv/bin/python cluster/merge_summaries.py --indir $D/ds256_free && .venv/bin/python package_splits.py --indir $D/ds256_free --outdir $D/ds256_free_splits` | |
 
 Note: M10-b replaces the splits directory (and their tensor caches); submit it only after the
