@@ -89,8 +89,10 @@ def load_split(root: str, split: str, pool: int = 1, cache: bool = True) -> dict
                 d = dict(d)
                 d["a"] = torch.stack([torch.from_numpy(force_field_map(_force_params(p), ny2 * pool, nx2 * pool, pool))
                                       for p in files])
-                try:
-                    torch.save(d, cpath)
+                try:  # the tensors are mmapped from cpath: write a new file and rename, never save over it
+                    d = {k: (v.clone() if torch.is_tensor(v) else v) for k, v in d.items()}
+                    torch.save(d, cpath + ".tmp")
+                    os.replace(cpath + ".tmp", cpath)
                 except Exception as e:
                     print(f"  (cache not rewritten: {e})")
             return d

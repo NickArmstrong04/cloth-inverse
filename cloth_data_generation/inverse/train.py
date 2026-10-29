@@ -13,11 +13,19 @@ import math
 import torch
 
 from data import TargetScaler, augment, decode_forces, load_frames, load_split, random_rotation
+from geometry import shade
 from metrics import pair_metrics, summarize
-from models import build, pair_loss
+from models import PointTF, SonataReg, build, equivalent_targets, pair_loss
 from render import view_batch
 
-VIEW = None  # set in main() when --view: dict(size, extent, splat, norm)
+VIEW = None  # set in main() when --view: dict(size, extent, splat, norm, shade)
+FLOW = None  # set in main() when --flow: dict(scaler, sym_uv); forward_batch hands the model its equivalent targets
+
+
+def _set_flow_targets(net, y):
+    m = net.m
+    if FLOW is not None and getattr(m, "flow", None) is not None:
+        m.flow_targets = equivalent_targets(FLOW["scaler"].norm(y), FLOW["sym_uv"])
 
 
 def forward_batch(net, x, g, y, a=None, R=None, vis_only=True):
@@ -27,6 +35,7 @@ def forward_batch(net, x, g, y, a=None, R=None, vis_only=True):
     image, the point model sees the camera-frame points restricted to the visible ones.
     Returns pred (B,2,7), aux loss or None, and the (possibly rotated) target y."""
     if VIEW is None:
+        _set_flow_targets(net, y)
         return (*net(x, g, a), y)
     dev = g.device
     x = x.to(dev, non_blocking=True)
@@ -34,12 +43,15 @@ def forward_batch(net, x, g, y, a=None, R=None, vis_only=True):
     if R is None:
         R = random_rotation(x.shape[0], dev)
     img, gc, yc, a_img, vis, pts = view_batch(x, g, y, a, R, VIEW["size"], VIEW["extent"], VIEW["splat"], VIEW["norm"])
-    if net.m.__class__.__name__ == "PointTF":
+    _set_flow_targets(net, yc)
+    if isinstance(net.m, (PointTF, SonataReg)):
         B, N, _ = pts.shape
         xp = pts.transpose(1, 2).reshape(B, 3, x.shape[-2], x.shape[-1])
         ar = torch.einsum("bij,bjhw->bihw", R, a) if a is not None else None
         pred, aux = net(xp, gc, ar, vis=vis if vis_only else None)
     else:
+        if VIEW["shade"]:
+            img = shade(img, VIEW["extent"])
         pred, aux = net(img, gc, a_img)
     return pred, aux, yc
 
@@ -78,6 +90,9 @@ def batched_loss(net, x, g, y, scaler, bs, sym_uv=None, a=None, R=None, aux_w=0.
         l = pair_loss(p.float(), scaler.norm(yb), sym_uv=sym_uv)
         if aux is not None and aux_w > 0:
             l = l + aux_w * aux
+        fl = getattr(net.m, "last_flow_loss", None)
+        if fl is not None:
+            l = l + fl
         tot += l.item() * len(p)
         n += len(p)
     return tot / max(n, 1)
@@ -132,7 +147,27 @@ def main():
     ap.add_argument("--data-on-cpu", action="store_true",
                     help="keep the dataset in host RAM and move batches (if it does not fit the GPU)")
     ap.add_argument("--eval-every", type=int, default=5)
-    ap.add_argument("--model", default="cnn_reg", choices=["cnn_reg", "cnn_heat", "pointtf", "dino_reg"])
+    ap.add_argument("--model", default="cnn_reg",
+                    choices=["cnn_reg", "cnn_heat", "cnn_field", "pointtf", "dino_reg", "sonata_reg"])
+    ap.add_argument("--intrinsic", action="store_true",
+                    help="grid models: rotation-invariant inputs (strain + curvature in material coordinates) and "
+                         "directions predicted in the local tangent frame (geometry.py). Pose-invariant by construction, "
+                         "so --eval-rotated costs nothing for position; world-frame globals g are ignored")
+    ap.add_argument("--flow", action="store_true",
+                    help="grid models: add a conditional flow-matching head that samples K candidate force pairs "
+                         "(multimodal posterior); candidates for the test split go to test_candidates.json for "
+                         "select_resim.py. Metrics report best-of-K (oracle) and mean-of-K")
+    ap.add_argument("--flow-k", type=int, default=8, help="--flow: candidates per test sample")
+    ap.add_argument("--flow-steps", type=int, default=32, help="--flow: Euler steps when sampling")
+    ap.add_argument("--view-shade", action="store_true",
+                    help="--view with image models: add a Lambertian shading channel computed from the depth image "
+                         "(depth, mask, shade), closer to a photograph for pretrained vision backbones")
+    ap.add_argument("--dino-repo", default="facebookresearch/dinov2",
+                    help="torch.hub repo for dino_reg (facebookresearch/dinov2 or facebookresearch/dinov3)")
+    ap.add_argument("--dino-weights", default=None, help="dino_reg: local weights file (DINOv3 weights are gated)")
+    ap.add_argument("--sonata-ckpt", default="sonata", help="sonata_reg: checkpoint name (HF facebook/sonata) or .pth path")
+    ap.add_argument("--sonata-grid", type=float, default=0.004, help="sonata_reg: voxel size (m) for the point cloud")
+    ap.add_argument("--no-finetune", action="store_true", help="sonata_reg: freeze the backbone")
     ap.add_argument("--aux-w", type=float, default=0.0,
                     help="weight of the dense force-field auxiliary loss (per-cell direction map of both force "
                          "patches); 0 = off. Supported by cnn_reg, pointtf (per point) and dino_reg (per patch)")
@@ -185,12 +220,20 @@ def main():
                          "Data-scaling control: train on a 1100-sample subset of a larger dataset")
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
-    global VIEW
+    global VIEW, FLOW
     if args.view:
-        VIEW = {"size": args.view_size, "extent": args.view_extent, "splat": args.view_splat, "norm": args.view_norm}
+        VIEW = {"size": args.view_size, "extent": args.view_extent, "splat": args.view_splat, "norm": args.view_norm,
+                "shade": args.view_shade}
         args.tta = 0
+    grid_model = args.model in ("cnn_reg", "cnn_field")
+    if args.intrinsic:
+        assert grid_model and not args.view, "--intrinsic needs the material grid (cnn_reg / cnn_field, no --view)"
+        args.tta = 0  # invariant by construction
+    if args.flow:
+        assert grid_model and not args.view, "--flow is implemented for cnn_reg / cnn_field without --view"
     out = args.out or (f"runs/{os.path.basename(os.path.normpath(args.root))}_{args.model}_s{args.seed}_e{args.epochs}"
                        + (f"_pool{args.pool}" if args.pool > 1 else "")
+                       + ("_intr" if args.intrinsic else "") + ("_flow" if args.flow else "")
                        + (f"_d{args.pt_dim}L{args.pt_layers}n{args.n_points}" if args.model == "pointtf" else "")
                        + ("_novel" if args.no_vel else "") + ("_evalrot" if args.eval_rotated else "") + ("_yaw" if args.yaw_only else "")
                        + ("_noaug" if args.no_aug else "") + ("_norot" if args.no_rot else ""))
@@ -257,6 +300,9 @@ def main():
     gstd = tr["g"].std(0, keepdim=True).to(dev) + 1e-6
     data_dev = torch.device("cpu") if args.data_on_cpu else dev
 
+    if args.model == "cnn_field" and args.aux_w < 1.0:
+        print(f"cnn_field: the dense maps are the primary output; --aux-w raised from {args.aux_w} to 1.0", flush=True)
+        args.aux_w = 1.0
     use_aux = args.aux_w > 0 and args.model != "cnn_heat"
 
     def prep(d):
@@ -273,17 +319,31 @@ def main():
         Rva, Rte = Rva.to(dev), Rte.to(dev)
 
     uv_scale = (scaler.mean[:2], scaler.std[:2])
-    sym = (args.eval_rotated or args.view) if args.sym == "auto" else (args.sym == "on")
+    if args.sym == "auto":
+        # With intrinsic inputs the material indexing is part of the input, so (u, v) are
+        # identifiable; the D4 relabeling is only needed when the indexing is lost (points) or
+        # the pose enters through world coordinates. Pass --sym on to grade on the lenient metric.
+        sym = (args.eval_rotated or args.view) and not args.intrinsic
+    else:
+        sym = args.sym == "on"
     sym_uv = uv_scale if sym else None
     if sym and args.tta:
         print("note: TTA disabled under the D4-symmetric metric (passes may settle on different relabelings)")
         args.tta = 0
     print(f"symmetric (D4) (u,v) loss/metrics: {sym}", flush=True)
-    if args.view and args.model != "pointtf":  # image models see the rendered (depth, mask) image
-        in_size, cin = args.view_size, 2
+    if args.flow:
+        FLOW = {"scaler": scaler, "sym_uv": sym_uv}
+    if args.view and args.model not in ("pointtf", "sonata_reg"):  # image models see the rendered image
+        in_size, cin = args.view_size, (3 if args.view_shade else 2)
     model = build(args.model, uv_scale=uv_scale, w=args.width, in_size=in_size, cin=cin, gdim=gdim,
                   n_points=args.n_points, d=args.pt_dim, layers=args.pt_layers, aux=use_aux,
-                  arch=args.dino_arch, size=args.view_size, finetune=args.dino_finetune).to(dev)
+                  arch=args.dino_arch, size=args.view_size, finetune=args.dino_finetune,
+                  repo=args.dino_repo, weights=args.dino_weights, intrinsic=args.intrinsic, flow=args.flow,
+                  flow_steps=args.flow_steps, ckpt=args.sonata_ckpt, grid_size=args.sonata_grid).to(dev)
+    if args.model == "sonata_reg":
+        model.finetune = not args.no_finetune
+        for p in model.backbone.parameters():
+            p.requires_grad = model.finetune
     if use_aux:
         model.aux_m0 = float((atr[:: max(1, len(atr) // 256)].float() ** 2).mean().clamp_min(1e-8))
         print(f"aux force-field loss: weight {args.aux_w}, normaliser m0 {model.aux_m0:.2e}", flush=True)
@@ -301,13 +361,22 @@ def main():
             super().__init__()
             self.m = m
 
+        def _scale(self, x):
+            if getattr(self.m, "intrinsic", False) or isinstance(self.m, SonataReg):
+                return x  # raw metres: the model derives invariant features / voxelises itself
+            return x / xstd if x.shape[1] == xstd.shape[1] else x / img_scale[:, : x.shape[1]]  # rendered image
+
         def forward(self, x, g, a=None, **kw):
             a = a.to(dev, non_blocking=True) if a is not None else None
-            x = x.to(dev, non_blocking=True)
-            x = x / xstd if x.shape[1] == xstd.shape[1] else x / img_scale  # rendered (depth, mask) image
+            x = self._scale(x.to(dev, non_blocking=True))
             return self.m(x, g / gstd, a, **kw)
 
-    img_scale = torch.tensor([args.view_extent, 1.0], device=dev).view(1, 2, 1, 1)
+        @torch.no_grad()
+        def sample(self, x, g, K):
+            self.m.eval()
+            return self.m.sample(self._scale(x.to(dev, non_blocking=True)), g / gstd, K)
+
+    img_scale = torch.tensor([args.view_extent, 1.0, 1.0], device=dev).view(1, 3, 1, 1)
     if args.view:
         assert args.no_vel, "--view needs --no-vel (a view gives positions only)"
     net = Wrapped(model)
@@ -341,6 +410,9 @@ def main():
             loss = pair_loss(pred.float(), scaler.norm(y), sym_uv=sym_uv)
             if aux is not None:
                 loss = loss + args.aux_w * aux
+            fl = getattr(net.m, "last_flow_loss", None)
+            if fl is not None:
+                loss = loss + fl
             opt.zero_grad(set_to_none=True)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(net.parameters(), 1.0)
@@ -373,7 +445,27 @@ def main():
     res = {"model": args.model, "params": nparam, "best_val_loss": best, "train_time_s": time.time() - t0,
            "sym_d4": sym, "no_vel": args.no_vel, "eval_rotated": args.eval_rotated, "yaw_only": args.yaw_only,
            "view": args.view, "frames": args.frames, "aux_w": args.aux_w, "n_train": len(tr["names"]),
-           "history": hist}
+           "intrinsic": args.intrinsic, "flow": args.flow, "history": hist}
+    if args.flow:  # K candidates per val/test item: oracle (best-of-K by position) and mean-of-K
+        for nm, x, g, y, d in (("val", xva, gva, yva, va), ("test", xte, gte, yte, te)):
+            cands = []
+            for i in range(0, len(x), args.bs):
+                with amp:
+                    z = net.sample(x[i:i + args.bs], g[i:i + args.bs], args.flow_k).float()
+                cands.append(scaler.denorm(z.view(-1, 2, 7)).view(z.shape[0], args.flow_k, 2, 7))
+            cands = torch.cat(cands).cpu().numpy()  # (N, K, 2, 7)
+            yy = y.cpu().numpy()
+            mk = np.stack([pair_metrics(cands[:, k], yy, sym=sym) for k in range(args.flow_k)], 1)  # (N, K, 5)
+            best_k = mk[:, :, 0].argmin(1)
+            res[f"{nm}/flow_bestK"] = summarize(mk[np.arange(len(mk)), best_k])
+            res[f"{nm}/flow_meanK"] = summarize(mk.mean(1))
+            if nm == "test":
+                with open(os.path.join(out, "test_candidates.json"), "w") as fh:
+                    json.dump([{"file": n, "candidates": [decode_forces(c) for c in cands[i]], "true": decode_forces(yy[i]),
+                                "cand_metrics": mk[i].tolist()} for i, n in enumerate(d["names"])], fh)
+            print(f"{nm} flow: best-of-{args.flow_k} pos {res[f'{nm}/flow_bestK']['pos_cm_mean']:.1f} cm / "
+                  f"dir {res[f'{nm}/flow_bestK']['dir_deg_mean']:.1f} deg;  mean-of-K pos "
+                  f"{res[f'{nm}/flow_meanK']['pos_cm_mean']:.1f} cm", flush=True)
     preds_out = []
     ntr_eval = min(len(xtr), 1024) if args.frames != "off" else len(xtr)  # frames inflate train; keep eval bounded
     Rtr_eval = _rot_from_gen(ntr_eval, torch.Generator().manual_seed(999)).to(dev) if args.view else None

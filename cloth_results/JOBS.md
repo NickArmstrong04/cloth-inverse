@@ -251,3 +251,67 @@ squeue -u $USER -o "%.10i %.14j %.8T %.10M %R"
 Training jobs are GPU-agnostic (`--gpus=1`, any card; `cluster/gpu_adapt.sh` adds `--data-on-cpu` on cards under 40 GB). Each full-resolution job asks for 160 GB host RAM; if jobs sit pending on memory, add
 `--mem=100G` and `--data-on-cpu` (pool 2/4 jobs need far less, `--mem=60G` is enough).
 Extra throughput: `--partition=scavenge_gpu` on seed repeats (cheap to rerun if preempted).
+
+## Matrix M11: architecture levers (2026-10-29 evening)
+
+Why: rung 2 is optimisation-limited (train = test at 6-8 cm for every size, representation and
+data amount) and the aux force-field loss was the only lever that moved rung 1. The architecture
+review (chat 2026-10-29) traced both to the model: SO(3) invariance learned from augmentation on
+2.4k samples, global pooling discarding location, and an MSE head averaging a multimodal posterior.
+Five levers, all in `inverse/` (geometry.py, models.py, train.py, select_resim.py; smoke-tested in
+WSL on the 128 splits, 2 epochs each, all configurations run end to end):
+
+1. `--intrinsic`: strain + curvature in material coordinates as the input (rotation-invariant
+   by construction; direction predicted in the local tangent frame and mapped back). Verified
+   numerically: features change by 1e-6 under a random rotation, directions rotate exactly.
+   Note: with intrinsic inputs the D4 relabeling is off by default (the metric is stricter than
+   M8d/M9j's, so a win is a clean win); add `--sym on` to grade on the same lenient metric.
+2. `--model cnn_field`: the dense force field is the primary output (presence map + field map,
+   decoded by two NMS peaks with a windowed soft-argmax); the (2, 7) regression is a light
+   second term. Permutation / D4 never enter the dense losses. `--aux-w` is forced to >= 1.
+3. `--flow --flow-k K`: conditional flow-matching head sampling K candidate force pairs;
+   metrics report best-of-K (oracle) and mean-of-K; `select_resim.py` picks among them by
+   re-simulation (`cluster/resim.sbatch`). The regression head is trained alongside.
+4. `--model sonata_reg`: Sonata (CVPR 2025, self-supervised PTv3) fine-tuned on the point cloud,
+   rungs 3 / 4a. UNTESTED (needs `bash cluster/setup_sonata.sh` on the login node first).
+5. `--view-shade` + `--dino-finetune`: rung 4a with a shaded render (depth, mask, Lambertian
+   shade) and the DINO backbone unfrozen; DINOv3 via `--dino-repo facebookresearch/dinov3
+   --dino-arch dinov3_vits16 --dino-weights <pth>` (gated weights, request access on HF).
+
+Baselines to beat: rung 1 M9a 5.7 / 14.4 (seed spread 0.3 cm); rung 2 M8d 6.9 / 21.7 (sym metric),
+M9j pending; rung 4a M9i 8.5 / 25.0, M9h (frozen DINO) 9.2 / 28.2.
+
+| id | job id | status | what | command | result |
+|---|---|---|---|---|---|
+| M11-a | | planned | rung 2, intrinsic inputs + aux, 1000 ep (the main test: does built-in invariance remove the optimisation limit? vs M9j / M8d) | `sbatch --job-name=M11a --mem=60G cluster/run.sbatch $S2 --model cnn_reg --intrinsic --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --aux-w 1 --out runs/M11a` | |
+| M11-a2 | | planned | same, graded on the lenient D4 metric for a like-for-like with M8d | `sbatch --job-name=M11a2 --mem=60G cluster/run.sbatch $S2 --model cnn_reg --intrinsic --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --aux-w 1 --sym on --out runs/M11a2` | |
+| M11-b | | planned | rung 1, intrinsic + aux, 300 ep (does invariance cost anything at known pose? vs M9a) | `sbatch --job-name=M11b --mem=60G cluster/run.sbatch $S2 --model cnn_reg --intrinsic --epochs 300 --no-rot --amp --tta 0 --no-vel --aux-w 1 --out runs/M11b` | |
+| M11-c | | planned | rung 1, dense field as primary head, 300 ep (vs M9a) | `sbatch --job-name=M11c --mem=60G cluster/run.sbatch $S2 --model cnn_field --epochs 300 --no-rot --amp --tta 0 --no-vel --aux-w 1 --out runs/M11c` | |
+| M11-d | | planned | rung 2, dense field head, 1000 ep (vs M9j) | `sbatch --job-name=M11d --mem=60G cluster/run.sbatch $S2 --model cnn_field --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --aux-w 1 --out runs/M11d` | |
+| M11-e | | planned | rung 2, dense field head + intrinsic inputs, 1000 ep (levers 1+2) | `sbatch --job-name=M11e --mem=60G cluster/run.sbatch $S2 --model cnn_field --intrinsic --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --aux-w 1 --out runs/M11e` | |
+| M11-f | | planned | rung 1, flow head (8 candidates) + aux, 300 ep: oracle best-of-8 vs mean-of-8 says how multimodal the posterior is | `sbatch --job-name=M11f --mem=60G cluster/run.sbatch $S2 --model cnn_reg --flow --flow-k 8 --epochs 300 --no-rot --amp --tta 0 --no-vel --aux-w 1 --out runs/M11f` | |
+| M11-f2 | | after M11-f | re-sim selection among M11-f's candidates, first 50 test samples (50 x 8 sims, ~5 h) | `sbatch --job-name=M11f2 cluster/resim.sbatch $S2 runs/M11f --limit 50 --k 8` | |
+| M11-g | | planned | rung 4a, scratch CNN on the shaded view (control for M11-h; vs M9i) | `sbatch --job-name=M11g --mem=60G cluster/run.sbatch $S2 --model cnn_reg --epochs 300 --amp --tta 0 --no-vel --view --view-shade --aux-w 1 --out runs/M11g` | |
+| M11-h | | planned | rung 4a, DINOv2-S/14 UNFROZEN on the shaded view (vs M9h frozen 9.2, M9i 8.5) | `sbatch --job-name=M11h --mem=60G cluster/run.sbatch $S2 --model dino_reg --dino-finetune --epochs 300 --amp --tta 0 --no-vel --view --view-shade --lr 1e-4 --aux-w 1 --out runs/M11h` | |
+| M11-i | | optional | rung 4a, DINOv3 ViT-S/16 unfrozen (after the gated weights are in `~/.cache/dinov3/`; `--view-size 224` is a multiple of 16) | `sbatch --job-name=M11i --mem=60G cluster/run.sbatch $S2 --model dino_reg --dino-repo facebookresearch/dinov3 --dino-arch dinov3_vits16 --dino-weights ~/.cache/dinov3/dinov3_vits16_pretrain_lvd1689m.pth --dino-finetune --epochs 300 --amp --tta 0 --no-vel --view --view-shade --lr 1e-4 --aux-w 1 --out runs/M11i` | |
+| M11-j | | after setup_sonata.sh | rung 3, Sonata fine-tuned on the full point cloud (vs M9d 7.6 / 22.3, pointtf) | `sbatch --job-name=M11j --mem=60G cluster/run.sbatch $S2 --model sonata_reg --epochs 300 --amp --tta 0 --no-vel --eval-rotated --bs 8 --lr 1e-4 --aux-w 1 --out runs/M11j` | |
+| M11-k | | after M11-j runs | rung 4a, Sonata on the visible points (vs M9f2/M9g) | `sbatch --job-name=M11k --mem=60G cluster/run.sbatch $S2 --model sonata_reg --epochs 300 --amp --tta 0 --no-vel --view --bs 8 --lr 1e-4 --aux-w 1 --out runs/M11k` | |
+
+Submit (CPU allocation, from `cloth_data_generation/transfer`, after `git pull`):
+
+```bash
+bash cluster/interactive.sh
+cd /home/naa79/scratch_pi_sz622/naa79/cloth-inverse && git pull && cd cloth_data_generation/transfer
+S2=/home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_free_splits
+# M11-a..h: paste the sbatch lines above
+# Sonata (once, on the login node, needs internet; then M11-j/k):
+bash cluster/setup_sonata.sh
+squeue -u $USER -o "%.10i %.14j %.8T %.10M %R"
+```
+
+Reading: M11-a vs M9j is the decisive number (if rung 2 drops to the rung-1 level, pose was the
+whole optimisation problem); M11-b says whether intrinsic inputs cost anything at known pose;
+M11-c/d say whether the dense head beats the regression head; M11-f's best-of-8 vs mean-of-8 gap
+is the multimodality measurement and M11-f2 says how much of it re-sim selection recovers;
+M11-g/h repeat the pretrained-vs-scratch test with a fair input. Gather:
+`python3 cluster/summarize_runs.py 'M11*'`.

@@ -17,6 +17,8 @@ import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CLOTH = os.path.dirname(HERE)
+if not os.path.exists(os.path.join(CLOTH, "generate_sample.py")):  # repo layout: the simulator lives in transfer/
+    CLOTH = os.path.join(CLOTH, "transfer")
 
 
 def sim(forces: list[dict], out_h5: str, seed: int) -> None:
