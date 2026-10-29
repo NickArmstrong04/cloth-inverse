@@ -12,3 +12,7 @@ cloth_results/dataset100/
 cloth_results/dataset/
 cloth_results/batch32/
 cloth_data_generation/transfer/bench/
+# slurm logs on the cluster (archived by cluster/tidy.sh)
+*.out
+*.err
+cloth_data_generation/transfer/logs/

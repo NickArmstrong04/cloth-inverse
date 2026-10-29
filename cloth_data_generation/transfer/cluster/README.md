@@ -28,6 +28,9 @@ CODE_DIR are git-ignored.
 ## 2. One-time environment setup
 
 Bouchet policy: run Python inside an allocation, not on the login node.
+Housekeeping: `bash cluster/tidy.sh` (dry run) / `--apply` moves finished training logs to
+`logs/<date>/`, deletes failed-attempt logs, warning-only `.err` files, generation task logs of
+finished arrays, crashed run dirs and `__pycache__`; never touches queued/running jobs or data.
 One-shot steps (repackaging splits, `check_splits.py`, model-weight downloads)
 go through `sbatch cluster/util.sbatch <command...>` so they cannot be cut off
 when an interactive allocation ends; use `salloc` only for quick manual tries.
