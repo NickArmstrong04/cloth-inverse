@@ -115,6 +115,9 @@ def main():
                     help="dihedral (material-symmetry) augmentation only, no 3D world rotation")
     ap.add_argument("--tta", type=int, default=8)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--n-train", type=int, default=0,
+                    help="use only the first N training samples (seeded shuffle); 0 = all. "
+                         "Data-scaling control: train on a 1100-sample subset of a larger dataset")
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
     out = args.out or (f"runs/{os.path.basename(os.path.normpath(args.root))}_{args.model}_s{args.seed}_e{args.epochs}"
@@ -130,6 +133,11 @@ def main():
         print(f"device: {torch.cuda.get_device_name(0)} {torch.cuda.get_device_properties(0).total_memory / 1e9:.0f} GB", flush=True)
 
     tr, va, te = (load_split(args.root, s, pool=args.pool) for s in ("train", "val", "test"))
+    if args.n_train and args.n_train < len(tr["names"]):
+        keep = torch.randperm(len(tr["names"]), generator=torch.Generator().manual_seed(args.seed))[: args.n_train]
+        keep = keep.sort().values
+        tr = {"x": tr["x"][keep].contiguous(), "g": tr["g"][keep].contiguous(), "y": tr["y"][keep].contiguous(),
+              "names": [tr["names"][i] for i in keep.tolist()]}
     if args.no_vel:  # rung 1: positions only (keep tensors contiguous for later indexing)
         for d in (tr, va, te):
             d["x"] = d["x"][:, :3].contiguous()

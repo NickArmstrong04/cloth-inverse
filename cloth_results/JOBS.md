@@ -127,7 +127,7 @@ QC pass rate and timing, then fill 6000 slots on gpu + scavenge (expect ~50-60% 
 |---|---|---|---|---|---|
 | M7-a | 31178959 | TIMEOUT (1 h) | smoke: one task of 40 samples on gpu | `python3 cluster/submit.py --n 40 --name ds256_free --time 01:00:00 --no-merge` then `python3 cluster/submit.py --status ds256_free` | first 4 slots ok on attempt 1 (RTX 5000 Ada); ~25 of 40 slots done in 1 h. seff: CPU eff 48.7% (4 cores), MaxRSS 1.7 GB, so 4 cores / 12G are right-sized (could go 2 cores / 6G) |
 | M7-b | 31181234 (31179012, 31179200 cancelled before start; resubmitted 15:47 with 12G / 45 min) | timed out, partial | production: slots 40-2999, tasks 1-74 on gpu (scavenge half M7-c skipped to save space) | `python3 cluster/submit.py --n 6000 --name ds256_free --tasks 1-74 --max-concurrent 40 --no-merge` | 16:35: 964 passing / 6000, 304 rejects (76% pass). Each 45-min task finished only 12-16 of its 40 slots (~5 min per attempt per worker, 2 workers): chunk 40 needs ~2.5 h, not 45 min. 70 non-empty .err logs (check). Remaining 5036 slots: M7-b2 |
-| M7-b2 | 31220691 (tasks 0-149, %40) | running (submitted 2026-10-28 ~20:40) | fill the 5036 missing slots: same chunk (name-bound), 2.5 h per task, 40 concurrent; ~4 waves of 40 tasks, expect done ~10 h later | check 1 (evening): 1190 passing, refill 345 ok / 4 rejected, only 12 tasks running at once (gpu partition availability), early tasks finish in <1 h (few missing slots), full chunks from task ~75 need ~2 h; at 12 concurrent expect ~1 day. Option: move tasks 100-149 to scavenge_gpu (scancel them first). Check 2 (2026-10-29 morning): 3064 passing / 969 rejected (76%), 24 GB; tasks 60 COMPLETED, 11 TIMEOUT, 12 running, ~67 pending; timed-out tasks need one more refill pass after the array clears | `python3 cluster/submit.py --n 6000 --name ds256_free --chunk 40 --time 02:30:00 --max-concurrent 40 --no-merge` (defaults to tasks with missing slots; `--chunk 40` required because cluster.env now defaults to 20 and chunk is bound to the dataset name) | |
+| M7-b2 | 31220691 (tasks 0-149, %40) | running (submitted 2026-10-28 ~20:40) | fill the 5036 missing slots: same chunk (name-bound), 2.5 h per task, 40 concurrent; ~4 waves of 40 tasks, expect done ~10 h later | check 1 (evening): 1190 passing, refill 345 ok / 4 rejected, only 12 tasks running at once (gpu partition availability), early tasks finish in <1 h (few missing slots), full chunks from task ~75 need ~2 h; at 12 concurrent expect ~1 day. Option: move tasks 100-149 to scavenge_gpu (scancel them first). Check 2 (2026-10-29 morning): 3064 passing / 969 rejected (76%), 24 GB; tasks 60 COMPLETED, 11 TIMEOUT, 12 running, ~67 pending; timed-out tasks need one more refill pass after the array clears. **Stopped by user 2026-10-29** (pending tasks cancelled at ~3100 passing) to test data vs model first (M8); refill later if M8 says more data helps | `python3 cluster/submit.py --n 6000 --name ds256_free --chunk 40 --time 02:30:00 --max-concurrent 40 --no-merge` (defaults to tasks with missing slots; `--chunk 40` required because cluster.env now defaults to 20 and chunk is bound to the dataset name) | |
 | M7-c | | skipped (space) | production: tasks 75-149 on scavenge (preemptible, requeued) | `python3 cluster/submit.py --n 6000 --name ds256_free --tasks 75-149 --partition scavenge_gpu --max-concurrent 60 --no-merge` | |
 | M7-d | | planned | package when enough passed | `.venv/bin/python cluster/merge_summaries.py --indir $D/ds256_free && .venv/bin/python package_splits.py --indir $D/ds256_free --outdir $D/ds256_free_splits` | |
 | M7-e | | planned | ladder on it (rungs 0-3, any GPU) | `sbatch cluster/ladder.sbatch $D/ds256_free_splits 300` | |
@@ -136,6 +136,31 @@ QC pass rate and timing, then fill 6000 slots on gpu + scavenge (expect ~50-60% 
 same name: `submit.py` binds the name to nx/seed0/chunk/args and later calls only fill missing slots.
 
 ## Submitting a whole matrix at once
+
+## Matrix M8: is it the data or the model? (2026-10-29)
+
+Question: ds768_night (1,115 marginal samples) gave rung 0/1 about 4 cm and rung 2 about 6-9 cm,
+with known-pose rungs overfitting (data-limited). ds256_free has ~3,100 cleaner samples at 256.
+Three comparisons separate the effects: (1) same model on 3x the data, (2) same model on a
+1,100-sample subset of the new data (`--n-train 1100`, new flag) to isolate dataset quality from
+dataset size, (3) the old data pooled to 256 (`--pool 3`) so resolution is matched.
+Reading: if (1) beats (2) clearly, data volume matters and the refill is worth finishing; if (2)
+already beats (3), the cleaner 256 physics is the gain; if all three tie, the model/targets are
+the limit and more data will not help.
+
+`S2=/home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_free_splits`, `S=.../ds768_night_splits`.
+
+| id | job id | status | what | command | result |
+|---|---|---|---|---|---|
+| M8-0 | | planned | package ds256_free (M7-d) | `D=/home/naa79/scratch_pi_sz622/naa79/cloth_data; .venv/bin/python cluster/merge_summaries.py --indir $D/ds256_free && .venv/bin/python package_splits.py --indir $D/ds256_free --outdir $D/ds256_free_splits` | |
+| M8-a | | planned | rung 1 (positions, known pose), all ~2,500 train samples | `sbatch --job-name=M8a --mem=60G cluster/run.sbatch $S2 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --no-vel --out runs/M8a` | |
+| M8-b | | planned | rung 1, 1,100-sample subset (size control) | `sbatch --job-name=M8b --mem=60G cluster/run.sbatch $S2 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --no-vel --n-train 1100 --out runs/M8b` | |
+| M8-c | | planned | rung 1, old data pooled to 256 (resolution control; compare M1e/M2a) | `sbatch --job-name=M8c --mem=60G cluster/run.sbatch $S --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --no-vel --pool 3 --out runs/M8c` | |
+| M8-d | | planned | rung 2 (unknown pose), all data, 1000 epochs (compare M2c 5.9 cm, M1g) | `sbatch --job-name=M8d --mem=60G cluster/run.sbatch $S2 --model cnn_reg --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --out runs/M8d` | |
+| M8-e | | planned | rung 2, 1,100-sample subset | `sbatch --job-name=M8e --mem=60G cluster/run.sbatch $S2 --model cnn_reg --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --n-train 1100 --out runs/M8e` | |
+| M8-f | | planned | rung 1 seed repeat (noise floor at this size) | `sbatch --job-name=M8f --mem=60G cluster/run.sbatch $S2 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --no-vel --seed 2 --out runs/M8f` | |
+
+Gather: `python3 cluster/summarize_runs.py 'M8*'`.
 
 ```bash
 bash cluster/interactive.sh      # CPU allocation
