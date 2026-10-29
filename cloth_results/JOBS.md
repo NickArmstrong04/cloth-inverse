@@ -170,7 +170,55 @@ ds256_free contains at least one sample with non-finite positions/velocities/tar
 Fix committed: `train.py` drops non-finite samples per split with a warning and fails early with a
 clear message if the val loss is never finite; `cluster/check_splits.py <splits_dir>` names the bad
 files. Resubmit M8a/b/d/e/f unchanged after `git pull` (same commands as above). Wasted: ~3.1 GPU-hours.
+Resubmitted with M9/M10 on 2026-10-29 (job ids to fill in from the sbatch output).
 
+
+## Matrix M9: beating the data limit without more simulation (2026-10-29)
+
+Three levers implemented in `inverse/` (commit after 793c85a), all on `ds256_free_splits`:
+(1) **dense supervision** `--aux-w 1`: the model also predicts the applied force field on
+the grid (per-cell direction of both Gaussian patches, ~65k labels per sample; per point for
+pointtf, per patch for dino_reg); (3) **stored frames** `--frames post`: every train sample's
+intermediate states after the forces ended become extra samples (about 4 per sample, zero
+simulation cost); (4) **pretrained features** `--model dino_reg`: frozen DINOv2 ViT-S/14 with a
+small head, on the material-grid image or on a rendered view. Also new: `--view` (rung 4a, one
+orthographic camera: depth+mask image for image models, visible points only for pointtf) and
+`--init <model.pt>` (curriculum). Rung 1 baseline to beat: M8a (and M1e/M2a 4.5 cm on the old data).
+
+Before the dino jobs, once on the login node (internet; caches repo + weights in ~/.cache/torch/hub):
+`.venv/bin/python -c "import torch; torch.hub.load('facebookresearch/dinov2', 'dinov2_vits14')"`.
+Frames jobs train on ~4x the samples per epoch: expect ~4x the wall time of M8a (use `--time`).
+
+| id | job id | status | what | command | result |
+|---|---|---|---|---|---|
+| M9-a | | planned | rung 1 + aux force-field loss (vs M8a) | `sbatch --job-name=M9a --mem=60G cluster/run.sbatch $S2 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --no-vel --aux-w 1 --out runs/M9a` | |
+| M9-b | | planned | rung 1 + post-force frames (4x samples) | `sbatch --job-name=M9b --mem=100G --time=08:00:00 cluster/run.sbatch $S2 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --no-vel --frames post --out runs/M9b` | |
+| M9-c | | planned | rung 1 + aux + frames | `sbatch --job-name=M9c --mem=100G --time=08:00:00 cluster/run.sbatch $S2 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --no-vel --aux-w 1 --frames post --out runs/M9c` | |
+| M9-d | | planned | rung 3 pointtf + per-point aux, 1000 ep (vs M3/M5e) | `sbatch --job-name=M9d --mem=60G cluster/run.sbatch $S2 --model pointtf --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --bs 16 --lr 3e-4 --aux-w 1 --out runs/M9d` | |
+| M9-e | | planned | rung 1 with frozen DINOv2 on the grid image (+aux) | `sbatch --job-name=M9e --mem=60G cluster/run.sbatch $S2 --model dino_reg --epochs 300 --no-rot --amp --tta 0 --no-vel --lr 3e-4 --aux-w 1 --out runs/M9e` | |
+| M9-f | | planned | rung 4a: pointtf on the visible points of one view, from scratch | `sbatch --job-name=M9f --mem=60G cluster/run.sbatch $S2 --model pointtf --epochs 1000 --amp --tta 0 --no-vel --view --bs 16 --lr 3e-4 --aux-w 1 --out runs/M9f` | |
+| M9-g | | after M9-d | rung 4a pointtf initialised from rung 3 (curriculum) | `sbatch --job-name=M9g --mem=60G cluster/run.sbatch $S2 --model pointtf --epochs 1000 --amp --tta 0 --no-vel --view --bs 16 --lr 3e-4 --aux-w 1 --init runs/M9d/model.pt --out runs/M9g` | |
+| M9-h | | planned | rung 4a: DINOv2 on the rendered depth image (+aux) | `sbatch --job-name=M9h --mem=60G cluster/run.sbatch $S2 --model dino_reg --epochs 300 --amp --tta 0 --no-vel --view --lr 3e-4 --aux-w 1 --out runs/M9h` | |
+| M9-i | | planned | rung 4a: from-scratch CNN on the rendered depth image (control for M9-h) | `sbatch --job-name=M9i --mem=60G cluster/run.sbatch $S2 --model cnn_reg --epochs 300 --amp --tta 0 --no-vel --view --aux-w 1 --out runs/M9i` | |
+
+Reading: M9-a/b/c vs M8a say what each lever buys at rung 1; M9-e vs M8a is the pretrained-feature
+test; M9-f/g/h/i are the first rung-4a numbers (gap to rung 3 = cost of seeing one side);
+M9-h vs M9-i is pretrained vs scratch on images. Gather: `python3 cluster/summarize_runs.py 'M8*' 'M9*'`.
+
+## Matrix M10: more data, in case M8 says it still helps (2026-10-29)
+
+Four GPUs for ~8 h on the ds256_free refill. The chunk is bound to the dataset name (40 slots,
+~2.5 h per task), so "4 jobs x 8 h" is an array of 12 tasks at 4 concurrent (3 waves). Expected
+yield: ~480 attempts, ~360 passing samples (+12%). To grow the set materially, raise
+`--max-concurrent` back to 40 and drop `--max-tasks`.
+
+| id | job id | status | what | command | result |
+|---|---|---|---|---|---|
+| M10-a | | planned | refill ds256_free: 12 tasks, 4 at a time, 2.5 h each | `python3 cluster/submit.py --n 6000 --name ds256_free --chunk 40 --time 02:30:00 --max-concurrent 4 --max-tasks 12 --no-merge` | |
+| M10-b | | after M10-a | re-merge and re-package (new splits; M8/M9 runs used the 2026-10-29 package) | `D=/home/naa79/scratch_pi_sz622/naa79/cloth_data; .venv/bin/python cluster/merge_summaries.py --indir $D/ds256_free && .venv/bin/python package_splits.py --indir $D/ds256_free --outdir $D/ds256_free_splits` | |
+
+Note: M10-b replaces the splits directory (and their tensor caches); submit it only after the
+M8/M9 training jobs have finished loading, and record the new sample count in DATASETS.md.
 
 ```bash
 bash cluster/interactive.sh      # CPU allocation

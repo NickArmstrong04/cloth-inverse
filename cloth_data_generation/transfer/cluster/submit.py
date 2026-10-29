@@ -149,6 +149,9 @@ def main() -> None:
     ap.add_argument("--exclude", help="nodes to avoid, comma-separated (override EXCLUDE_NODES)")
     ap.add_argument("--tasks", help="only these array tasks, e.g. 3,7-9 (default: tasks with missing slots)")
     ap.add_argument("--all-tasks", action="store_true", help="submit every task even if its slots are done")
+    ap.add_argument("--max-tasks", type=int, default=0,
+                    help="submit at most this many of the selected tasks (lowest ids first); 0 = all. "
+                         "With --max-concurrent K and TIME per task this bounds the run to ~max_tasks/K waves")
     ap.add_argument("--no-merge", action="store_true", help="do not chain the merge/packaging job")
     ap.add_argument("--dry-run", action="store_true", help="render scripts and print commands only")
     ap.add_argument("--status", metavar="NAME", help="show progress of an existing dataset and exit")
@@ -186,6 +189,9 @@ def main() -> None:
         tasks = [t for t in range(n_tasks)
                  if any(s not in done for s in range(t * chunk, min((t + 1) * chunk, args.n)))]
         print(f"resume: {len(done)} passing samples already in {outdir}")
+    if args.max_tasks and len(tasks) > args.max_tasks:
+        print(f"limiting to the first {args.max_tasks} of {len(tasks)} selected tasks (--max-tasks)")
+        tasks = tasks[: args.max_tasks]
     if not tasks:
         print("nothing to do: all slots present. Use --all-tasks to force, or --status.")
         return
