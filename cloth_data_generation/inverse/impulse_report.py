@@ -38,13 +38,13 @@ def load(path):
 
 
 def analyse(recs):
-    eF, et, F, T = [], [], [], []
+    eF, et, F, T, Fp = [], [], [], [], []
     for r in recs:
         for p, t in pair(r["pred"], r["true"]):
             eF.append(np.log(p["magnitude"] / t["magnitude"]))
             et.append(np.log(p["duration"] / t["duration"]))
-            F.append(t["magnitude"]); T.append(t["duration"])
-    eF, et, F, T = map(np.array, (eF, et, F, T))
+            F.append(t["magnitude"]); T.append(t["duration"]); Fp.append(p["magnitude"])
+    eF, et, F, T, Fp = map(np.array, (eF, et, F, T, Fp))
     eJ = eF + et
     rel = lambda e: np.median(np.abs(np.exp(e) - 1))
     # constant-predictor floor: predict the test-set geometric mean / median
@@ -55,16 +55,20 @@ def analyse(recs):
     return dict(n=len(eF), F=rel(eF), t=rel(et), J=rel(eJ), F0=rel(cF), t0=rel(cT), J0=rel(cJ),
                 r=np.corrcoef(eF, et)[0, 1], vF=vF, vT=vT, cov=cov, vJ=eJ.var(),
                 # R^2 of log-prediction vs log-truth
-                R2F=1 - vF / np.log(F).var(), R2J=1 - eJ.var() / np.log(F * T).var())
+                R2F=1 - vF / np.log(F).var(), R2J=1 - eJ.var() / np.log(F * T).var(),
+                # absolute force error in newtons (mean / median) and linear R^2: the units the
+                # tactile-sensing literature reports (force range here 0.15-1.25 N)
+                maeN=np.abs(Fp - F).mean(), medN=np.median(np.abs(Fp - F)), maeN0=np.abs(F.mean() - F).mean(),
+                R2lin=1 - ((Fp - F) ** 2).mean() / F.var())
 
 
 if __name__ == "__main__":
     print(f"{'run':14s} {'n':>5s} | median |rel err|  F      t      J   | const floor  F      t      J   | "
-          f"corr(eF,et)  var eF   var et   2cov    var eJ |  R2 logF  R2 logJ")
+          f"corr(eF,et)  var eF   var et   2cov    var eJ |  R2 logF  R2 logJ |  MAE N  med N  const N  R2 lin")
     for a in sys.argv[1:]:
         s = analyse(load(a))
         name = os.path.basename(a.rstrip("/\\").replace("test_predictions.json", "").rstrip("/\\"))
         print(f"{name:14s} {s['n']:5d} |                 {s['F']:.3f}  {s['t']:.3f}  {s['J']:.3f} |"
               f"              {s['F0']:.3f}  {s['t0']:.3f}  {s['J0']:.3f} |"
               f"   {s['r']:+.2f}      {s['vF']:.3f}    {s['vT']:.3f}   {2*s['cov']:+.3f}   {s['vJ']:.3f} |"
-              f"  {s['R2F']:+.2f}    {s['R2J']:+.2f}")
+              f"  {s['R2F']:+.2f}    {s['R2J']:+.2f} |  {s['maeN']:.3f}  {s['medN']:.3f}  {s['maeN0']:.3f}   {s['R2lin']:+.2f}")

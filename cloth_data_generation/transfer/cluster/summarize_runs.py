@@ -6,7 +6,7 @@ import glob, json, os, sys
 inv = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "inverse", "runs")
 pats = sys.argv[1:] or ["*"]
 dirs = sorted({d for p in pats for d in glob.glob(os.path.join(inv, p))})
-print(f"{'run':28} {'split':10} {'pos cm':>7} {'dir deg':>8} {'mag rel':>8} {'dur s':>6} {'imp rel':>8}")
+print(f"{'run':28} {'split':10} {'pos cm':>7} {'dir deg':>8} {'mag rel':>8} {'mag N':>6} {'dur s':>6} {'imp rel':>8}")
 for d in dirs:
     p = os.path.join(d, "metrics.json")
     name = os.path.basename(d)
@@ -17,4 +17,11 @@ for d in dirs:
         keys = [k for k in m if k.startswith(split + "/")]
         for k in keys:
             r = m[k]
-            print(f"{name:28} {k:10} {r['pos_cm_mean']:7.2f} {r['dir_deg_mean']:8.1f} {r['mag_rel_mean']:8.2f} {r['dur_s_mean']:6.3f} {r['impulse_rel_mean']:8.2f}")
+            if k.endswith("/resim"):  # eval_resim.py: centred RMSE in m, score 0 = floor, 1 = chance
+                g = lambda key: r.get(key, {}).get("rmse_centered_m", float("nan"))
+                sc, fb = r.get("score"), r.get("frac_beats_chance")
+                print(f"{name:28} {k:10} resim n={r['n']} pred {g('pred'):.4f} floor {g('floor'):.4f} chance {g('chance'):.4f} m"
+                      + (f"  score {sc:.2f}  beats chance {fb:.0%}" if sc is not None else ""))
+                continue
+            mn = f"{r['mag_N_mean']:6.3f}" if "mag_N_mean" in r else "     -"
+            print(f"{name:28} {k:10} {r['pos_cm_mean']:7.2f} {r['dir_deg_mean']:8.1f} {r['mag_rel_mean']:8.2f} {mn} {r['dur_s_mean']:6.3f} {r['impulse_rel_mean']:8.2f}")

@@ -8,6 +8,10 @@
 #   sbatch --gpus=l40s:1 cluster/run.sbatch ...   # pin a type if you want
 # Output: run_<jobid>.out in transfer/; metrics in ../inverse/runs/<auto name>/metrics.json
 # (pass --out runs/<name> to choose the run directory; record both in cloth_results/JOBS.md).
+# RESIM=N (env, default 0): after training, re-simulate the first N test predictions with
+# eval_resim.py (pred + true-force floor + chance, ~30 s per sample at 256) in the same job:
+#   RESIM=100 sbatch --job-name=M15a cluster/run.sbatch <splits_dir> ... --out runs/M15a
+# For a full test split or an existing run use cluster/resim_eval.sbatch instead.
 #SBATCH --job-name=cloth_run
 #SBATCH --partition=gpu
 #SBATCH --gpus=1                 # any GPU type; the script adapts to the card's memory
@@ -27,4 +31,13 @@ cd "$INV"
 echo "run: $SPLITS  args='$*'  host=$(hostname)  job=$SLURM_JOB_ID  name=$SLURM_JOB_NAME"
 source "$CODE_DIR/cluster/gpu_adapt.sh"      # sets GPU_EXTRA from the card's memory
 $PY train.py --root "$SPLITS" "$@" $GPU_EXTRA
+RESIM="${RESIM:-0}"
+if [[ "$RESIM" != "0" ]]; then
+  OUT=""; prev=""
+  for a in "$@"; do [[ "$prev" == "--out" ]] && OUT="$a"; prev="$a"; done
+  if [[ -z "$OUT" ]]; then echo "RESIM: no --out in args, skipping re-sim eval"; else
+    echo "resim eval: first $RESIM test samples of $OUT"
+    $PY eval_resim.py --run "$OUT" --root "$SPLITS" --limit "$RESIM"
+  fi
+fi
 echo "run done"

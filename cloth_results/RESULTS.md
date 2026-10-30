@@ -5,6 +5,14 @@ two force vectors (position u,v; direction; magnitude; duration). Metrics are me
 the test split with optimal pairing of the two forces; position error is in cm on the
 0.5 m sheet. "Chance" = predicting the training mean.
 
+Since 2026-10-30 two more numbers are reported (commit after e1aa898): the absolute force error
+in newtons (`mag N`, the unit the tactile-sensing papers use; force range 0.15-1.25 N) and the
+re-simulation error (`eval_resim.py`): the predicted forces are simulated with the dataset's own
+physics and the resulting sheet is compared with the true one, centred RMSE in m, reported as
+`score = (pred - floor) / (chance - floor)` where floor = the true forces re-simulated (solver
+noise) and chance = the constant predictor simulated. 0 = perfect, 1 = chance. It is the only
+metric that scores the two forces jointly (M15-r jobs).
+
 ## 2026-10-29 evening: architecture levers on ds256_free, matrix M11
 
 Same data and protocol as M8/M9 (cnn_reg width 32, bf16, TTA off, 2,453 train). New levers from

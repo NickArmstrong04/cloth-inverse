@@ -14,7 +14,8 @@ def _err_one(p, t):
     mag_rel = abs(np.exp(p[5]) - np.exp(t[5])) / np.exp(t[5])
     dur = abs(p[6] - t[6])
     imp_rel = abs(np.exp(p[5]) * p[6] - np.exp(t[5]) * t[6]) / (np.exp(t[5]) * t[6])
-    return np.array([pos, ang, mag_rel, dur, imp_rel])
+    mag_n = abs(np.exp(p[5]) - np.exp(t[5]))  # absolute force error in newtons (comparable across papers)
+    return np.array([pos, ang, mag_rel, dur, imp_rel, mag_n])
 
 
 # The square sheet's symmetry group (D4) acting on material coordinates. Under an
@@ -32,8 +33,8 @@ def _relabel(p: np.ndarray, f) -> np.ndarray:
 
 
 def pair_metrics(pred: np.ndarray, true: np.ndarray, sym: bool = False) -> np.ndarray:
-    """pred/true: (N,2,7) raw-scale. Returns (N,5) mean-over-forces metrics
-    [pos_cm, dir_deg, mag_rel, dur_s, impulse_rel] using the better pairing
+    """pred/true: (N,2,7) raw-scale. Returns (N,6) mean-over-forces metrics
+    [pos_cm, dir_deg, mag_rel, dur_s, impulse_rel, mag_N] using the better pairing
     (chosen by position + direction cost). With ``sym=True`` the prediction's
     (u, v) may additionally be relabeled by any element of D4 (unknown-pose
     evaluation)."""
@@ -52,7 +53,7 @@ def pair_metrics(pred: np.ndarray, true: np.ndarray, sym: bool = False) -> np.nd
     return np.stack(out)
 
 
-NAMES = ["pos_cm", "dir_deg", "mag_rel", "dur_s", "impulse_rel"]
+NAMES = ["pos_cm", "dir_deg", "mag_rel", "dur_s", "impulse_rel", "mag_N"]
 
 
 def summarize(m: np.ndarray) -> dict:

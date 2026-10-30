@@ -5,7 +5,8 @@ the true final grid; the candidate with the smallest centred RMSE is selected. R
 parameter metrics of (i) the selected candidate, (ii) the best-of-K oracle, (iii) the mean
 candidate, so the gain of re-sim selection over the regression head is explicit.
 
-Cost: K simulations per test sample (~45 s each at 256 on one GPU). Use --limit / --k and run
+Cost: K simulations per test sample (one SimSession is reused across all of them, so ~10 s
+each at 256 after the first; the simulator is configured from the test file's sim_config). Use --limit / --k and run
 as a job array (--shard i/n) for the full split; merge the shard JSONs with --merge."""
 
 from __future__ import annotations
@@ -15,12 +16,10 @@ import glob
 import json
 import os
 
-import h5py
 import numpy as np
 
-from eval_resim import grid_error, sim
-
-NAMES = ["pos_cm", "dir_deg", "mag_rel", "dur_s", "impulse_rel"]
+from eval_resim import Simulator, grid_error, load_sample
+from metrics import NAMES
 
 
 def main():
@@ -44,26 +43,22 @@ def main():
         i, n = map(int, args.shard.split("/"))
         items = items[i::n]
     rows = []
+    simulator = None  # built from the first test file's sim_config (same physics, resolution, material)
     for j, it in enumerate(items):
         name = it["file"]
-        with h5py.File(os.path.join(args.root, "test", name), "r") as h:
-            true_grid = h["final_grid"][()]
-        base = os.path.join(out, name.replace(".h5", ""))
+        true_grid, _, cfg, _ = load_sample(os.path.join(args.root, "test", name))
+        if simulator is None:
+            simulator = Simulator(cfg, workdir=out)
         cands = it["candidates"][: args.k]
         errs = []
         for k, forces in enumerate(cands):
-            p = f"{base}_c{k}.h5"
             try:
-                sim(forces, p, seed=900 + j)
-                with h5py.File(p, "r") as h:
-                    errs.append(grid_error(h["final_grid"][()], true_grid)["rmse_centered_m"])
+                pg, _ = simulator.run(forces, t_capture=cfg["t_capture"], seed=900 + j)
+                errs.append(grid_error(pg, true_grid)["rmse_centered_m"])
             except Exception as e:  # a candidate that blows the simulator is simply not selected
                 print(f"  {name} candidate {k} failed: {str(e)[-200:]}", flush=True)
                 errs.append(float("inf"))
-            finally:
-                if os.path.exists(p):
-                    os.remove(p)
-        m = np.asarray(it["cand_metrics"])[: len(cands)]  # (k, 5) parameter metrics per candidate
+        m = np.asarray(it["cand_metrics"])[: len(cands)]  # (k, len(NAMES)) parameter metrics per candidate
         sel = int(np.argmin(errs))
         rows.append({"file": name, "selected": sel, "resim_rmse": errs, "selected_metrics": m[sel].tolist(),
                      "oracle_metrics": m[m[:, 0].argmin()].tolist(), "mean_metrics": m.mean(0).tolist()})
@@ -78,7 +73,7 @@ def _report(rows, out):
     summ = {"n": len(rows)}
     for key in ("selected_metrics", "oracle_metrics", "mean_metrics"):
         v = np.asarray([r[key] for r in rows])
-        summ[key] = {f"{n}_mean": float(v[:, i].mean()) for i, n in enumerate(NAMES)}
+        summ[key] = {f"{n}_mean": float(v[:, i].mean()) for i, n in enumerate(NAMES[: v.shape[1]])}
     json.dump({"summary": summ, "rows": rows}, open(os.path.join(out, "resim_select.json"), "w"), indent=2)
     print(json.dumps(summ, indent=2))
 

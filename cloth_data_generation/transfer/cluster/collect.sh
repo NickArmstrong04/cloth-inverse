@@ -22,7 +22,7 @@ sacct -u "$USER" -S "$SINCE" -X -n -o JobID%12,JobName%14,State%12,Elapsed%10,Ex
     grep -v "warn\|Warning\|UserWarning\|^ *$" "$f.err" | tail -n 12 | cut -c1-200 | sed 's/^/    ! /'
   fi
   if [[ "$state" == COMPLETED ]]; then
-    grep -E "best val loss|/tta|flow:|resim|selected|oracle|mean_metrics" "$f.out" | tail -n 14 | sed 's/^/    /'
+    grep -E "best val loss|/tta|flow:|resim|selected|oracle|mean_metrics|score|frac_beats" "$f.out" | tail -n 16 | sed 's/^/    /'
   else
     tail -n 2 "$f.out" | sed 's/^/    /'
   fi
@@ -30,6 +30,12 @@ done
 echo
 echo "## summarize_runs $PREFIX*"
 python3 "$HERE/cluster/summarize_runs.py" "$PREFIX*"
+for r in "$HERE/../inverse/runs/$PREFIX"*/resim/resim_metrics.json; do
+  [[ -f "$r" ]] && echo "## $(basename "$(dirname "$(dirname "$r")")") resim (eval_resim.py)" && python3 -c "
+import json,sys; s=json.load(open(sys.argv[1]))['summary']; g=lambda k: s.get(k,{}).get('rmse_centered_m',float('nan'))
+print('    n', s['n'], 'failed', s.get('n_pred_failed'), '| centred RMSE m: pred %.4f floor %.4f chance %.4f | score %.2f (median %.2f) beats chance %.0f%%' % (
+    g('pred'), g('floor'), g('chance'), s.get('score',float('nan')), s.get('score_median',float('nan')), 100*s.get('frac_beats_chance',float('nan'))))" "$r"
+done
 for r in "$HERE/../inverse/runs/$PREFIX"*/resim_select/resim_select.json; do
   [[ -f "$r" ]] && echo "## $(basename "$(dirname "$(dirname "$r")")") resim_select" && python3 -c "
 import json,sys; d=json.load(open(sys.argv[1]))

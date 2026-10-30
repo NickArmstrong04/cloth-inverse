@@ -14,7 +14,7 @@ import torch
 
 from data import TargetScaler, augment, decode_forces, load_frames, load_split, random_rotation
 from geometry import shade
-from metrics import pair_metrics, summarize
+from metrics import NAMES as METRIC_NAMES, pair_metrics, summarize
 from models import PointTF, SonataReg, build, equivalent_targets, pair_loss
 from render import view_batch
 
@@ -465,7 +465,7 @@ def main():
                 cands.append(scaler.denorm(z.view(-1, 2, 7)).view(z.shape[0], args.flow_k, 2, 7))
             cands = torch.cat(cands).cpu().numpy()  # (N, K, 2, 7)
             yy = y.cpu().numpy()
-            mk = np.stack([pair_metrics(cands[:, k], yy, sym=sym) for k in range(args.flow_k)], 1)  # (N, K, 5)
+            mk = np.stack([pair_metrics(cands[:, k], yy, sym=sym) for k in range(args.flow_k)], 1)  # (N, K, 6)
             best_k = mk[:, :, 0].argmin(1)
             res[f"{nm}/flow_bestK"] = summarize(mk[np.arange(len(mk)), best_k])
             res[f"{nm}/flow_meanK"] = summarize(mk.mean(1))
@@ -481,7 +481,7 @@ def main():
     Rtr_eval = _rot_from_gen(ntr_eval, torch.Generator().manual_seed(999)).to(dev) if args.view else None
     for nm, x, g, y, d, R in (("train", xtr[:ntr_eval], gtr[:ntr_eval], ytr[:ntr_eval], tr, Rtr_eval),
                               ("val", xva, gva, yva, va, Rva), ("test", xte, gte, yte, te, Rte)):
-        for tta in (0, args.tta if not args.no_rot else 0):
+        for tta in sorted({0, args.tta if not args.no_rot else 0}):  # a set: --no-rot used to run tta 0 twice
             with amp:
                 p = predict(net, x, g, scaler, tta=tta, bs=args.bs, yaw_only=args.yaw_only, R=R).cpu().numpy()
             yy = y
@@ -492,7 +492,7 @@ def main():
             res[f"{nm}/tta{tta}"] = summarize(m)
             if nm == "test" and tta == args.tta:
                 for i, name in enumerate(d["names"]):
-                    preds_out.append({"file": name, "metrics": dict(zip(["pos_cm", "dir_deg", "mag_rel", "dur_s", "impulse_rel"], m[i].tolist())),
+                    preds_out.append({"file": name, "metrics": dict(zip(METRIC_NAMES, m[i].tolist())),
                                       "pred": decode_forces(p[i]), "true": decode_forces(yy[i].cpu().numpy()),
                                       "pred_raw": p[i].tolist()})
     with open(os.path.join(out, "metrics.json"), "w") as fh:
@@ -503,7 +503,7 @@ def main():
     for k in [k for k in res if "/tta" in k]:
         v = res[k]
         print(f"{k:12s} pos {v['pos_cm_mean']:5.1f} cm  dir {v['dir_deg_mean']:5.1f} deg  "
-              f"mag {v['mag_rel_mean']:.2f}  dur {v['dur_s_mean']:.3f} s  impulse {v['impulse_rel_mean']:.2f}")
+              f"mag {v['mag_rel_mean']:.2f} ({v['mag_N_mean']:.3f} N)  dur {v['dur_s_mean']:.3f} s  impulse {v['impulse_rel_mean']:.2f}")
 
 
 if __name__ == "__main__":

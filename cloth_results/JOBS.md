@@ -479,3 +479,44 @@ patch, so position should hold or improve; direction may degrade (the grid-axis 
 could pull predicted directions toward the axes); force magnitude is expected to stay near chance
 as on cloth. If paper comes out clearly easier or harder, the M13-e recipe (rung 2, intrinsic +
 velocities, 1000 ep) is the next row.
+
+### M15 part 2: re-simulation error and newton magnitude (eval change, commit after e1aa898)
+
+`metrics.py` now also reports the absolute force error in newtons (`mag_N`, next to the relative
+error; train.py prints it and summarize_runs.py has a column). `eval_resim.py` was rewritten: it
+rebuilds the dataset's simulator from the test file's `sim_config` (resolution, material, solver,
+capture time; the old version simulated at 128 cloth whatever the dataset was), keeps one session
+across all samples (~10 s per simulation at 256 instead of ~45 s), and simulates three things per
+test sample: the predicted forces, the true forces (chaos floor) and the constant predictor
+(chance). Headline: `score = (pred - floor) / (chance - floor)` on the centred RMSE, 0 = floor,
+1 = chance, plus the fraction of samples beating chance. Written to `<run>/resim/resim_metrics.json`
+and into `<run>/metrics.json` as `test/resim`. `select_resim.py` uses the same simulator (its
+candidates were also being simulated at the wrong resolution). `cluster/resim_eval.sbatch` runs it
+on a finished run; `RESIM=N sbatch cluster/run.sbatch ...` runs it right after training.
+Also fixed: with `--no-rot`, test_predictions.json held every test sample twice (metrics unaffected).
+
+| id | job id | status | what | command | result |
+|---|---|---|---|---|---|
+| M15-r1 | | planned | re-sim error of M13-b (cloth, best position model), first 100 test samples | `sbatch --job-name=M15r1 cluster/resim_eval.sbatch $S3 runs/M13b --limit 100` | |
+| M15-r2 | | planned | re-sim error of M13-e (cloth, best magnitude model) | `sbatch --job-name=M15r2 cluster/resim_eval.sbatch $S3 runs/M13e --limit 100` | |
+| M15-r3 | | after M15-a | re-sim error of M15-a (paper) | `sbatch --job-name=M15r3 cluster/resim_eval.sbatch $S4 runs/M15a --limit 100` | |
+| M15-r4 | | after M15-b | re-sim error of M15-b (cloth, 1356 train) | `sbatch --job-name=M15r4 cluster/resim_eval.sbatch $S3 runs/M15b --limit 100` | |
+
+Submit (from `cloth_data_generation/transfer`; M15-r1/r2 now, r3/r4 when M15-a/b have finished):
+
+```bash
+cd /home/naa79/scratch_pi_sz622/naa79/cloth-inverse && git pull && cd cloth_data_generation/transfer
+S3=/home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_const_splits
+S4=/home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_const_paper_splits
+sbatch --job-name=M15r1 cluster/resim_eval.sbatch $S3 runs/M13b --limit 100
+sbatch --job-name=M15r2 cluster/resim_eval.sbatch $S3 runs/M13e --limit 100
+# after M15-a / M15-b complete:
+sbatch --job-name=M15r3 cluster/resim_eval.sbatch $S4 runs/M15a --limit 100
+sbatch --job-name=M15r4 cluster/resim_eval.sbatch $S3 runs/M15b --limit 100
+# when done: bash cluster/collect.sh M15 ; cd ../inverse && ../transfer/.venv/bin/python impulse_report.py runs/M13b runs/M13e runs/M15a runs/M15b
+```
+
+Reading: M15-r1 vs M15-r2 is the first joint score of the two "best" models; if M13-e (worse
+position, far better magnitude) re-simulates closer to the truth than M13-b, the shape is
+magnitude-limited and the per-field split in RESULTS.md was the wrong ranking. The impulse_report
+columns `MAE N` / `R2 lin` are the magnitude numbers to quote against the tactile literature.
