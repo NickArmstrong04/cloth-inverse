@@ -119,3 +119,19 @@ Findings:
 - Runtime: ~1 s per 512 px view on the 4070 Ti after a 10 s model load (one earlier run took
   22 s per view for no reproducible reason; a re-run was 1 s).
 
+## Evaluating a rung-4a model on the packages (step 4)
+
+`inverse/eval_views.py --run <run> --photos cloth256 paper256 --sources oracle sam3 vggt`
+loads any `--view` checkpoint (point model `pointtf`, or `cnn_reg` / `dino_reg` on the
+orthographic depth view, re-rendered from the package points with `render.render` at the
+run's size / extent / splat) and reports the force metrics per source on the same views, so
+oracle -> sam3 is the segmentation cost and sam3 -> vggt the lifting cost. The global
+feature (world centroid in training) is zeroed; VGGT clouds are scaled by their oracle
+factor under `--scale metric` (flagged) or normalised like `--view-norm` under `--scale norm`.
+
+Plumbing check (2026-10-30, local 2-epoch smoke checkpoints on the 128 split, which sit at
+chance): pointtf and cnn_reg both give ~10 cm / 75 deg on every source, i.e. the shim runs
+and the sources are interchangeable to the model at chance level. The method number needs
+the cluster checkpoints: M9i (cnn_reg, 8.5 cm / 25 deg on oracle views) and M9f / M9g
+(pointtf); see JOBS.md M18. Packages for transfer: `views_packages.tgz` (75 MB, gitignored).
+

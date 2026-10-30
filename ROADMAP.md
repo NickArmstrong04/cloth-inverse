@@ -141,6 +141,14 @@ of the perception stage, and scale is unknown (13% spread). Packages for oracle 
 inputs exist for all 56 views (`cloth_results/photos/*/views/`); the proof-of-concept number
 needs the rung-4a checkpoint run on them.
 
+### Rung 4b, step 4 (2026-10-30): the evaluation shim
+
+`inverse/eval_views.py` runs any `--view` checkpoint (point model or depth-view CNN) on the
+oracle / SAM / VGGT packages of the same views. Verified on local smoke checkpoints (chance
+level, as trained). The proof-of-concept number is JOBS.md M18 on Bouchet with M9i and M9f/M9g;
+note the physics domain shift (packages from constant-force smoke samples, M9 trained on
+ds256_free) and re-render from ds256_free test samples if the oracle number disagrees with M9i.
+
 ## Queued work
 
 - Decision 2026-10-28 evening: the bench (table + gravity) profile goes NaN when the sheet

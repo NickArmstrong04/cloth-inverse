@@ -639,3 +639,25 @@ sbatch --job-name=M15r3 cluster/resim_eval.sbatch $S4 runs/M15a --limit 50
 sbatch --job-name=M15r4 cluster/resim_eval.sbatch $S3 runs/M15b --limit 50
 (cd ../inverse && ../transfer/.venv/bin/python identifiability.py $S3/test)     # M16-0, still not run
 ```
+
+## Matrix M18: rung 4b on the photo packages (2026-10-30, branch photo-render)
+
+Why: the perception stage is built (photos -> SAM 3 "fabric" mask -> VGGT depth -> point
+packages, `cloth_results/photos/README.md`); the proof-of-concept number is a rung-4a model
+evaluated on the oracle, SAM and VGGT packages of the same 56 views. No training: an
+interactive allocation is enough (`bash cluster/interactive.sh`), each eval takes seconds.
+Packages are gitignored: copy `cloth_results/photos/views_packages.tgz` (75 MB) from the
+workstation to the repo's `cloth_results/photos/` on Bouchet and untar it there.
+
+| id | job id | status | what | command | result |
+|---|---|---|---|---|---|
+| M18-a | interactive | planned | M9i (cnn_reg on the depth view, the 8.5 cm rung-4a run) on oracle / SAM / VGGT packages | `cd cloth_data_generation/inverse && P=../../cloth_results/photos && python eval_views.py --run runs/M9i --photos $P/cloth256 $P/paper256 --sources oracle sam3 vggt vggt_knownfov --out $P/eval_views_M9i.json` | |
+| M18-b | interactive | planned | M9f / M9g (pointtf on visible points) on the same packages | same with `--run runs/M9f` (and `runs/M9g` if it finished) | |
+| M18-c | interactive | planned | scale-free variant: `--scale norm` (no oracle scale for VGGT; models were not trained with --view-norm, so expect a loss) | add `--scale norm --out $P/eval_views_M9i_norm.json` | |
+
+Caveats for reading M18: the packages come from 256-grid smoke samples under the constant-force
+model (ds256_const physics), while M9 runs were trained on ds256_free (`$S2`); a domain shift on
+top of the perception costs. If the oracle-package number is far from M9i's 8.5 cm, re-render the
+photos from `ds256_free` test samples first (`photo.py --h5 <ds256_free splits>/test --gt`, then
+`segment.py`, `lift.py`, `package_views.py`) so the comparison is like for like.
+
