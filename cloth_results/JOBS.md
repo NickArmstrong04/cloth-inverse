@@ -459,8 +459,8 @@ S4=/home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_const_paper_splits
 
 | id | job id | status | what | command | result |
 |---|---|---|---|---|---|
-| M15-a | 31403577 | running | M13-b recipe on paper: rung 1, positions + velocities, cnn_reg + aux, 300 ep (vs M13-b 1.7 / 5.1 / 0.44 on cloth) | `sbatch --job-name=M15a --mem=60G cluster/run.sbatch $S4 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --out runs/M15a` | |
-| M15-b | 31403576 | running | size-matched cloth control: M13-b recipe on ds256_const with `--n-train 1356` (paper has 1,356 train vs ~2,300; separates material from data size) | `sbatch --job-name=M15b --mem=60G cluster/run.sbatch $S3 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --n-train 1356 --out runs/M15b` | |
+| M15-a | 31403576 | FAILED (node) | M13-b recipe on paper: rung 1, positions + velocities, cnn_reg + aux, 300 ep (vs M13-b 1.7 / 5.1 / 0.44 on cloth) | `sbatch --job-name=M15a --mem=60G cluster/run.sbatch $S4 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --out runs/M15a` | died at 2 min on a1125u14n01: `CUDA error: uncorrectable ECC error` in the first `.to(dev)` (data loaded fine, 1356/169/169). GPU hardware fault, not code. Resubmit as M15-a2 excluding that node. |
+| M15-b | 31403577 | done (11.5 min) | size-matched cloth control: M13-b recipe on ds256_const with `--n-train 1356` (paper has 1,356 train vs ~2,300; separates material from data size) | `sbatch --job-name=M15b --mem=60G cluster/run.sbatch $S3 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --n-train 1356 --out runs/M15b` | test 1.7 cm / 5.4 deg / mag 0.55 / dur 0.023 s (val 1.7 / 5.6 / 0.56). Position and direction match M13-b at full size (1.7 / 5.1 / 0.44); magnitude worse (0.55 vs 0.44), so the data cut costs magnitude only. |
 
 Submit (from `cloth_data_generation/transfer`; J-006 merged 2026-10-30 with 1356/169/169):
 
@@ -499,7 +499,8 @@ Also fixed: with `--no-rot`, test_predictions.json held every test sample twice 
 |---|---|---|---|---|---|
 | M15-r1 | | planned | re-sim error of M13-b (cloth, best position model), first 100 test samples | `sbatch --job-name=M15r1 cluster/resim_eval.sbatch $S3 runs/M13b --limit 100` | |
 | M15-r2 | | planned | re-sim error of M13-e (cloth, best magnitude model) | `sbatch --job-name=M15r2 cluster/resim_eval.sbatch $S3 runs/M13e --limit 100` | |
-| M15-r3 | | after M15-a | re-sim error of M15-a (paper) | `sbatch --job-name=M15r3 cluster/resim_eval.sbatch $S4 runs/M15a --limit 100` | |
+| M15-a2 | | ready | resubmit of M15-a (same command) excluding the faulted node | `sbatch --job-name=M15a --mem=60G --exclude=a1125u14n01 cluster/run.sbatch $S4 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --out runs/M15a` | |
+| M15-r3 | | after M15-a2 | re-sim error of M15-a (paper) | `sbatch --job-name=M15r3 cluster/resim_eval.sbatch $S4 runs/M15a --limit 100` | |
 | M15-r4 | | after M15-b | re-sim error of M15-b (cloth, 1356 train) | `sbatch --job-name=M15r4 cluster/resim_eval.sbatch $S3 runs/M15b --limit 100` | |
 
 Submit (from `cloth_data_generation/transfer`; M15-r1/r2 now, r3/r4 when M15-a/b have finished):
