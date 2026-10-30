@@ -109,6 +109,16 @@ def chance_forces(preds: list[dict]) -> list[dict]:
     return decode_forces(y)
 
 
+def dedupe(preds: list[dict]) -> list[dict]:
+    """Runs trained before 2026-10-30 with --no-rot wrote every test sample twice."""
+    seen, out = set(), []
+    for p in preds:
+        if p["file"] not in seen:
+            seen.add(p["file"])
+            out.append(p)
+    return out
+
+
 def _run_dir(args) -> tuple[str, str]:
     if args.run:
         return os.path.abspath(args.run), os.path.join(os.path.abspath(args.run), "test_predictions.json")
@@ -138,7 +148,7 @@ def main():
         rows = sum((json.load(open(p)) for p in sorted(glob.glob(os.path.join(out, "shard_*.json")))), [])
         _report(rows, out, run_dir)
         return
-    preds = json.load(open(preds_path))[: args.limit]
+    preds = dedupe(json.load(open(preds_path)))[: args.limit]
     chance = None if args.no_chance else chance_forces(preds)
     if args.shard:
         i, n = map(int, args.shard.split("/"))

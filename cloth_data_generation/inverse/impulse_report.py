@@ -38,6 +38,8 @@ def load(path):
 
 
 def analyse(recs):
+    seen = set()  # runs trained before 2026-10-30 with --no-rot hold every test sample twice
+    recs = [r for r in recs if not (r["file"] in seen or seen.add(r["file"]))]
     eF, et, F, T, Fp = [], [], [], [], []
     for r in recs:
         for p, t in pair(r["pred"], r["true"]):
