@@ -359,3 +359,21 @@ Reading:
 - Next: a loader shim for the `views/*_pts_*.npz` packages (normalise by sheet size), then the
   rung-4a checkpoint on oracle vs SAM vs VGGT packages on the same views (cluster run).
 
+## Rung 4b, step 4: the shim on the cluster checkpoints, and the alignment report (2026-10-30)
+
+M18 (JOBS.md): M9i on the smoke packages 8.2 cm / 73 deg (oracle) = 8.2 / 73 (SAM) vs 9.1 / 71
+(VGGT); point models 9-10 cm / 75 deg everywhere. Like for like on 64 views of the ds256_free test
+split: M9i 9.2 / 57, M9f 9.0 / 61 (M9f's own test score 7.9 / 23). The loss is not domain shift
+and not the perception: train.py's --view path also feeds g = the sheet's world centroid (its drift
+from the rest position, rotated into the camera frame), which the shim zeroes. In free flight the
+sheet drifts 15-108 cm along the first force (local test samples, cos 0.5-0.97 with the force), so
+the rung-4a numbers (8.5 / 25) rest on a cue a photo aimed at the sheet does not contain. Position
+stays near the model's own score, direction collapses. Follow-ups: the oracle-drift rerun (`eval_views
+--g oracle`, plumbing in place) to quantify it; a fixed-camera protocol where the drift is observable;
+or models trained with g zeroed, the honest rung-4a number.
+
+Alignment report (`inverse/align_report.py`, photos/README.md): per view, SAM 3 masks match the
+truth at IoU 0.986 median with vertex coverage 1.000 (min 0.988); VGGT depth is off by 4.2 cm median
+/ 11.3 cm p90 over a 45 cm depth range, as a smooth ramp along the sheet (inclination / depth
+compression), worst on oblique views (up to 13 cm RMSE after the best similarity) and ~1.5 cm on
+frontal ones. Segmentation is solved on these renders; single-view lifting is the input error.

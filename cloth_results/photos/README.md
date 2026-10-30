@@ -135,3 +135,45 @@ and the sources are interchangeable to the model at chance level. The method num
 the cluster checkpoints: M9i (cnn_reg, 8.5 cm / 25 deg on oracle views) and M9f / M9g
 (pointtf); see JOBS.md M18. Packages for transfer: `views_packages.tgz` (75 MB, gitignored).
 
+## Alignment report: truth vs perception per view (2026-10-30)
+
+`inverse/align_report.py --photos cloth256 paper256 --out align` lines up, for every photo, what
+the renderer knows (oracle mask, metric depth, visible vertices) against what the stack found (SAM 3
+"fabric" mask; VGGT depth and cloud inside that mask, rebuilt per pixel from the saved package).
+Outputs under `align/` (PNGs gitignored, `report.md` / `report.json` tracked): one panel per view
+(photo | oracle mask | SAM mask | mask difference; oracle depth | VGGT depth at one fitted scale |
+signed depth error | the clouds from above), `summary.png` (error vs obliqueness), `worst.png`.
+
+| median over lifted views | cloth256 (47 of 48) | paper256 (8 of 8) |
+|---|---|---|
+| SAM mask IoU; recall / precision | 0.986; 0.990 / 0.999 | 0.989; 0.990 / 1.000 |
+| visible-vertex coverage (min over views) | 1.000 (0.988) | 1.000 (0.998) |
+| VGGT depth abs. error, median / p90 | 4.2 / 11.3 cm | 3.7 / 11.3 cm |
+| VGGT depth bias | -0.8 cm | -0.5 cm |
+| oracle depth range inside the mask | 44.7 cm | 40.2 cm |
+| point RMSE, scale + centring / best similarity | 7.1 / 4.0 cm | 7.3 / 4.9 cm |
+
+Reading: segmentation is solved on these renders (the only loss is the one near-edge-on view SAM
+does not detect, and a 1-2 px silhouette band). Lifting is where the input departs from the truth:
+the VGGT error is not noise but a smooth ramp along the sheet, i.e. a misjudged inclination /
+depth compression, so it is largest on oblique views with a large depth range (worst view: 67 cm
+range, 7 cm median / 25 cm p90 error, 13 cm RMSE even after the best similarity) and smallest on
+frontal ones (1.5 cm median). Folds are reproduced; the global tilt is not. A per-view affine
+(z-scale) fit would tell how much is pure depth compression; a second view or a known-size cue
+would remove it. Depth error is uncorrelated with the visible fraction and grows with the depth
+range (`summary.png`).
+
+### M18 outcome (Bouchet, 2026-10-30): the models need the drift, not just the shape
+
+eval_views on the smoke packages: M9i 8.2 cm / 73 deg (oracle) = 8.2 / 73 (SAM) vs 9.1 / 71
+(VGGT); M9f / M9g 9.2-10.0 cm / 74-77 deg on every source. Like for like (64 views rendered on
+the cluster from the ds256_free test split, oracle packages): M9i 9.2 / 56.7, M9f 9.0 / 60.7, M9g
+8.8 / 59.8, while M9f scores 7.9 / 23.1 on the same split through train.py. So the shim loses
+direction, and the cause is the global feature: under --no-vel train.py feeds g = the sheet's WORLD
+centroid, its drift from the rest position, rotated into the camera frame; in the free-flight data
+the sheet flies 15-108 cm along the first force (local test samples), a direct direction / impulse
+cue, and the photo camera aims at the sheet so the drift is invisible. Plumbing for the oracle drift
+is in place (photo.py --gt stores `centroid`, package_views writes `g_world`, `eval_views --g
+oracle`) but the decisive rerun is parked: the focus moved to the perception alignment above.
+Open design question: a fixed camera with a known rest position would make the drift observable
+(the sheet's offset in the image).
