@@ -81,13 +81,13 @@ def _rotate(x, g, y, R):
     return x, g, y
 
 
-def batched_loss(net, x, g, y, scaler, bs, sym_uv=None, a=None, R=None, aux_w=0.0):
+def batched_loss(net, x, g, y, scaler, bs, sym_uv=None, a=None, R=None, aux_w=0.0, w_mag=1.0):
     tot, n = 0.0, 0
     for i in range(0, len(x), bs):
         ai = a[i:i + bs] if a is not None else None
         Ri = R[i:i + bs] if R is not None else None
         p, aux, yb = forward_batch(net, x[i:i + bs], g[i:i + bs], y[i:i + bs], ai, Ri)
-        l = pair_loss(p.float(), scaler.norm(yb), sym_uv=sym_uv)
+        l = pair_loss(p.float(), scaler.norm(yb), sym_uv=sym_uv, w_mag=w_mag)
         if aux is not None and aux_w > 0:
             l = l + aux_w * aux
         fl = getattr(net.m, "last_flow_loss", None)
@@ -201,6 +201,12 @@ def main():
                     help="treat (u,v) as defined only up to the sheet's D4 symmetry in loss and metrics "
                          "(auto: on when --eval-rotated, i.e. the pose is unknown)")
     ap.add_argument("--width", type=int, default=32)
+    ap.add_argument("--pool-max", action="store_true",
+                    help="cnn_reg: concatenate per-channel max pooling to the mean pooling of the final map "
+                         "(keeps the local peak strain that sets the force magnitude; M14)")
+    ap.add_argument("--w-mag", type=float, default=1.0, help="weight of the log-magnitude term in the loss (M14)")
+    ap.add_argument("--strain-scale", type=float, default=10.0,
+                    help="--intrinsic: multiplier on the strain channels before the learnable affine (M14)")
     ap.add_argument("--epochs", type=int, default=400)
     ap.add_argument("--eval-only", action="store_true",
                     help="skip training: evaluate the --init checkpoint and write metrics.json (recover a run whose eval crashed)")
@@ -339,7 +345,8 @@ def main():
                   n_points=args.n_points, d=args.pt_dim, layers=args.pt_layers, aux=use_aux,
                   arch=args.dino_arch, size=args.view_size, finetune=args.dino_finetune,
                   repo=args.dino_repo, weights=args.dino_weights, intrinsic=args.intrinsic, flow=args.flow,
-                  flow_steps=args.flow_steps, ckpt=args.sonata_ckpt, grid_size=args.sonata_grid).to(dev)
+                  flow_steps=args.flow_steps, ckpt=args.sonata_ckpt, grid_size=args.sonata_grid,
+                  pool="max" if args.pool_max else "mean", strain_scale=args.strain_scale).to(dev)
     if args.model == "sonata_reg":
         model.finetune = not args.no_finetune
         for p in model.backbone.parameters():
@@ -410,7 +417,7 @@ def main():
                     x, g, y = augment(x, g, y, rotate=not args.no_rot and not args.view, yaw_only=args.yaw_only)
             with amp:
                 pred, aux, y = forward_batch(net, x, g, y, a, None, not args.view_all_points)
-            loss = pair_loss(pred.float(), scaler.norm(y), sym_uv=sym_uv)
+            loss = pair_loss(pred.float(), scaler.norm(y), sym_uv=sym_uv, w_mag=args.w_mag)
             if aux is not None:
                 loss = loss + args.aux_w * aux
             fl = getattr(net.m, "last_flow_loss", None)
@@ -425,11 +432,11 @@ def main():
         if (ep + 1) % args.eval_every == 0 or ep == args.epochs - 1:
             net.eval()
             with torch.no_grad(), amp:
-                vl = batched_loss(net, xva, gva, yva, scaler, args.bs, sym_uv, ava, Rva, args.aux_w)
+                vl = batched_loss(net, xva, gva, yva, scaler, args.bs, sym_uv, ava, Rva, args.aux_w, args.w_mag)
                 ntr = min(len(xtr), 256)  # train loss on a fixed subset (full pass at 768 is slow)
                 Rtr = _rot_from_gen(ntr, torch.Generator().manual_seed(999)).to(dev) if args.view else None
                 tl = batched_loss(net, xtr[:ntr], gtr[:ntr], ytr[:ntr], scaler, args.bs, sym_uv,
-                                  atr[:ntr] if use_aux else None, Rtr, args.aux_w)
+                                  atr[:ntr] if use_aux else None, Rtr, args.aux_w, args.w_mag)
             hist.append({"epoch": ep + 1, "train_aug": tot / steps_per_epoch, "train": tl, "val": vl})
             if vl < best:
                 best, best_state = vl, {k: v.detach().clone() for k, v in net.state_dict().items()}

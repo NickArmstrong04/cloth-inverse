@@ -91,9 +91,9 @@ class IntrinsicInput(nn.Module):
     kept without re-introducing the pose. A learnable per-channel affine replaces the
     dataset-level input standardisation that train.py applies to raw positions."""
 
-    def __init__(self, with_vel: bool, n_glob: int = 0, glob_scale: float = 10.0):
+    def __init__(self, with_vel: bool, n_glob: int = 0, glob_scale: float = 10.0, strain_scale: float = 10.0):
         super().__init__()
-        self.n_glob, self.glob_scale = n_glob, glob_scale
+        self.n_glob, self.glob_scale, self.strain_scale = n_glob, glob_scale, strain_scale
         self.cin = (9 if with_vel else 6) + 3 * n_glob
         self.scale = nn.Parameter(torch.ones(1, self.cin, 1, 1))
         self.shift = nn.Parameter(torch.zeros(1, self.cin, 1, 1))
@@ -101,7 +101,8 @@ class IntrinsicInput(nn.Module):
 
     def forward(self, x, g=None):
         vel = x[:, 3:6] if (self.cin - 3 * self.n_glob == 9 and x.shape[1] >= 6) else None
-        f, self.frames = intrinsic(x[:, :3].float(), vel.float() if vel is not None else None)
+        f, self.frames = intrinsic(x[:, :3].float(), vel.float() if vel is not None else None,
+                                   strain_scale=self.strain_scale)
         if self.n_glob:
             B, _, H, W = f.shape
             gl = [to_local_field(g[:, 3 * k:3 * k + 3].float()[:, :, None, None].expand(B, 3, H, W), self.frames)
@@ -166,9 +167,10 @@ class GridModel(nn.Module):
     """Shared machinery for the grid models: optional intrinsic input, optional flow head,
     direction frame handling."""
 
-    def _setup(self, cin, intrinsic_in, flow, cdim, uv_scale, flow_steps, gdim=0):
+    def _setup(self, cin, intrinsic_in, flow, cdim, uv_scale, flow_steps, gdim=0, strain_scale=10.0):
         self.intrinsic = intrinsic_in
-        self.pre = IntrinsicInput(with_vel=cin >= 6, n_glob=gdim // 3) if intrinsic_in else None
+        self.pre = (IntrinsicInput(with_vel=cin >= 6, n_glob=gdim // 3, strain_scale=strain_scale)
+                    if intrinsic_in else None)
         self.uv_scale = uv_scale
         self.flow = None  # built by the subclass once the feature width is known
         self.flow_targets = None  # set per step by train.py: (S, B, 2, 7) equivalent targets
@@ -226,12 +228,14 @@ class CNNReg(GridModel):
     dense force field (3, h, w); forward returns its loss when a target is given."""
 
     def __init__(self, w=32, hidden=256, p_drop=0.2, in_size=128, cin=6, gdim=6, aux=False, intrinsic=False,
-                 flow=False, uv_scale=None, flow_steps=32, **_):
+                 flow=False, uv_scale=None, flow_steps=32, pool="mean", strain_scale=10.0, **_):
         super().__init__()
-        enc_in = self._setup(cin, intrinsic, flow, 0, uv_scale, flow_steps, gdim)
+        enc_in = self._setup(cin, intrinsic, flow, 0, uv_scale, flow_steps, gdim, strain_scale)
         self.enc = Encoder(enc_in, w, in_size)
         self.gdim = gdim
-        cdim = self.enc.c_out + gdim
+        self.pool = pool  # "mean" | "max": max adds the per-channel maximum of the final map, so a
+        # local peak (the strain at the force patch, which sets the magnitude) is not averaged away
+        cdim = self.enc.c_out * (2 if pool == "max" else 1) + gdim
         if flow:
             self.flow = FlowHead(cdim, steps=flow_steps)
         self.head = nn.Sequential(
@@ -247,7 +251,8 @@ class CNNReg(GridModel):
         mid, out = self.enc(self._inputs(x, g))
         if self.pre is not None:
             g = torch.zeros_like(g)  # world-frame globals carry pose; they entered in local coordinates above
-        f = torch.cat([out.mean((-1, -2)), g], 1)
+        pooled = [out.mean((-1, -2))] + ([out.amax((-1, -2))] if self.pool == "max" else [])
+        f = torch.cat(pooled + [g], 1)
         self._feat = f
         a = self._aux_target(a)
         aux = aux_field_loss(self.aux(mid), a, self.aux_m0) if (self.aux is not None and a is not None) else None
@@ -564,8 +569,9 @@ class SonataReg(nn.Module):
 
 
 def build(name: str, uv_scale=None, **kw):
+    pool, strain_scale = kw.pop("pool", "mean"), kw.pop("strain_scale", 10.0)
     if name == "cnn_reg":
-        return CNNReg(uv_scale=uv_scale, **kw)
+        return CNNReg(uv_scale=uv_scale, pool=pool, strain_scale=strain_scale, **kw)
     if name == "cnn_heat":
         return CNNHeat(uv_scale=uv_scale, **kw)
     if name == "cnn_field":
@@ -603,13 +609,16 @@ def equivalent_targets(y_n, sym_uv=None):
     return torch.cat([base, base.flip(2)], 0)
 
 
-def pair_loss(pred_n, y_n, w_dir=1.0, sym_uv=None):
+def pair_loss(pred_n, y_n, w_dir=1.0, sym_uv=None, w_mag=1.0):
     """Permutation-invariant loss on normalized targets. pred_n, y_n: (B,2,7).
     MSE on (u,v,logmag,dur); (1 - cos) on direction. With ``sym_uv=(mean, std)``
     of the (u, v) normalization, the target may also be relabeled by any D4
-    symmetry of the sheet (unknown-pose training)."""
+    symmetry of the sheet (unknown-pose training). ``w_mag`` multiplies the
+    log-magnitude term (1 = the plain mean over the four regression channels)."""
+    wv = torch.tensor([1.0, 1.0, w_mag, 1.0], device=pred_n.device, dtype=pred_n.dtype)
+
     def one(p, t):
-        mse = ((p[..., [0, 1, 5, 6]] - t[..., [0, 1, 5, 6]]) ** 2).mean(-1)
+        mse = (((p[..., [0, 1, 5, 6]] - t[..., [0, 1, 5, 6]]) ** 2) * wv).mean(-1)
         d = F.normalize(p[..., 2:5], dim=-1)
         cos = (d * t[..., 2:5]).sum(-1)
         return mse + w_dir * (1.0 - cos)  # (B,2)

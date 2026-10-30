@@ -401,3 +401,47 @@ Reading: M13-a vs M9a is the dataset-difficulty number (same recipe, same size, 
 M13-b vs M13-a is the value of the release velocity; M13-d vs M13-c repeats the M11-a test on this
 data and, with the drift channel in, should hold direction near the baseline; M13-e vs M13-d says
 whether the intrinsic model uses the velocity; M13-g's best-of-8 gap is the multimodality measurement.
+
+## Matrix M14: force magnitude on the constant-force data (2026-10-30)
+
+Finding (RESULTS.md, impulse analysis): on the M13 runs duration is solved (3-6% vs 19% floor) and
+force magnitude is the whole error; impulse error = force error, so no target change helps. The
+intrinsic input halves force error (0.33 -> 0.18) at both rungs, so the lever is how the magnitude
+cue (strain at the patch) reaches the head. Three flag-gated changes (commit after 89bb08d; defaults
+unchanged): `--pool-max` adds per-channel max pooling of the final map to the mean pooling (the patch
+is sub-cell at the 8 px map, mean pooling dilutes its peak 64x); `--w-mag W` weights the
+log-magnitude loss term; `--strain-scale S` scales the strain channels (default 10, so 1% strain is
+0.1 before the learnable affine). Base recipe is M13-f (rung 1, intrinsic + drift, 300 ep: 0.19
+force error), which matched the 1000-ep rung-2 run, so it is the cheap test bed. M14-e is the seed
+spread without which 1-2 point gains are unreadable. `inverse/identifiability.py` (new) gives the
+data's own floor: oracle magnitude error from peak strain at the true patch and from the logged
+momentum, plus the delivered-momentum fraction and its spread.
+
+S3=/home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_const_splits
+
+| id | job id | status | what | command | result |
+|---|---|---|---|---|---|
+| M14-0 | login node | planned | identifiability floor on the test split (CPU, ~1 min) | `../transfer/.venv/bin/python identifiability.py $S3/test` | |
+| M14-a | | planned | M13-f + max pooling | `sbatch --job-name=M14a --mem=60G cluster/run.sbatch $S3 --model cnn_reg --intrinsic --epochs 300 --no-rot --amp --tta 0 --no-vel --aux-w 1 --pool-max --out runs/M14a` | |
+| M14-b | | planned | M13-f + magnitude loss weight 4 | `sbatch --job-name=M14b --mem=60G cluster/run.sbatch $S3 --model cnn_reg --intrinsic --epochs 300 --no-rot --amp --tta 0 --no-vel --aux-w 1 --w-mag 4 --out runs/M14b` | |
+| M14-c | | planned | M13-f + strain scale 100 | `sbatch --job-name=M14c --mem=60G cluster/run.sbatch $S3 --model cnn_reg --intrinsic --epochs 300 --no-rot --amp --tta 0 --no-vel --aux-w 1 --strain-scale 100 --out runs/M14c` | |
+| M14-d | | planned | M13-f + all three | `sbatch --job-name=M14d --mem=60G cluster/run.sbatch $S3 --model cnn_reg --intrinsic --epochs 300 --no-rot --amp --tta 0 --no-vel --aux-w 1 --pool-max --w-mag 4 --strain-scale 100 --out runs/M14d` | |
+| M14-e | | planned | M13-f seed 2 (seed spread control) | `sbatch --job-name=M14e --mem=60G cluster/run.sbatch $S3 --model cnn_reg --intrinsic --epochs 300 --no-rot --amp --tta 0 --no-vel --aux-w 1 --seed 2 --out runs/M14e` | |
+| M14-f | | planned | M13-f width 64 (capacity control) | `sbatch --job-name=M14f --mem=60G cluster/run.sbatch $S3 --model cnn_reg --intrinsic --epochs 300 --no-rot --amp --tta 0 --no-vel --aux-w 1 --width 64 --out runs/M14f` | |
+| M14-g | | planned | M14-d with release velocities (pairs with M13-e vs M13-f) | `sbatch --job-name=M14g --mem=60G cluster/run.sbatch $S3 --model cnn_reg --intrinsic --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --pool-max --w-mag 4 --strain-scale 100 --out runs/M14g` | |
+| M14-h | | after M14-d | rung 2 (M13-d recipe) + the winning flags, 1000 ep | `sbatch --job-name=M14h --mem=60G cluster/run.sbatch $S3 --model cnn_reg --intrinsic --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --aux-w 1 <winning flags> --out runs/M14h` | |
+
+Submit (from `cloth_data_generation/transfer`):
+
+```bash
+cd /home/naa79/scratch_pi_sz622/naa79/cloth-inverse && git pull
+S3=/home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_const_splits
+cd cloth_data_generation/inverse && ../transfer/.venv/bin/python identifiability.py $S3/test; cd ../transfer
+# M14-a..g: paste the sbatch lines above
+squeue -u $USER -o "%.10i %.14j %.8T %.10M"
+# when done: cd ../inverse && ../transfer/.venv/bin/python impulse_report.py runs/M13f runs/M13e runs/M14a runs/M14b runs/M14c runs/M14d runs/M14e runs/M14f runs/M14g
+```
+
+Reading: M14-e minus M13-f is the noise band; a lever counts only if it beats M13-f by more than that.
+M14-0's strain-oracle error is the floor a magnitude reader can reach from shape alone; if the
+delivered-momentum fraction has a wide IQR, velocity readers (M13-b/e, M14-g) are capped by it.
