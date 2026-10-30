@@ -8,7 +8,7 @@
 #SBATCH --job-name=resim_select
 #SBATCH --partition=gpu
 #SBATCH --gpus=1
-#SBATCH --exclude=a1125u05n01
+#SBATCH --exclude=a1125u05n01,a1125u14n01   # u14n01: uncorrectable ECC errors 2026-10-30
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=24G
 #SBATCH --time=08:00:00

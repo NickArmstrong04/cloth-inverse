@@ -15,7 +15,7 @@
 #SBATCH --job-name=cloth_run
 #SBATCH --partition=gpu
 #SBATCH --gpus=1                 # any GPU type; the script adapts to the card's memory
-#SBATCH --exclude=a1125u05n01
+#SBATCH --exclude=a1125u05n01,a1125u14n01   # u14n01: uncorrectable ECC errors 2026-10-30
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=160G
 #SBATCH --time=06:00:00

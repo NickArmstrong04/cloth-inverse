@@ -70,14 +70,15 @@ def kabsch(x: torch.Tensor) -> torch.Tensor:
     correspondence, so at rung 2 (unknown pose, known indexing) the pose is recoverable in closed form
     up to the residual deformation; the network then sees a canonical frame (M16-d)."""
     B, _, H, W = x.shape
-    r = rest_grid(H, W, x.device, torch.float32).reshape(3, -1)  # (3, N)
-    p = x.float().reshape(B, 3, -1)
-    Hm = torch.einsum("in,bjn->bij", r, p)  # sum_n rest_n p_n^T  (B, 3, 3)
-    U, S, Vh = torch.linalg.svd(Hm)
-    d = torch.sign(torch.det(U @ Vh))
-    D = torch.ones(B, 3, device=x.device)
-    D[:, 2] = d
-    return U @ torch.diag_embed(D) @ Vh  # (B,3,3): R p ~ r
+    with torch.autocast(device_type=x.device.type, enabled=False):  # no bf16 SVD kernel on CUDA (M16-d failed)
+        r = rest_grid(H, W, x.device, torch.float32).reshape(3, -1)  # (3, N)
+        p = x.float().reshape(B, 3, -1)
+        Hm = torch.einsum("in,bjn->bij", r, p)  # sum_n rest_n p_n^T  (B, 3, 3)
+        U, S, Vh = torch.linalg.svd(Hm)
+        d = torch.sign(torch.det(U @ Vh))
+        D = torch.ones(B, 3, device=x.device)
+        D[:, 2] = d
+        return U @ torch.diag_embed(D) @ Vh  # (B,3,3): R p ~ r
 
 
 def to_local_field(a: torch.Tensor, frames: torch.Tensor) -> torch.Tensor:

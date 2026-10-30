@@ -3,7 +3,9 @@
 For each test sample the predicted force pair is simulated with the dataset's own physics
 (sheet, solver and capture time are read from the test file's ``sim_config``) and the
 resulting state is compared with the true final state. Two references put the number on
-a scale: the *floor* re-simulates the TRUE forces (solver non-determinism, the best any
+a scale: the *floor* re-simulates the TRUE forces perturbed by 1e-5 relative (identical inputs
+replay bit-for-bit, so this is the solver's sensitivity: 2-3 cm on ds256_const from a float32
+round trip alone, the limit at which a prediction can be told apart from the truth; the best any
 prediction can do) and *chance* simulates the constant predictor (the mean test target,
 the same "chance" row as the parameter tables). The headline is
 
@@ -101,6 +103,18 @@ def grid_error(a: np.ndarray, b: np.ndarray) -> dict:
             "rmse_centered_m": float(np.sqrt((dc ** 2).mean()))}
 
 
+def perturbed(fp: list[dict], eps: float = 1e-5) -> list[dict]:
+    """The true forces moved by ``eps`` relative (magnitude, duration) and ``eps`` in (u, v): far below any
+    model error (1 cm = 0.02 in u), so the re-simulated difference is the solver's own sensitivity."""
+    out = []
+    for f in fp[:2]:
+        g = dict(f)
+        g["u"], g["v"] = float(f["u"]) + eps, float(f["v"]) + eps
+        g["magnitude"], g["duration"] = float(f["magnitude"]) * (1 + eps), float(f["duration"]) * (1 + eps)
+        out.append(g)
+    return out
+
+
 def chance_forces(preds: list[dict]) -> list[dict]:
     """The constant predictor: mean of the true encoded targets over the evaluated samples
     (per force slot), decoded back to force dicts. Same definition as the tables' chance row."""
@@ -169,8 +183,9 @@ def main():
             print(f"  {name}: predicted forces failed to simulate: {str(e)[-200:]}", flush=True)
             row["pred"] = None
         if not args.no_floor:
-            # the file's own (nominal) forces, not item["true"]: a --label delivered run stores relabelled magnitudes
-            fg, _ = simulator.run(true_fp, cfg["t_capture"], seed=900 + k, keep=keep("floor"))
+            # the file's own (nominal) forces, not item["true"] (a --label run stores relabelled magnitudes), perturbed
+            # by 1e-5 relative: identical inputs replay bit-for-bit (floor 0); this measures the solver's sensitivity
+            fg, _ = simulator.run(perturbed(true_fp), cfg["t_capture"], seed=900 + k, keep=keep("floor"))
             row["floor"] = grid_error(fg, true_grid)
         if chance is not None:
             cg, _ = simulator.run(chance, cfg["t_capture"], seed=900 + k, keep=keep("chance"))

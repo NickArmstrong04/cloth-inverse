@@ -230,3 +230,34 @@ force; the intrinsic model has 0.16 on force but 4 cm / 15 deg. Taking position/
 M13-b and magnitude from M13-e gives 1.7 cm / 5.1 deg / 0.16 at rung 1 today. Next lever: a hybrid
 input (raw positions + intrinsic channels) at rung 1, and the identifiability floor (M14-0) to see
 how far 0.16 is from what the data allows.
+
+## M15 / M16-a: paper material and the hybrid input (2026-10-30)
+
+Same recipe as M13-b (rung 1, raw positions + release velocities, cnn_reg + aux, 300 ep). Test mean
+position / direction, median relative force error, MAE in N; train position in brackets.
+
+| run | data | change | pos cm | dir deg | force (rel) | force MAE N | resim 50 (centred RMSE m) |
+|---|---|---|---|---|---|---|---|
+| M13-b | cloth, 2,300 train | base | 1.7 | 5.1 | 0.33 | 0.199 | pending (M15-r1) |
+| M15-b | cloth, 1,356 train | size control | 1.7 (1.4) | 5.4 | 0.39 | 0.236 | pred 0.027 on the 2 logged samples |
+| M15-a | **paper**, 1,356 train | material | 3.2 (1.9) | 6.8 | 0.36 | 0.228 | pending (M15-r3) |
+| M16-a | cloth, 2,300 train | **+ hybrid input** | **1.0 (0.8)** | **4.3** | **0.156** | **0.109** | pred 0.028, chance 0.119 |
+| M13-e | cloth | rung 2, intrinsic + vel, 1000 ep | 4.1 | 14.7 | 0.157 | 0.114 | pending (M15-r2) |
+| chance | | | 14 | 94 | 0.46 | 0.247 | 0.119 |
+
+Reading:
+- **The hybrid input is the first lever that improves every field at once.** Raw channels plus the
+  intrinsic strain/curvature features: position 1.7 -> 1.0 cm, direction 5.1 -> 4.3 deg, force 0.33 ->
+  0.156 (R2 on linear force 0.11 -> 0.70). It matches the best magnitude model (M13-e, 0.157) while
+  keeping the raw model's localisation, so the per-field split of M14 is closed: M16-a is the best
+  single model at rung 1 on cloth. Train 0.8 vs test 1.0 cm: on the data slope, not memorising.
+- **Paper costs 1.5 cm and 1.4 deg at equal data** (M15-a vs M15-b), with a wider train/test gap
+  (1.9 -> 3.2 cm vs 1.4 -> 1.7): creases make the mapping less smooth and the 1,356 samples go less
+  far. Magnitude is at chance on both materials with the raw recipe, as on cloth before; the hybrid
+  recipe on paper is the next row (M17).
+- **Re-simulation discriminates to about 2.5 cm and no further.** The true forces replayed bit-exactly
+  give 0.0000 m; the same forces after a float32 round trip (1e-7 relative) give 0.022-0.031 m. The
+  solver is that sensitive at release, so a prediction with 0.028 m re-sim error (M16-a, M15-b) is
+  indistinguishable from the truth by this metric; the metric's job is now to catch gross failures
+  (chance 0.12-0.17 m) and rank the flow candidates only coarsely. The floor in eval_resim.py is the
+  round-trip version from this point on.

@@ -499,9 +499,9 @@ Also fixed: with `--no-rot`, test_predictions.json held every test sample twice 
 |---|---|---|---|---|---|
 | M15-r1 | | planned | re-sim error of M13-b (cloth, best position model), first 100 test samples | `sbatch --job-name=M15r1 cluster/resim_eval.sbatch $S3 runs/M13b --limit 100` | |
 | M15-r2 | | planned | re-sim error of M13-e (cloth, best magnitude model) | `sbatch --job-name=M15r2 cluster/resim_eval.sbatch $S3 runs/M13e --limit 100` | |
-| M15-a2 | | ready | resubmit of M15-a (same command) excluding the faulted node | `sbatch --job-name=M15a --mem=60G --exclude=a1125u14n01 cluster/run.sbatch $S4 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --out runs/M15a` | |
+| M15-a2 | 31408396 | done (13.6 min) | resubmit of M15-a (same command) excluding the faulted node | `sbatch --job-name=M15a --mem=60G --exclude=a1125u14n01 cluster/run.sbatch $S4 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --out runs/M15a` | test 3.2 cm / 6.8 deg / mag 0.53 (0.228 N) / dur 0.028 s; train 1.9 / 5.0 / 0.12: overfits more than cloth (M15-b 1.7 / 5.4 / 0.55, train 1.4). Paper costs 1.5 cm and 1.4 deg at equal data; magnitude at chance on both |
 | M15-r3 | | after M15-a2 | re-sim error of M15-a (paper) | `sbatch --job-name=M15r3 cluster/resim_eval.sbatch $S4 runs/M15a --limit 100` | |
-| M15-r4 | | after M15-b | re-sim error of M15-b (cloth, 1356 train) | `sbatch --job-name=M15r4 cluster/resim_eval.sbatch $S3 runs/M15b --limit 100` | |
+| M15-r4 | 31408397 | FAILED at 46 min (disk quota; 2 samples logged: pred 0.027 / floor 0.031 / chance 0.141 and 0.027 / 0.022 / 0.172 m) | re-sim error of M15-b (cloth, 1356 train) | `sbatch --job-name=M15r4 cluster/resim_eval.sbatch $S3 runs/M15b --limit 100` | |
 
 Submit (from `cloth_data_generation/transfer`; M15-r1/r2 now, r3/r4 when M15-a/b have finished):
 
@@ -548,17 +548,17 @@ S3 = ds256_const_splits; S3F = the same split re-packaged with snapshots in the 
 |---|---|---|---|---|---|
 | M16-0 | login node | planned | identifiability floors on the test split (strain oracle, delivered fraction + IQR, momentum oracle) | `cd ../inverse && ../transfer/.venv/bin/python identifiability.py $S3/test` | |
 | M16-p | login node | planned | re-package ds256_const with snapshots in the test files (same split seed -> same membership) | `.venv/bin/python package_splits.py --indir $D/ds256_const --outdir $D/ds256_const_splits_fr --test-keep-frames` | |
-| M16-a | | planned | R1 + hybrid input (vs M13-b 1.7 / 5.1 / 0.44) | `RESIM=50 sbatch --job-name=M16a --mem=60G cluster/run.sbatch $S3 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --hybrid --out runs/M16a` | |
-| M16-b | after M16-p | planned | R1 + two-snapshot input | `RESIM=50 sbatch --job-name=M16b --mem=60G cluster/run.sbatch $S3F --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --snap --out runs/M16b` | |
-| M16-c | | planned | R1 + patch-conditioned magnitude head (k = 5) | `RESIM=50 sbatch --job-name=M16c --mem=60G cluster/run.sbatch $S3 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --patch-head 5 --out runs/M16c` | |
-| M16-d | | planned | rung 2 by canonicalisation: R1 recipe + `--kabsch --eval-rotated` (vs M13-e 4.1 / 14.7 / 0.157 and M13-b) | `RESIM=50 sbatch --job-name=M16d --mem=60G cluster/run.sbatch $S3 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --kabsch --eval-rotated --out runs/M16d` | |
-| M16-e | | planned | R2 + centroid-relative local-frame channels | `RESIM=50 sbatch --job-name=M16e --mem=60G cluster/run.sbatch $S3 --model cnn_reg --intrinsic --intrinsic-rel --epochs 1000 --amp --tta 0 --eval-rotated --aux-w 1 --out runs/M16e` | |
-| M16-f | | planned | R1 + delivered labels (per-force least squares) | `RESIM=50 sbatch --job-name=M16f --mem=60G cluster/run.sbatch $S3 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --label delivered --out runs/M16f` | |
-| M16-f2 | | planned | R1 + scaled labels (nominal x delivered fraction) | `RESIM=50 sbatch --job-name=M16f2 --mem=60G cluster/run.sbatch $S3 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --label scaled --out runs/M16f2` | |
-| M16-f3 | | planned | R2 + scaled labels | `RESIM=50 sbatch --job-name=M16f3 --mem=60G cluster/run.sbatch $S3 --model cnn_reg --intrinsic --epochs 1000 --amp --tta 0 --eval-rotated --aux-w 1 --label scaled --out runs/M16f3` | |
-| M16-g | | planned | R2 + flow head (8 candidates): M13-e with candidates for re-sim selection | `sbatch --job-name=M16g --mem=60G cluster/run.sbatch $S3 --model cnn_reg --intrinsic --flow --flow-k 8 --epochs 1000 --amp --tta 0 --eval-rotated --aux-w 1 --out runs/M16g` | |
+| M16-a | 31411391 | done (62 min incl. resim) | R1 + hybrid input (vs M13-b 1.7 / 5.1 / 0.44) | `RESIM=50 sbatch --job-name=M16a --mem=60G cluster/run.sbatch $S3 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --hybrid --out runs/M16a` | test **1.0 cm / 4.3 deg / mag 0.23 (0.109 N)** / dur 0.016 s; median rel force 0.156, R2 lin 0.70, MAE 0.109 N (M13-b: 1.7 / 5.1 / 0.44, 0.199 N; M13-e force 0.157). Resim 50: pred 0.0279 m, chance 0.1185, beats chance 100%; floor read 0.0000 because identical forces replay bit-exactly, see M16-r |
+| M16-b | 31411399 | FAILED exit 0:53 (no log file: disk quota) | R1 + two-snapshot input | `RESIM=50 sbatch --job-name=M16b --mem=60G cluster/run.sbatch $S3F --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --snap --out runs/M16b` | |
+| M16-c | 31411392 | FAILED (ECC node a1125u14n01) | R1 + patch-conditioned magnitude head (k = 5) | `RESIM=50 sbatch --job-name=M16c --mem=60G cluster/run.sbatch $S3 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --patch-head 5 --out runs/M16c` | |
+| M16-d | 31411393 | FAILED (bf16 SVD in kabsch; fixed) | rung 2 by canonicalisation: R1 recipe + `--kabsch --eval-rotated` (vs M13-e 4.1 / 14.7 / 0.157 and M13-b) | `RESIM=50 sbatch --job-name=M16d --mem=60G cluster/run.sbatch $S3 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --kabsch --eval-rotated --out runs/M16d` | |
+| M16-e | 31411396 | FAILED at ep 50 (disk quota) | R2 + centroid-relative local-frame channels | `RESIM=50 sbatch --job-name=M16e --mem=60G cluster/run.sbatch $S3 --model cnn_reg --intrinsic --intrinsic-rel --epochs 1000 --amp --tta 0 --eval-rotated --aux-w 1 --out runs/M16e` | |
+| M16-f | 31411394 | FAILED at ep 175 (disk quota) | R1 + delivered labels (per-force least squares) | `RESIM=50 sbatch --job-name=M16f --mem=60G cluster/run.sbatch $S3 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --label delivered --out runs/M16f` | |
+| M16-f2 | 31411395 | FAILED (ECC node a1125u14n01) | R1 + scaled labels (nominal x delivered fraction) | `RESIM=50 sbatch --job-name=M16f2 --mem=60G cluster/run.sbatch $S3 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --label scaled --out runs/M16f2` | |
+| M16-f3 | 31411397 | FAILED (ECC node a1125u14n01) | R2 + scaled labels | `RESIM=50 sbatch --job-name=M16f3 --mem=60G cluster/run.sbatch $S3 --model cnn_reg --intrinsic --epochs 1000 --amp --tta 0 --eval-rotated --aux-w 1 --label scaled --out runs/M16f3` | |
+| M16-g | 31411398 | FAILED at ep 50 (disk quota) | R2 + flow head (8 candidates): M13-e with candidates for re-sim selection | `sbatch --job-name=M16g --mem=60G cluster/run.sbatch $S3 --model cnn_reg --intrinsic --flow --flow-k 8 --epochs 1000 --amp --tta 0 --eval-rotated --aux-w 1 --out runs/M16g` | |
 | M16-g2 | after M16-g | planned | re-sim selection among M16-g's candidates, first 50 test samples | `sbatch --job-name=M16g2 --dependency=afterok:<M16g id> cluster/resim.sbatch $S3 runs/M16g --limit 50 --k 8` | |
-| M16-h | after M16-p | planned | R1 + hybrid + snapshot + patch head (the three magnitude levers together) | `RESIM=50 sbatch --job-name=M16h --mem=60G cluster/run.sbatch $S3F --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --hybrid --snap --patch-head 5 --out runs/M16h` | |
+| M16-h | 31411400 | FAILED exit 0:53 (no log file: disk quota) | R1 + hybrid + snapshot + patch head (the three magnitude levers together) | `RESIM=50 sbatch --job-name=M16h --mem=60G cluster/run.sbatch $S3F --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --hybrid --snap --patch-head 5 --out runs/M16h` | |
 
 Submit (from `cloth_data_generation/transfer`):
 
@@ -583,3 +583,59 @@ model reaches ~2 cm / 6 deg, the rung-1 recipe is the rung-2 recipe). M16-e vs M
 cost of the invariant path. M16-f/f2 vs M13-b and M16-f3 vs M13-e: if the relabelled magnitude error
 drops far below 0.16, the remaining error was label inconsistency, not the model; M16-0's delivered
 fraction IQR says how much. The re-sim score ranks all of them jointly.
+
+### M16 round 2 (2026-10-30 13:10): quota, ECC node, two fixes, resubmission
+
+Eight of the ten M16 jobs did not finish: three died on a1125u14n01 (uncorrectable ECC, same node that
+killed M15-a; now in the `--exclude` of run/resim/resim_eval.sbatch), four hit `Disk quota exceeded`
+(M16-e/f/g at the epoch print; M16-b/h could not even open their log, exit 0:53; M15-r4 at 46 min),
+M16-d crashed in the Kabsch SVD under bf16 autocast (fixed: the fit runs in float32 outside autocast).
+Also fixed from the M16-a / M15-r4 logs: the re-sim "floor" re-simulated identical forces and the
+solver replayed them bit-for-bit (0.0000), while M15-r4 (true forces after the float32 round trip of
+the prediction file) read 0.022-0.031 m. The floor is now the float32 round trip: a 1e-7 relative
+change of the forces moves the sheet 2-3 cm, which is the solver's sensitivity and the limit at which
+re-sim can tell a prediction from the truth (implemented as an explicit 1e-5 relative perturbation, since at 128 the round trip replays exactly). M16-a's prediction (0.028 m) is already at that limit.
+
+Before resubmitting, free scratch: the per-variant input caches are the likely cause (every
+`--label` / `--snap` variant writes its own `train_pool1_*.pt`, 2.5 GB each, plus the S3F copy).
+
+```bash
+cd /home/naa79/scratch_pi_sz622/naa79 && df -h . && du -sh cloth_data/* 2>/dev/null | sort -h | tail -n 12
+ls -la cloth_data/*_splits/*.pt | sort -k5 -n | tail -n 20
+# safe to delete: caches of datasets not in the current matrices (rebuilt on demand), frame caches, old resim leftovers
+rm -f cloth_data/ds768_night_splits/*.pt cloth_data/ds256_free_splits/*.pt cloth_data/*_splits/*frames*.pt
+find cloth-inverse/cloth_data_generation/inverse/runs -name "_tmp_*.h5" -delete
+df -h .
+```
+
+| id | job id | status | what | command | result |
+|---|---|---|---|---|---|
+| M16-r | | ready | re-sim of M16-a with the sensitivity floor (replaces the 0.0000 floor) | `sbatch --job-name=M16r cluster/resim_eval.sbatch $S3 runs/M16a --limit 50` | |
+| M16-c2 | | ready | resubmit M16-c (patch head) | same command as M16-c | |
+| M16-d2 | | ready | resubmit M16-d (kabsch, fixed) | same command as M16-d | |
+| M16-e2 | | ready | resubmit M16-e (intrinsic-rel) | same command as M16-e | |
+| M16-f, f2, f3 | | ready | resubmit the label runs | same commands | |
+| M16-g | | ready | resubmit the flow run; M16-g2 after it | same commands | |
+| M16-b, M16-h | after M16-p | ready | check `ls $S3F/test/*.h5 | wc -l` first; run M16-p if S3F is missing | same commands | |
+| M15-r1, r2, r3, r4 | | ready | re-sim of M13-b, M13-e, M15-a, M15-b (floor now meaningful) | same commands, `--limit 50` is enough | |
+
+```bash
+cd /home/naa79/scratch_pi_sz622/naa79/cloth-inverse && git pull && cd cloth_data_generation/transfer
+D=/home/naa79/scratch_pi_sz622/naa79/cloth_data; S3=$D/ds256_const_splits; S3F=$D/ds256_const_splits_fr; S4=$D/ds256_const_paper_splits
+sbatch --job-name=M16r cluster/resim_eval.sbatch $S3 runs/M16a --limit 50
+RESIM=50 sbatch --job-name=M16c --mem=60G cluster/run.sbatch $S3 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --patch-head 5 --out runs/M16c
+RESIM=50 sbatch --job-name=M16d --mem=60G cluster/run.sbatch $S3 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --kabsch --eval-rotated --out runs/M16d
+RESIM=50 sbatch --job-name=M16e --mem=60G cluster/run.sbatch $S3 --model cnn_reg --intrinsic --intrinsic-rel --epochs 1000 --amp --tta 0 --eval-rotated --aux-w 1 --out runs/M16e
+RESIM=50 sbatch --job-name=M16f --mem=60G cluster/run.sbatch $S3 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --label delivered --out runs/M16f
+RESIM=50 sbatch --job-name=M16f2 --mem=60G cluster/run.sbatch $S3 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --label scaled --out runs/M16f2
+RESIM=50 sbatch --job-name=M16f3 --mem=60G cluster/run.sbatch $S3 --model cnn_reg --intrinsic --epochs 1000 --amp --tta 0 --eval-rotated --aux-w 1 --label scaled --out runs/M16f3
+sbatch --job-name=M16g --mem=60G cluster/run.sbatch $S3 --model cnn_reg --intrinsic --flow --flow-k 8 --epochs 1000 --amp --tta 0 --eval-rotated --aux-w 1 --out runs/M16g
+ls $S3F/test/*.h5 | wc -l || .venv/bin/python package_splits.py --indir $D/ds256_const --outdir $S3F --test-keep-frames
+RESIM=50 sbatch --job-name=M16b --mem=60G cluster/run.sbatch $S3F --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --snap --out runs/M16b
+RESIM=50 sbatch --job-name=M16h --mem=60G cluster/run.sbatch $S3F --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --hybrid --snap --patch-head 5 --out runs/M16h
+sbatch --job-name=M15r1 cluster/resim_eval.sbatch $S3 runs/M13b --limit 50
+sbatch --job-name=M15r2 cluster/resim_eval.sbatch $S3 runs/M13e --limit 50
+sbatch --job-name=M15r3 cluster/resim_eval.sbatch $S4 runs/M15a --limit 50
+sbatch --job-name=M15r4 cluster/resim_eval.sbatch $S3 runs/M15b --limit 50
+(cd ../inverse && ../transfer/.venv/bin/python identifiability.py $S3/test)     # M16-0, still not run
+```
