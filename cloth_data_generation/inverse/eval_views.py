@@ -69,7 +69,11 @@ class Run:
                                repo=a.get("dino_repo"), weights=a.get("dino_weights"))
         self.model = self.model.to(dev)
         missing, unexpected = self.model.load_state_dict(state, strict=False)
+        # x_scale / g_scale (GridModel buffers for --hybrid, M16) postdate the M9 checkpoints; they
+        # default to ones and are unused outside hybrid mode, so an old checkpoint may lack them.
+        missing = [k for k in missing if k not in ("x_scale", "g_scale")]
         assert not missing, f"missing tensors: {missing[:5]}"
+        assert not unexpected, f"unexpected tensors: {unexpected[:5]}"
         self.model.eval()
 
     def describe(self):
