@@ -261,3 +261,30 @@ Reading:
   indistinguishable from the truth by this metric; the metric's job is now to catch gross failures
   (chance 0.12-0.17 m) and rank the flow candidates only coarsely. The floor in eval_resim.py is the
   round-trip version from this point on.
+
+## Rung 4b, step 2: SAM 3 on synthetic photos (2026-10-30, branch photo-render)
+
+Synthetic photos of 12 cloth + 2 paper 256-grid samples, 4 random pinhole views each
+(`inverse/photo.py`, `cloth_results/photos/README.md`); SAM 3 text prompts scored against the
+renderer's oracle mask; SAM mask x oracle depth packaged in the rung-4a point-model format.
+
+| prompt | cloth mean IoU | cloth found | coverage of visible vertices | paper mean IoU / found |
+|---|---|---|---|---|
+| **fabric** | **0.957** | **47 / 48** | 0.978 | 0.989 / 8 of 8 |
+| a piece of cloth (thr 0.3) | 0.957 | 47 / 48 | 0.978 | 0.989 / 8 |
+| cloth | 0.757 | 37 / 48 | 0.770 | 0.989 / 8 |
+| a crumpled sheet of fabric | 0.449 | 22 / 48 | 0.458 | 0.370 / 3 |
+| paper, sheet, textile | 0.00 | 0-1 / 48 | 0.00 | 0.00 / 0 |
+| oracle box (ceiling) | 0.977 | 48 / 48 | 0.999 | 0.989 / 8 |
+
+Reading:
+- **On clean renders the segmentation cost is zero when the sheet is detected**: median IoU 0.985,
+  equal to the oracle box; the lost points are only the splat boundary (SAM / oracle point count
+  0.985-0.993 per found view). The whole error budget of this step is detection: one zero-detection
+  in 48 for "fabric" (the near-edge-on view with 11% of vertices visible).
+- **The phrase matters more than the threshold**: adjectives ("crumpled", "folded") and the word
+  "paper" suppress detection; "fabric" is the texture-agnostic default for real photos.
+- This is the plumbing number, not the method number (ROADMAP standing caveat): the perception stage
+  feeds a model whose rung-4a error is 8.5 cm / 25 deg (M9i). Next: monocular depth (SAM 3D Objects
+  or a depth model) in place of oracle depth, then the rung-4a checkpoint on both packages.
+

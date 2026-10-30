@@ -8,3 +8,11 @@ a checkered cloth
 a folded blue and white checkered cloth
 paper
 a crumpled sheet of paper
+# Round 2 (2026-10-30): round 1 misses were zero detections (K=0), never bad masks; "crumpled"
+# and "paper" hurt. Try shorter / broader nouns and a lower threshold (segment.py --threshold 0.3).
+textile
+a cloth
+a piece of fabric
+a folded cloth
+sheet
+a crumpled cloth

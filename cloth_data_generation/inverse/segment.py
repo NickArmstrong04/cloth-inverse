@@ -32,7 +32,7 @@ import numpy as np
 import torch
 from PIL import Image, ImageDraw
 
-DEFAULT_PROMPTS = ["cloth", "fabric", "a piece of cloth", "a crumpled sheet of fabric", "a checkered cloth",
+DEFAULT_PROMPTS = ["fabric", "cloth", "a piece of cloth", "a crumpled sheet of fabric", "a checkered cloth",
                    "a folded blue and white checkered cloth", "paper", "a crumpled sheet of paper"]
 
 

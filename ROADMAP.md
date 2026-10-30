@@ -120,6 +120,17 @@ rung-4a splatter (`render.py`, untouched) and `data.random_rotation`. First test
 these, score its masks against the renderer's oracle mask, and decide what the perception
 stage hands the rung-4a model.
 
+### Rung 4b, step 2 (2026-10-30): SAM 3 segments the photos
+
+`inverse/segment.py` (own venv, `cluster/setup_sam3.sh`) prompts SAM 3 with text over the test set
+and scores against the renderer's oracle mask; `inverse/package_views.py` turns a mask x oracle
+depth into the rung-4a point input (round trip exact). Result: "fabric" finds 47/48 cloth and 8/8
+paper views with median IoU 0.985 = the oracle-box ceiling; every failure is a zero detection, not
+a bad mask; "paper"/"sheet"/"crumpled" prompts fail (RESULTS.md). Segmentation is therefore not the
+bottleneck of 4b on clean renders; the open costs are 3D lifting (monocular depth / SAM 3D Objects
+instead of oracle depth) and the rung-4a model itself. Next: the lifting step, then evaluate the
+rung-4a checkpoint on the oracle and SAM packages.
+
 ## Queued work
 
 - Decision 2026-10-28 evening: the bench (table + gravity) profile goes NaN when the sheet
