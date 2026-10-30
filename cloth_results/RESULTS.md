@@ -238,12 +238,14 @@ position / direction, median relative force error, MAE in N; train position in b
 
 | run | data | change | pos cm | dir deg | force (rel) | force MAE N | resim 50 (centred RMSE m) |
 |---|---|---|---|---|---|---|---|
-| M13-b | cloth, 2,300 train | base | 1.7 | 5.1 | 0.33 | 0.199 | pending (M15-r1) |
-| M15-b | cloth, 1,356 train | size control | 1.7 (1.4) | 5.4 | 0.39 | 0.236 | pred 0.027 on the 2 logged samples |
-| M15-a | **paper**, 1,356 train | material | 3.2 (1.9) | 6.8 | 0.36 | 0.228 | pending (M15-r3) |
-| M16-a | cloth, 2,300 train | **+ hybrid input** | **1.0 (0.8)** | **4.3** | **0.156** | **0.109** | pred 0.028, chance 0.119 |
-| M13-e | cloth | rung 2, intrinsic + vel, 1000 ep | 4.1 | 14.7 | 0.157 | 0.114 | pending (M15-r2) |
+| M13-b | cloth, 2,300 train | base | 1.7 | 5.1 | 0.33 | 0.199 | pred 0.030 * |
+| M15-b | cloth, 1,356 train | size control | 1.7 (1.4) | 5.4 | 0.39 | 0.236 | pred 0.031 * |
+| M15-a | **paper**, 1,356 train | material | 3.2 (1.9) | 6.8 | 0.36 | 0.228 | pred 0.031, floor 0.001, chance 0.111 * |
+| M16-a | cloth, 2,300 train | **+ hybrid input** | **1.0 (0.8)** | **4.3** | **0.156** | **0.109** | pred 0.028, floor < 1e-4, chance 0.119 * |
+| M13-e | cloth | rung 2, intrinsic + vel, 1000 ep | 4.1 | 14.7 | 0.157 | 0.114 | invalid (frame bug), re-run pending |
 | chance | | | 14 | 94 | 0.46 | 0.247 | 0.119 |
+
+\* provisional: re-simulated with the 128 force footprint (see below); the corrected runs are pending.
 
 Reading:
 - **The hybrid input is the first lever that improves every field at once.** Raw channels plus the
@@ -255,12 +257,62 @@ Reading:
   (1.9 -> 3.2 cm vs 1.4 -> 1.7): creases make the mapping less smooth and the 1,356 samples go less
   far. Magnitude is at chance on both materials with the raw recipe, as on cloth before; the hybrid
   recipe on paper is the next row (M17).
-- **Re-simulation discriminates to about 2.5 cm and no further.** The true forces replayed bit-exactly
-  give 0.0000 m; the same forces after a float32 round trip (1e-7 relative) give 0.022-0.031 m. The
-  solver is that sensitive at release, so a prediction with 0.028 m re-sim error (M16-a, M15-b) is
-  indistinguishable from the truth by this metric; the metric's job is now to catch gross failures
-  (chance 0.12-0.17 m) and rank the flow candidates only coarsely. The floor in eval_resim.py is the
-  round-trip version from this point on.
+- **Re-simulation: the solver is not chaotic at 256, and two bugs made the first numbers wrong.**
+  The true forces perturbed by 1e-5 relative move the cloth sheet less than 0.1 mm (floor prints
+  0.0000) and the paper sheet 1 mm, so re-sim can in principle discriminate predictions far below a
+  centimetre. The earlier "floor 0.022-0.031 m" and every predicted-force re-sim so far used the
+  128-resolution force footprint (sigma 3 / radius 9 cells) where the 256 data were generated with
+  6 / 18: the same force on a quarter of the area. And the rung-2 runs (`--eval-rotated`) saved their
+  predicted directions in the rotated evaluation frame, so their re-sims scored below chance
+  (M16-d/e/f3 1.06-1.11, M13-e NaN) while their (u, v) metrics were right. Both are fixed
+  (`with_footprint`, `to_file_frame`, `fix_rotated_preds.py`); the corrected re-sims are queued
+  (JOBS.md M16 round 3).
+
+
+## M16: six improvements to the two best models (2026-10-30)
+
+Rung 1 = R1 recipe (M13-b: raw positions + velocities, cnn_reg + aux, 300 ep, `--no-rot`); rung 2 =
+unknown pose (`--eval-rotated`), R2 = intrinsic features, 1000 ep. Test mean position / direction,
+median relative force error, MAE in N over const MAE (the label-scale-free column), R2 on linear force.
+All ds256_const (2,300 train). Parameter metrics are final; re-sim scores are being re-run (above).
+
+| run | rung | change | pos cm | dir deg | force (rel) | MAE/const | R2 lin |
+|---|---|---|---|---|---|---|---|
+| M13-b | 1 | R1 base | 1.7 | 5.1 | 0.327 | 0.81 | 0.11 |
+| M16-a | 1 | + hybrid input | **1.0** | **4.3** | **0.156** | **0.44** | **0.70** |
+| M16-b | 1 | + two-snapshot input (acceleration channels) | 1.6 | 5.2 | 0.359 | 0.88 | -0.03 |
+| M16-c | 1 | + patch-conditioned magnitude head | 1.5 | 5.2 | 0.325 | 0.80 | 0.18 |
+| M16-h | 1 | hybrid + snapshot + patch head | 1.2 | 4.5 | 0.155 | 0.47 | 0.65 |
+| M16-f | 1 | R1, delivered-momentum labels | 1.9 | 4.8 | 0.125 | 0.71 | 0.29 |
+| M16-f2 | 1 | R1, scaled labels | 1.7 | 5.6 | 0.216 | 0.88 | 0.19 |
+| M13-e | 2 | R2 base (intrinsic) | 4.1 | 14.7 | 0.157 | 0.46 | 0.66 |
+| M16-d | 2 | **R1 + Kabsch canonicalisation**, 300 ep | **1.9** | **6.0** | 0.382 | 0.89 | -0.02 |
+| M16-e | 2 | R2 + local-frame relative position | 4.0 | 14.1 | 0.156 | 0.46 | 0.67 |
+| M16-f3 | 2 | R2, scaled labels | 3.8 | 13.9 | 0.129 | 0.50 | 0.48 |
+| M16-g | 2 | R2 + flow head, 8 candidates: mean-of-8 / best-of-8 | 4.0 / **0.65** | 15.9 / 18.5 | 0.25 | | |
+
+Reading:
+- **One lever did the magnitude work: the hybrid input.** Giving the encoder the raw standardised
+  channels and the intrinsic strain/curvature features at once brings force error from 0.33 to 0.156
+  relative (R2 0.11 -> 0.70) and improves position and direction as well. The two other magnitude
+  ideas, an acceleration channel from the stored snapshot and a head that re-reads the feature map
+  around the predicted contact, do nothing alone and nothing on top of the hybrid (M16-h equals
+  M16-a within noise and loses 0.2 cm). The snapshot test files (S3F) can be retired.
+- **The unknown pose is recoverable in closed form.** Aligning the indexed grid to its rest grid
+  (Kabsch) and running the plain rung-1 recipe gives 1.9 cm / 6.0 deg at rung 2, where the
+  invariant-feature models stop at 4 cm / 14 deg after three times the epochs. The intrinsic path's
+  position deficit was never about missing channels (M16-e changed nothing); it is the loss of the
+  global layout that any hand-made invariant throws away. Magnitude under Kabsch is at the raw level
+  (0.38), so the obvious next run is Kabsch + hybrid: the rung-2 model should then match M16-a.
+- **Label inconsistency is a minor part of the magnitude error.** Training on the delivered momentum
+  instead of the nominal F*t lowers the raw model's MAE/const from 0.81 to 0.71; the hybrid input with
+  nominal labels reaches 0.44. The scaled variant is worse, and the intrinsic model gains nothing from
+  either. The solver's ~8% delivery is a dataset property worth fixing at generation time, not a
+  modelling lever.
+- **The flow head's candidate set contains the answer for position** (best of 8: 0.65 cm against
+  4.0 cm for the mean, with the direction spread showing the candidates disagree about direction
+  rather than place). Whether the re-simulation can pick that candidate (M16-g2) is the open question
+  that the two re-sim fixes above make answerable.
 
 ## Rung 4b, step 2: SAM 3 on synthetic photos (2026-10-30, branch photo-render)
 

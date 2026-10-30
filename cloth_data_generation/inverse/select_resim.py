@@ -18,7 +18,7 @@ import os
 
 import numpy as np
 
-from eval_resim import Simulator, grid_error, load_sample
+from eval_resim import Simulator, grid_error, load_sample, with_footprint
 from metrics import NAMES
 
 
@@ -46,14 +46,14 @@ def main():
     simulator = None  # built from the first test file's sim_config (same physics, resolution, material)
     for j, it in enumerate(items):
         name = it["file"]
-        true_grid, _, cfg, _ = load_sample(os.path.join(args.root, "test", name))
+        true_grid, _, cfg, true_fp = load_sample(os.path.join(args.root, "test", name))
         if simulator is None:
             simulator = Simulator(cfg, workdir=out)
         cands = it["candidates"][: args.k]
         errs = []
         for k, forces in enumerate(cands):
             try:
-                pg, _ = simulator.run(forces, t_capture=cfg["t_capture"], seed=900 + j)
+                pg, _ = simulator.run(with_footprint(forces, true_fp), t_capture=cfg["t_capture"], seed=900 + j)
                 errs.append(grid_error(pg, true_grid)["rmse_centered_m"])
             except Exception as e:  # a candidate that blows the simulator is simply not selected
                 print(f"  {name} candidate {k} failed: {str(e)[-200:]}", flush=True)

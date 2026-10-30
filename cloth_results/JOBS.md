@@ -546,19 +546,19 @@ S3 = ds256_const_splits; S3F = the same split re-packaged with snapshots in the 
 
 | id | job id | status | what | command | result |
 |---|---|---|---|---|---|
-| M16-0 | login node | planned | identifiability floors on the test split (strain oracle, delivered fraction + IQR, momentum oracle) | `cd ../inverse && ../transfer/.venv/bin/python identifiability.py $S3/test` | |
-| M16-p | login node | planned | re-package ds256_const with snapshots in the test files (same split seed -> same membership) | `.venv/bin/python package_splits.py --indir $D/ds256_const --outdir $D/ds256_const_splits_fr --test-keep-frames` | |
-| M16-a | 31411391 | done (62 min incl. resim) | R1 + hybrid input (vs M13-b 1.7 / 5.1 / 0.44) | `RESIM=50 sbatch --job-name=M16a --mem=60G cluster/run.sbatch $S3 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --hybrid --out runs/M16a` | test **1.0 cm / 4.3 deg / mag 0.23 (0.109 N)** / dur 0.016 s; median rel force 0.156, R2 lin 0.70, MAE 0.109 N (M13-b: 1.7 / 5.1 / 0.44, 0.199 N; M13-e force 0.157). Resim 50: pred 0.0279 m, chance 0.1185, beats chance 100%; floor read 0.0000 because identical forces replay bit-exactly, see M16-r |
-| M16-b | 31411399 | FAILED exit 0:53 (no log file: disk quota) | R1 + two-snapshot input | `RESIM=50 sbatch --job-name=M16b --mem=60G cluster/run.sbatch $S3F --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --snap --out runs/M16b` | |
-| M16-c | 31411392 | FAILED (ECC node a1125u14n01) | R1 + patch-conditioned magnitude head (k = 5) | `RESIM=50 sbatch --job-name=M16c --mem=60G cluster/run.sbatch $S3 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --patch-head 5 --out runs/M16c` | |
-| M16-d | 31411393 | FAILED (bf16 SVD in kabsch; fixed) | rung 2 by canonicalisation: R1 recipe + `--kabsch --eval-rotated` (vs M13-e 4.1 / 14.7 / 0.157 and M13-b) | `RESIM=50 sbatch --job-name=M16d --mem=60G cluster/run.sbatch $S3 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --kabsch --eval-rotated --out runs/M16d` | |
-| M16-e | 31411396 | FAILED at ep 50 (disk quota) | R2 + centroid-relative local-frame channels | `RESIM=50 sbatch --job-name=M16e --mem=60G cluster/run.sbatch $S3 --model cnn_reg --intrinsic --intrinsic-rel --epochs 1000 --amp --tta 0 --eval-rotated --aux-w 1 --out runs/M16e` | |
-| M16-f | 31411394 | FAILED at ep 175 (disk quota) | R1 + delivered labels (per-force least squares) | `RESIM=50 sbatch --job-name=M16f --mem=60G cluster/run.sbatch $S3 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --label delivered --out runs/M16f` | |
-| M16-f2 | 31411395 | FAILED (ECC node a1125u14n01) | R1 + scaled labels (nominal x delivered fraction) | `RESIM=50 sbatch --job-name=M16f2 --mem=60G cluster/run.sbatch $S3 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --label scaled --out runs/M16f2` | |
-| M16-f3 | 31411397 | FAILED (ECC node a1125u14n01) | R2 + scaled labels | `RESIM=50 sbatch --job-name=M16f3 --mem=60G cluster/run.sbatch $S3 --model cnn_reg --intrinsic --epochs 1000 --amp --tta 0 --eval-rotated --aux-w 1 --label scaled --out runs/M16f3` | |
-| M16-g | 31411398 | FAILED at ep 50 (disk quota) | R2 + flow head (8 candidates): M13-e with candidates for re-sim selection | `sbatch --job-name=M16g --mem=60G cluster/run.sbatch $S3 --model cnn_reg --intrinsic --flow --flow-k 8 --epochs 1000 --amp --tta 0 --eval-rotated --aux-w 1 --out runs/M16g` | |
-| M16-g2 | after M16-g | planned | re-sim selection among M16-g's candidates, first 50 test samples | `sbatch --job-name=M16g2 --dependency=afterok:<M16g id> cluster/resim.sbatch $S3 runs/M16g --limit 50 --k 8` | |
-| M16-h | 31411400 | FAILED exit 0:53 (no log file: disk quota) | R1 + hybrid + snapshot + patch head (the three magnitude levers together) | `RESIM=50 sbatch --job-name=M16h --mem=60G cluster/run.sbatch $S3F --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --hybrid --snap --patch-head 5 --out runs/M16h` | |
+| M16-0 | login node | run 2026-10-30 (output not pasted) | identifiability floors on the test split (strain oracle, delivered fraction + IQR, momentum oracle) | `cd ../inverse && ../transfer/.venv/bin/python identifiability.py $S3/test` | paste the output into this row |
+| M16-p | login node | done (S3F exists, 1.8 GB) | re-package ds256_const with snapshots in the test files (same split seed -> same membership) | `.venv/bin/python package_splits.py --indir $D/ds256_const --outdir $D/ds256_const_splits_fr --test-keep-frames` | |
+| M16-a | 31411391 | done (62 min incl. resim) | R1 + hybrid input (vs M13-b 1.7 / 5.1 / 0.44) | `RESIM=50 sbatch --job-name=M16a --mem=60G cluster/run.sbatch $S3 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --hybrid --out runs/M16a` | test **1.0 cm / 4.3 deg / mag 0.23 (0.109 N)** / dur 0.016 s; median rel force 0.156, R2 lin 0.70, MAE 0.109 N (M13-b: 1.7 / 5.1 / 0.44, 0.199 N; M13-e force 0.157). Resim 50 (M16-r, 1e-5 floor): pred 0.0279 m, floor < 1e-4, chance 0.1185, score 0.24 (param metrics valid; re-sim 50 provisional: predictions were simulated with the 128 footprint, see round 3) |
+| M16-b | 31411399 -> 31422382 | done (27 min) | R1 + two-snapshot input | `RESIM=50 sbatch --job-name=M16b --mem=60G cluster/run.sbatch $S3F --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --snap --out runs/M16b` | test 1.6 cm / 5.2 deg / mag 0.50 (0.217 N), median rel 0.359, R2 lin -0.03: **no gain** over M13-b (0.327). Resim pred 0.0303, score 0.25 (provisional) |
+| M16-c | 31411392 -> 31422375 | done (59 min) | R1 + patch-conditioned magnitude head (k = 5) | `RESIM=50 sbatch --job-name=M16c --mem=60G cluster/run.sbatch $S3 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --patch-head 5 --out runs/M16c` | test 1.5 cm / 5.2 deg / mag 0.44 (0.197 N), median rel 0.325, R2 lin 0.18: **no gain** (M13-b 0.327, 0.11). Resim pred 0.0299, score 0.25 (provisional) |
+| M16-d | 31411393 -> 31422376 | done (26 min) | rung 2 by canonicalisation: R1 recipe + `--kabsch --eval-rotated` (vs M13-e 4.1 / 14.7 / 0.157 and M13-b) | `RESIM=50 sbatch --job-name=M16d --mem=60G cluster/run.sbatch $S3 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --kabsch --eval-rotated --out runs/M16d` | test **1.9 cm / 6.0 deg** / mag 0.48 (0.220 N), median rel 0.382: rung-2 position at the rung-1 raw level (M13-e 4.1 / 14.7); magnitude at the raw level. Resim INVALID (score 1.07, directions saved in the rotated frame; repair + re-run in round 3) |
+| M16-e | 31411396 -> 31422377 | done (60 min) | R2 + centroid-relative local-frame channels | `RESIM=50 sbatch --job-name=M16e --mem=60G cluster/run.sbatch $S3 --model cnn_reg --intrinsic --intrinsic-rel --epochs 1000 --amp --tta 0 --eval-rotated --aux-w 1 --out runs/M16e` | test 4.0 cm / 14.1 deg / mag 0.24 (0.112 N), median rel 0.156, R2 lin 0.67: **no position gain** over M13-e (4.1 / 14.7 / 0.157). Resim INVALID (frame; round 3) |
+| M16-f | 31411394 -> 31422378 | done (24 min) | R1 + delivered labels (per-force least squares) | `RESIM=50 sbatch --job-name=M16f --mem=60G cluster/run.sbatch $S3 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --label delivered --out runs/M16f` | test 1.9 cm / 4.8 deg; magnitude in delivered units: median rel 0.125, MAE 0.005 N vs const 0.007 N (ratio 0.71; M13-b nominal 0.81; M16-a 0.44), R2 lin 0.29 (M13-b 0.11). Resim pred 0.0494, chance 0.1171, score 0.42 (provisional; the resim uses the delivered magnitude as applied force, so it is not comparable with the nominal-label runs) |
+| M16-f2 | 31411395 -> 31422379 | done (24 min) | R1 + scaled labels (nominal x delivered fraction) | `RESIM=50 sbatch --job-name=M16f2 --mem=60G cluster/run.sbatch $S3 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --label scaled --out runs/M16f2` | test 1.7 cm / 5.6 deg; median rel 0.216, MAE 0.007 N vs const 0.008 N (0.88), R2 lin 0.19: worse than delivered. Resim pred 0.0471, score 0.40 (provisional, same caveat) |
+| M16-f3 | 31411397 -> 31422380 | done (55 min) | R2 + scaled labels | `RESIM=50 sbatch --job-name=M16f3 --mem=60G cluster/run.sbatch $S3 --model cnn_reg --intrinsic --epochs 1000 --amp --tta 0 --eval-rotated --aux-w 1 --label scaled --out runs/M16f3` | test 3.8 cm / 13.9 deg; median rel 0.129, MAE 0.004 N vs const 0.008 N (0.50; M13-e nominal 0.46), R2 lin 0.48 (M13-e 0.66): no gain for the intrinsic model. Resim INVALID (frame; round 3) |
+| M16-g | 31411398 -> 31422381 | done (41 min) | R2 + flow head (8 candidates): M13-e with candidates for re-sim selection | `sbatch --job-name=M16g --mem=60G cluster/run.sbatch $S3 --model cnn_reg --intrinsic --flow --flow-k 8 --epochs 1000 --amp --tta 0 --eval-rotated --aux-w 1 --out runs/M16g` | mean-of-8 4.0 cm / 15.9 deg / 0.24; **best-of-8 0.65 cm / 18.5 deg**: the candidate set contains the answer for position; whether re-sim can pick it is M16-g2 (candidates saved in the rotated frame; repair first) |
+| M16-g2 | round 3 | ready | re-sim selection among M16-g's candidates, first 50 test samples | `sbatch --job-name=M16g2 cluster/resim.sbatch $S3 runs/M16g --limit 50 --k 8` (after `fix_rotated_preds.py`) | |
+| M16-h | 31411400 -> 31422383 | done (31 min) | R1 + hybrid + snapshot + patch head (the three magnitude levers together) | `RESIM=50 sbatch --job-name=M16h --mem=60G cluster/run.sbatch $S3F --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --hybrid --snap --patch-head 5 --out runs/M16h` | test 1.2 cm / 4.5 deg / mag 0.24 (0.117 N), median rel 0.155, R2 lin 0.65: **equals hybrid alone** (M16-a 1.0 / 4.3 / 0.156); snapshots and patch head add nothing on top. Resim pred 0.0306, score 0.26 (provisional) |
 
 Submit (from `cloth_data_generation/transfer`):
 
@@ -610,14 +610,14 @@ df -h .
 
 | id | job id | status | what | command | result |
 |---|---|---|---|---|---|
-| M16-r | | ready | re-sim of M16-a with the sensitivity floor (replaces the 0.0000 floor) | `sbatch --job-name=M16r cluster/resim_eval.sbatch $S3 runs/M16a --limit 50` | |
-| M16-c2 | | ready | resubmit M16-c (patch head) | same command as M16-c | |
-| M16-d2 | | ready | resubmit M16-d (kabsch, fixed) | same command as M16-d | |
-| M16-e2 | | ready | resubmit M16-e (intrinsic-rel) | same command as M16-e | |
-| M16-f, f2, f3 | | ready | resubmit the label runs | same commands | |
-| M16-g | | ready | resubmit the flow run; M16-g2 after it | same commands | |
-| M16-b, M16-h | after M16-p | ready | check `ls $S3F/test/*.h5 | wc -l` first; run M16-p if S3F is missing | same commands | |
-| M15-r1, r2, r3, r4 | | ready | re-sim of M13-b, M13-e, M15-a, M15-b (floor now meaningful) | same commands, `--limit 50` is enough | |
+| M16-r | 31422384 | done (39 min) | re-sim of M16-a with the sensitivity floor (replaces the 0.0000 floor) | `sbatch --job-name=M16r cluster/resim_eval.sbatch $S3 runs/M16a --limit 50` | pred 0.0279, floor < 1e-4 m (prints 0.0000: a 1e-5 perturbation of the true forces moves the 256 cloth sheet less than 0.1 mm; the earlier 2-3 cm "floor" was the footprint mismatch, round 3), chance 0.1185, score 0.24 |
+| M16-c2 | 31422375 | done | resubmit M16-c (patch head) | same command as M16-c | see M16-c |
+| M16-d2 | 31422376 | done | resubmit M16-d (kabsch, fixed) | same command as M16-d | see M16-d |
+| M16-e2 | 31422377 | done | resubmit M16-e (intrinsic-rel) | same command as M16-e | see M16-e |
+| M16-f, f2, f3 | 31422378, 31422379, 31422380 | done | resubmit the label runs | same commands | see the rows above |
+| M16-g | 31422381 | done | resubmit the flow run; M16-g2 after it | same commands | see M16-g |
+| M16-b, M16-h | 31422382, 31422383 | done | S3F existed (1.8 GB), no packaging needed | same commands | see the rows above |
+| M15-r1, r2, r3, r4 | 31422385-31422388 | done (39-43 min) | re-sim of M13-b, M13-e, M15-a, M15-b (floor now meaningful) | same commands, `--limit 50` is enough | M13-b pred 0.0299 score 0.25; M13-e **NaN / beats chance 42% (INVALID, rotated frame)**; M15-a (paper) pred 0.0312, **floor 0.0010**, chance 0.1106, score 0.28; M15-b pred 0.0308, score 0.26. All provisional (footprint) |
 
 ```bash
 cd /home/naa79/scratch_pi_sz622/naa79/cloth-inverse && git pull && cd cloth_data_generation/transfer
@@ -639,6 +639,72 @@ sbatch --job-name=M15r3 cluster/resim_eval.sbatch $S4 runs/M15a --limit 50
 sbatch --job-name=M15r4 cluster/resim_eval.sbatch $S3 runs/M15b --limit 50
 (cd ../inverse && ../transfer/.venv/bin/python identifiability.py $S3/test)     # M16-0, still not run
 ```
+
+### M16 round 3 (2026-10-30 16:00): all jobs done; two re-simulation bugs found in the results
+
+All 14 round-2 jobs completed (ds768_night and its splits deleted first, 124 GB). The parameter metrics
+are final (table above). The re-simulation numbers are not, for two reasons found while reading them:
+
+1. **Rung-2 predictions were saved in the rotated frame.** `--eval-rotated` rotates every val/test
+   sample by a seeded random SO(3) matrix; `test_predictions.json` / `test_candidates.json` kept the
+   predicted directions as the model saw them, and `eval_resim.py` applies them to the un-rotated
+   file. Hence M16-d / e / f3 at score 1.06-1.11 (worse than chance) and M13-e's NaN, while their
+   position metrics (frame-free (u, v)) are fine. Fixed in `train.py` (`to_file_frame`: R^T on the
+   directions before saving; `d["R"]` kept). `inverse/fix_rotated_preds.py --run <run> --root <splits>`
+   repairs an existing run: it regenerates the seeded rotations from the split sizes, checks that
+   un-rotating the saved "true" direction reproduces the file's `force_params` to < 0.01 deg (refuses
+   otherwise), rewrites predictions / candidates, keeps `.rotframe` copies and moves the old `resim/`
+   aside. Verified locally on the 128 smoke runs (kabsch and kabsch+flow; new train.py output needs
+   no repair).
+2. **Predicted forces were re-simulated with the 128-resolution footprint.** `decode_forces()` writes
+   `sigma_cells 3 / radius_cells 9`; the 256 datasets were generated with `3 * nx/128` = 6 / 18
+   (`generate_batch.py res_scale`). Every re-simulated prediction and the chance predictor pushed with
+   a half-size patch (the same force on a quarter of the area). `with_footprint()` in eval_resim.py now
+   copies the file's own footprint onto predicted / chance / candidate forces (select_resim.py too).
+   This also explains the old "floor 0.022-0.031 m": the true forces decoded through the same path.
+   The real floor (true forces perturbed 1e-5) is < 1e-4 m on cloth and 1e-3 m on paper (M15-a): the
+   solver is not chaotic over one release at 256, so re-sim can discriminate far below 2.5 cm.
+
+Every re-sim therefore has to be re-run (13 x ~40 min, in parallel), M16-g2 after the repair:
+
+```bash
+cd /home/naa79/scratch_pi_sz622/naa79/cloth-inverse && git pull && cd cloth_data_generation/inverse
+D=/home/naa79/scratch_pi_sz622/naa79/cloth_data; S3=$D/ds256_const_splits; S3F=$D/ds256_const_splits_fr; S4=$D/ds256_const_paper_splits
+for r in M16d M16e M16f3 M16g M13e; do ../transfer/.venv/bin/python fix_rotated_preds.py --run runs/$r --root $S3; done
+cd ../transfer
+for r in M13b M13e M15b M16a M16c M16d M16e M16f M16f2 M16f3; do sbatch --job-name=R3$r cluster/resim_eval.sbatch $S3 runs/$r --limit 50; done
+for r in M16b M16h; do sbatch --job-name=R3$r cluster/resim_eval.sbatch $S3F runs/$r --limit 50; done
+sbatch --job-name=R3M15a cluster/resim_eval.sbatch $S4 runs/M15a --limit 50
+sbatch --job-name=M16g2 cluster/resim.sbatch $S3 runs/M16g --limit 50 --k 8
+(cd ../inverse && ../transfer/.venv/bin/python identifiability.py $S3/test)   # M16-0: paste the output
+squeue -u $USER -o "%.10i %.14j %.8T %.10M %R"
+# when done:
+bash cluster/collect.sh R3; bash cluster/collect.sh M16g2
+python3 cluster/summarize_runs.py "M13*" "M15*" "M16*" | grep -E "^run|resim"
+python3 -c "import json; print(json.dumps(json.load(open('../inverse/runs/M16g/resim_select/resim_select.json'))['summary'], indent=1))"
+```
+
+### M16 reading from the parameter metrics (final)
+
+- **Magnitude at rung 1: the hybrid input is the whole effect.** M16-a 0.156 rel / 0.109 N / R2 0.70.
+  Snapshots (M16-b 0.359), the patch head (M16-c 0.325) do nothing on their own, and stacked on the
+  hybrid (M16-h 0.155 / 0.117 N) add nothing while costing 0.2 cm of position. Drop `--snap` and
+  `--patch-head`; S3F is no longer needed.
+- **Rung 2 is solved by canonicalisation, not by invariant features.** Kabsch (M16-d) 1.9 cm / 6.0 deg
+  vs intrinsic (M13-e, M16-e) 4.0 cm / 14 deg, with the plain raw recipe and 300 epochs instead of
+  1000. The intrinsic-rel channels (M16-e) did not move position at all. Remaining gap to rung 1 (1.7
+  cm raw, 1.0 hybrid) is 0.2-0.9 cm; the hybrid input has not been tried under Kabsch yet.
+- **Labels explain a small part of the magnitude error.** Delivered labels (M16-f) take the raw model
+  from MAE/const 0.81 to 0.71 and R2 0.11 to 0.29; the hybrid input takes it to 0.44 / 0.70 with
+  nominal labels. Scaled labels (f2) are worse than delivered; on the intrinsic model (f3) neither
+  helps. Magnitude in delivered units is ~8% of nominal (MAE 0.005 N), so relative errors are the
+  only cross-comparable column.
+- **Flow candidates contain the answer.** M16-g best-of-8 position 0.65 cm vs 4.0 cm for the mean;
+  M16-g2 (re-sim selection, after the frame repair) decides whether re-sim can find it.
+
+Next (M17, to submit after the round-3 re-sims): kabsch + hybrid (`--kabsch --eval-rotated --hybrid`,
+allowed in train.py since round 3: under Kabsch the model sees canonical directions, smoke-tested at 128), hybrid on
+paper (S4), kabsch + hybrid + flow for selection, and hybrid with delivered labels.
 
 ## Matrix M18: rung 4b on the photo packages (2026-10-30, branch photo-render)
 

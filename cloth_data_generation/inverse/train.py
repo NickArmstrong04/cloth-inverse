@@ -98,6 +98,18 @@ def batched_loss(net, x, g, y, scaler, bs, sym_uv=None, a=None, R=None, aux_w=0.
     return tot / max(n, 1)
 
 
+def to_file_frame(p: np.ndarray, d: dict) -> np.ndarray:
+    """Predicted / true rows (N,2,7) for a --eval-rotated split back into the frame of the packaged
+    file (directions R^T d); (u,v), magnitude and duration are frame-free. eval_resim.py and
+    select_resim.py apply the saved forces to the un-rotated sample, so this is the frame they need."""
+    if "R" not in d:
+        return p
+    R = d["R"].cpu().numpy()[: len(p)]
+    p = p.copy()
+    p[..., 2:5] = np.einsum("bji,bkj->bki", R, p[..., 2:5])
+    return p
+
+
 def predict(model, x, g, scaler, tta=0, bs=16, yaw_only=False, R=None):
     outs = []
     for i in range(0, len(x), bs):
@@ -255,7 +267,8 @@ def main():
         args.tta = 0
     grid_model = args.model in ("cnn_reg", "cnn_field")
     if args.hybrid:
-        assert grid_model and not args.view and not args.eval_rotated, "--hybrid is a rung-1 option for cnn_reg / cnn_field"
+        assert grid_model and not args.view and (not args.eval_rotated or args.kabsch), \
+            "--hybrid needs a known pose (rung 1) or --kabsch (canonicalised pose) for cnn_reg / cnn_field"
         args.intrinsic = False  # the hybrid path is not invariant: raw channels, world directions, strict metric
     if args.intrinsic:
         assert grid_model and not args.view, "--intrinsic needs the material grid (cnn_reg / cnn_field, no --view)"
@@ -326,6 +339,7 @@ def main():
             R = _rot_from_gen(len(d["x"]), gen, args.yaw_only)
             d["x"], d["g"], d["y"] = _rotate(d["x"], d["g"], d["y"], R)
             d["a"] = torch.einsum("bij,bjhw->bihw", R, d["a"])
+            d["R"] = R  # kept so saved predictions can be returned to the file's frame (re-simulation)
     # --view: a fixed seeded camera per val/test sample (the unknown pose is the camera frame)
     gen_cam = torch.Generator().manual_seed(4321)
     Rva = _rot_from_gen(len(va["x"]), gen_cam) if args.view else None
@@ -539,7 +553,9 @@ def main():
             res[f"{nm}/flow_meanK"] = summarize(mk.mean(1))
             if nm == "test":
                 with open(os.path.join(out, "test_candidates.json"), "w") as fh:
-                    json.dump([{"file": n, "candidates": [decode_forces(c) for c in cands[i]], "true": decode_forces(yy[i]),
+                    cf = np.stack([to_file_frame(cands[:, k], d) for k in range(args.flow_k)], 1)
+                    yf = to_file_frame(yy, d)
+                    json.dump([{"file": n, "candidates": [decode_forces(c) for c in cf[i]], "true": decode_forces(yf[i]),
                                 "cand_metrics": mk[i].tolist()} for i, n in enumerate(d["names"])], fh)
             print(f"{nm} flow: best-of-{args.flow_k} pos {res[f'{nm}/flow_bestK']['pos_cm_mean']:.1f} cm / "
                   f"dir {res[f'{nm}/flow_bestK']['dir_deg_mean']:.1f} deg;  mean-of-K pos "
@@ -559,10 +575,11 @@ def main():
             m = pair_metrics(p, yy.cpu().numpy(), sym=sym)
             res[f"{nm}/tta{tta}"] = summarize(m)
             if nm == "test" and tta == args.tta:
+                pf, yf = to_file_frame(p, d), to_file_frame(yy.cpu().numpy(), d)  # file frame for re-simulation
                 for i, name in enumerate(d["names"]):
                     preds_out.append({"file": name, "metrics": dict(zip(METRIC_NAMES, m[i].tolist())),
-                                      "pred": decode_forces(p[i]), "true": decode_forces(yy[i].cpu().numpy()),
-                                      "pred_raw": p[i].tolist()})
+                                      "pred": decode_forces(pf[i]), "true": decode_forces(yf[i]),
+                                      "pred_raw": pf[i].tolist()})
     with open(os.path.join(out, "metrics.json"), "w") as fh:
         json.dump(res, fh, indent=2)
     with open(os.path.join(out, "test_predictions.json"), "w") as fh:

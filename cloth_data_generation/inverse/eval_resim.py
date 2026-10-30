@@ -115,6 +115,20 @@ def perturbed(fp: list[dict], eps: float = 1e-5) -> list[dict]:
     return out
 
 
+def with_footprint(forces: list[dict], ref: list[dict]) -> list[dict]:
+    """Predicted / chance forces with the dataset's own force footprint. decode_forces() writes the
+    128-resolution footprint (sigma 3, radius 9 cells); the 256 datasets were generated with
+    3 * nx/128 (generate_batch.py res_scale), so without this every re-simulated prediction pushed
+    with a half-size patch (and the pre-2026-10-30 "floor", decoded the same way, read 2-3 cm)."""
+    out = []
+    for i, f in enumerate(forces):
+        r = ref[min(i, len(ref) - 1)]
+        g = dict(f)
+        g["sigma_cells"], g["radius_cells"] = float(r["sigma_cells"]), float(r["radius_cells"])
+        out.append(g)
+    return out
+
+
 def chance_forces(preds: list[dict]) -> list[dict]:
     """The constant predictor: mean of the true encoded targets over the evaluated samples
     (per force slot), decoded back to force dicts. Same definition as the tables' chance row."""
@@ -177,7 +191,7 @@ def main():
         keep = (lambda tag: f"{base}_{tag}.h5") if args.keep else (lambda tag: None)
         row = {"file": name, "t_capture": cfg["t_capture"], "param_metrics": item["metrics"]}
         try:
-            pg, _ = simulator.run(item["pred"], cfg["t_capture"], seed=900 + k, keep=keep("pred"))
+            pg, _ = simulator.run(with_footprint(item["pred"], true_fp), cfg["t_capture"], seed=900 + k, keep=keep("pred"))
             row["pred"] = grid_error(pg, true_grid)
         except Exception as e:  # a prediction that blows the simulator counts as a miss at the chance level
             print(f"  {name}: predicted forces failed to simulate: {str(e)[-200:]}", flush=True)
@@ -188,7 +202,7 @@ def main():
             fg, _ = simulator.run(perturbed(true_fp), cfg["t_capture"], seed=900 + k, keep=keep("floor"))
             row["floor"] = grid_error(fg, true_grid)
         if chance is not None:
-            cg, _ = simulator.run(chance, cfg["t_capture"], seed=900 + k, keep=keep("chance"))
+            cg, _ = simulator.run(with_footprint(chance, true_fp), cfg["t_capture"], seed=900 + k, keep=keep("chance"))
             row["chance"] = grid_error(cg, true_grid)
         rows.append(row)
         fmt = lambda r: "%.3f" % r["rmse_centered_m"] if r else ("fail" if r is None and "pred" in row and row["pred"] is None else "-")
