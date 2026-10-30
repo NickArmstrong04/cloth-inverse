@@ -57,6 +57,9 @@ MATERIALS: dict[str, dict] = {
     # yield curvature become permanent, so the end state cannot be unfolded
     # back to flat by elasticity alone. Values are VBD units tuned at 128x128
     # (see REPORT.md, paper section), not measured paper constants.
+    # Yield 50 /m (2 cm radius) from the 2026-10-28 sweep: 20 creases 45% of the
+    # edges diffusely, 100 barely creases; 50 gives localized crease lines.
+    # (The preset carried 20 until 2026-10-30; no dataset was generated with it.)
     "paper": {
         "mass_per_area": 0.08,
         "tri_ke": 1.0e4,
@@ -64,7 +67,7 @@ MATERIALS: dict[str, dict] = {
         "tri_kd": 1.0e2,
         "edge_ke": 50.0,
         "edge_kd": 0.0,
-        "plastic_yield_curvature": 20.0,
+        "plastic_yield_curvature": 50.0,
         "plastic_rate": 1.0,
     },
 }
