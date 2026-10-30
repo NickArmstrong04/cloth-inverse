@@ -377,3 +377,16 @@ truth at IoU 0.986 median with vertex coverage 1.000 (min 0.988); VGGT depth is 
 / 11.3 cm p90 over a 45 cm depth range, as a smooth ramp along the sheet (inclination / depth
 compression), worst on oblique views (up to 13 cm RMSE after the best similarity) and ~1.5 cm on
 frontal ones. Segmentation is solved on these renders; single-view lifting is the input error.
+
+## Rung 4b: shape-from-template with oracle correspondences (2026-10-30)
+
+Can the known template (node count, rest edge lengths, inextensibility) recover the mesh from the
+segmentation instead of predicting depth? `fit_template.py` (photos/README.md): with oracle
+correspondences, no depth input, a 64x64 template and an isometry + bending + silhouette energy, the
+fit reproduces the truth only when started near it (0.1 cm from the truth, 1.2 cm from 2 cm noise);
+from a cold start it sticks 8-15 cm too near. Started from VGGT it improves the visible-vertex error
+from 4.9 to 4.4 cm median (76% of 55 views improve, median ratio 0.95) and cannot recover scale.
+Root causes: the simulated cloth stretches 17% RMS (p95 42%, global) so the inextensibility prior is
+wrong, and the single-view problem is near-affine at this FOV. Verdict: the template refines VGGT by
+10-15%; it does not replace depth. Levers: a stiff cloth in the simulator (realism issue in its own
+right), a scale cue, a second view, and printed non-repeating texture for real correspondences.

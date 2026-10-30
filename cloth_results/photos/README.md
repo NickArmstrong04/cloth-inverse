@@ -177,3 +177,35 @@ is in place (photo.py --gt stores `centroid`, package_views writes `g_world`, `e
 oracle`) but the decisive rerun is parked: the focus moved to the perception alignment above.
 Open design question: a fixed camera with a known rest position would make the drift observable
 (the sheet's offset in the image).
+
+## Shape-from-template, step 1: can known knowledge replace depth prediction? (2026-10-30)
+
+Question (Nick): we know the node count, the rest grid and the sheet's conditions; can the mesh
+be recovered from the SAM segmentation instead of predicting depth? `inverse/fit_template.py`
+answers it with oracle correspondences (the upper bound): every pooled grid vertex is a free 3D
+point; visible vertices are held to their true pixel (photo.py --gt `vpix`, half-pixel tolerance);
+energy = isometry (all grid edges + diagonals at the flat rest length) + a weak bending term + a
+silhouette term (hidden vertices must project inside the mask). NO depth input. Scored as the
+absolute camera-frame error of the visible vertices against the true grid (no alignment), 64x64
+template (`--pool 4`), 2000-3000 Adam iterations, ~20 s/view on the 4070 Ti.
+
+| configuration (2 views unless stated) | visible-vertex error (mean, cm) | note |
+|---|---|---|
+| start at the true surface, true edge lengths | 0.12 | the energy model is right |
+| start at truth + 2 cm noise, flat rest lengths | 1.2 | basin >= 2 cm even with the wrong prior |
+| cold start (constant depth 1.15 m), flat lengths | 12-15 | stuck, 8-12 cm too near, 8% residual stretch |
+| cold start, true lengths; or true-depth start | 5-15 | still stuck: non-convexity, not the prior |
+| start from VGGT depth (oracle scale), flat lengths, all 55 lifted views | 4.9 -> 4.4 (median over views) | 76% of views improve, median ratio 0.95; depth error 4.0 -> 3.7 cm; good views 2.5 -> 2.3, bad views 7.8 -> 7.0 |
+| start from VGGT depth at VGGT's own scale | 29 -> 29 | the template does not recover absolute scale |
+
+Two facts decide it. (1) The simulated cloth is not inextensible: axis edges of the final grids are
+stretched +8% on average, 17% RMS, p95 +42%, and the stretch is global, not confined to the force
+patches (far from the forces RMS 7-34%; `tri_ke` 1000 at 0.2 kg/m^2 is a rubber sheet). The
+isometry prior is therefore wrong by more than the depth error it is meant to fix. (2) Even with the
+true edge lengths the problem is nearly affine at a 40 deg FOV with the sheet 1 m away: a uniformly
+nearer, slightly tilted sheet is almost as isometric, so a cold start sinks into a wrong minimum and
+absolute scale is unobservable. Conclusion: with a single view the template cannot replace monocular
+depth; as a refinement on top of VGGT it buys ~10-15% and fixes nothing structural. What would
+change the answer: a stiff (realistic) cloth in the simulator, which also matters for the data; a
+known-size cue or second view for scale; and dense correspondences from a non-repeating printed
+pattern (step 2). Hidden-vertex error stays at ~8 cm, as expected for the unseen half.
