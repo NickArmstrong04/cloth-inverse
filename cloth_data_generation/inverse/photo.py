@@ -187,7 +187,8 @@ def photograph(grid: torch.Tensor, R: torch.Tensor, d: torch.Tensor, texture: to
     rgb = rgb * m + bg * (1 - m)
     rgb = rgb.flip(-2)  # image y up -> rows down, so the picture is not mirrored vertically
     gt = {"mask": mask.flip(-2), "depth": torch.where(mask, -z, torch.zeros_like(z)).flip(-2),
-          "uv": uv_img.flip(-2), "vis": vis}
+          "uv": uv_img.flip(-2), "vis": vis,
+          "vpix": torch.stack([px, size - 1 - py], -1)}  # (B, N, 2) vertex (col, row) in the PNG
     return rgb.clamp(0, 1), gt
 
 
@@ -247,6 +248,12 @@ def check(args, dev):
         print(f"{name:16s} mask frac {frac:.3f} (flat frontal expects ~{expect_frac:.3f})  "
               f"visible vertices {visf:.3f}")
         to_png(rgb[0], os.path.join(args.out, f"check_{name}.png"))
+        if args.gt:
+            np.savez_compressed(os.path.join(args.out, f"check_{name}_gt.npz"),
+                                mask=gt["mask"][0].cpu().numpy(), depth=gt["depth"][0].cpu().numpy(),
+                                uv=gt["uv"][0].cpu().numpy(), vis=gt["vis"][0].cpu().numpy(),
+                                vpix=gt["vpix"][0].cpu().numpy().astype(np.int32), R=R.cpu().numpy(),
+                                d=1.0, fov_deg=args.fov, size=args.size, force_params="[]", material="check")
     print("wrote check_*.png to", args.out)
 
 
@@ -266,6 +273,9 @@ def main():
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--limit", type=int, default=0, help="render only the first N files")
     ap.add_argument("--check", action="store_true", help="sanity renders of synthetic sheets")
+    ap.add_argument("--gt", action="store_true",
+                    help="also write <stem>_v<k>_gt.npz: oracle mask, metric depth, (u, v), visible vertices, "
+                         "vertex pixels and the camera, for scoring SAM and packaging model inputs")
     args = ap.parse_args()
     dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if args.check:
@@ -291,6 +301,13 @@ def main():
         for k in range(args.views):
             name = f"{stem}_v{k}.png"
             to_png(rgb[k], os.path.join(args.out, name))
+            if args.gt:
+                np.savez_compressed(os.path.join(args.out, f"{stem}_v{k}_gt.npz"),
+                                    mask=gt["mask"][k].cpu().numpy(), depth=gt["depth"][k].cpu().numpy(),
+                                    uv=gt["uv"][k].cpu().numpy(), vis=gt["vis"][k].cpu().numpy(),
+                                    vpix=gt["vpix"][k].cpu().numpy().astype(np.int32),
+                                    R=R[k].cpu().numpy(), d=float(d[k]), fov_deg=args.fov, size=args.size,
+                                    force_params=json.dumps(fp), material=material)
             manifest["views"].append({"png": name, "h5": f, "material": material, "view": k,
                                       "R": R[k].tolist(), "d": float(d[k]),
                                       "visible_frac": float(gt["vis"][k].float().mean()),

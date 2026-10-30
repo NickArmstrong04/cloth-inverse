@@ -16,3 +16,4 @@ cloth_data_generation/transfer/bench/
 *.out
 *.err
 cloth_data_generation/transfer/logs/
+*.npz

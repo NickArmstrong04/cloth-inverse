@@ -1,0 +1,10 @@
+# SAM 3 text prompts for segment.py, one per line. Round 1 (2026-10-30): seed list.
+# Keep at least one texture-agnostic phrase every round (real photos will not be checkered).
+cloth
+fabric
+a piece of cloth
+a crumpled sheet of fabric
+a checkered cloth
+a folded blue and white checkered cloth
+paper
+a crumpled sheet of paper

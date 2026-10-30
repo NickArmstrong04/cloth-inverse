@@ -14,7 +14,8 @@
   "texture": null,
   "seed": 0,
   "limit": 0,
-  "check": false
+  "check": false,
+  "gt": true
  },
  "fov_deg": 40.0,
  "camera": "R maps world (centred grid) to camera; camera at origin looking down -z; sheet centre at (0, 0, -d)",
