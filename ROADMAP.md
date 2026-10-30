@@ -108,6 +108,18 @@ the grid model already uses material connectivity and rung 3 showed dropping it 
 world-space kNN wires across self-contacts. Revisit only if rung 4a degrades far more for
 the point model than a masked grid model does.
 
+### Rung 4b, step 1 (2026-10-30, branch `photo-render`): rendering the photos
+
+`cloth_data_generation/inverse/photo.py` turns `final_grid` into synthetic photos with a
+photo's information content and nothing more: one random camera (uniform SO(3), 0.9-1.4 m,
+40 deg FOV), pinhole perspective, z-buffer self-occlusion, a printed checker with a marked
+corner (the asymmetric cue above), one light, flat background. No cast shadows, noise or
+clutter yet; those are the domain-randomisation step if SAM needs them. It reuses the
+rung-4a splatter (`render.py`, untouched) and `data.random_rotation`. First test set:
+12 cloth + 2 paper samples x 4 views, `cloth_results/photos/README.md`. Next: run SAM on
+these, score its masks against the renderer's oracle mask, and decide what the perception
+stage hands the rung-4a model.
+
 ## Queued work
 
 - Decision 2026-10-28 evening: the bench (table + gravity) profile goes NaN when the sheet
