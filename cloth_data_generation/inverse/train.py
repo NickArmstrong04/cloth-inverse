@@ -361,20 +361,23 @@ def main():
             super().__init__()
             self.m = m
 
+        def _raw(self):
+            return getattr(self.m, "intrinsic", False) or isinstance(self.m, SonataReg)
+
         def _scale(self, x):
-            if getattr(self.m, "intrinsic", False) or isinstance(self.m, SonataReg):
+            if self._raw():
                 return x  # raw metres: the model derives invariant features / voxelises itself
             return x / xstd if x.shape[1] == xstd.shape[1] else x / img_scale[:, : x.shape[1]]  # rendered image
 
         def forward(self, x, g, a=None, **kw):
             a = a.to(dev, non_blocking=True) if a is not None else None
             x = self._scale(x.to(dev, non_blocking=True))
-            return self.m(x, g / gstd, a, **kw)
+            return self.m(x, g if self._raw() else g / gstd, a, **kw)
 
         @torch.no_grad()
         def sample(self, x, g, K):
             self.m.eval()
-            return self.m.sample(self._scale(x.to(dev, non_blocking=True)), g / gstd, K)
+            return self.m.sample(self._scale(x.to(dev, non_blocking=True)), g if self._raw() else g / gstd, K)
 
     img_scale = torch.tensor([args.view_extent, 1.0, 1.0], device=dev).view(1, 3, 1, 1)
     if args.view:

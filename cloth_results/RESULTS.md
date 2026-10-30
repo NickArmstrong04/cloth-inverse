@@ -5,6 +5,59 @@ two force vectors (position u,v; direction; magnitude; duration). Metrics are me
 the test split with optimal pairing of the two forces; position error is in cm on the
 0.5 m sheet. "Chance" = predicting the training mean.
 
+## 2026-10-29 evening: architecture levers on ds256_free, matrix M11
+
+Same data and protocol as M8/M9 (cnn_reg width 32, bf16, TTA off, 2,453 train). New levers from
+the architecture review: rotation-invariant inputs (strain + curvature in material coordinates,
+directions predicted in the local tangent frame, `--intrinsic`), a dense force-field map as the
+primary head (`cnn_field`), a flow-matching head that samples 8 candidate force pairs (`--flow`),
+shaded renders (`--view-shade`) and an unfrozen DINOv2. Intrinsic runs are graded on the strict
+metric (no D4 equivalence); M8d/M9 rung-2 numbers use the lenient one. Jobs in `JOBS.md` (M11).
+
+| rung | input / lever | run | test pos / dir | train pos / dir | note |
+|---|---|---|---|---|---|
+| 1 | baseline + aux (from M9) | M9a | 5.7 / 14.4 | 4.8 / - | reference |
+| 1 | intrinsic inputs + aux | M11b | 6.2 / 37.8 | 5.7 / 22.4 | position -0.5 cm, direction x2.6 worse |
+| 1 | dense field as primary head | M11c | 9.8 / 41.4 | 10.4 / 38.5 | underfits; rejected |
+| 1 | + flow head, regression output | M11f | 5.6 / 14.5 | 4.3 / 11.4 | the extra head costs nothing |
+| 1 | flow head, best of 8 candidates (oracle) | M11f | **3.7 / 17.0** | | mean of 8: 6.9 cm; re-sim selection pending |
+| 2 | baseline (lenient metric, from M8) | M8d | 6.9 / 21.7 | 6.6 / - | train = test |
+| 2 | intrinsic inputs + aux, strict metric | M11a | **5.8** / 38.4 | 5.1 / 16.0 | rung-1 position at unknown pose |
+| 2 | same, lenient 16-way metric | M11a2 | 7.0 / 37.5 | 7.0 / 36.4 | D4 equivalence is wrong for an invariant model |
+| 2 | dense field head, 1000 ep | M11d | running | | val loss flat since ep 500 |
+| 2 | dense field + intrinsic, 1000 ep | M11e | running | | train loss 0.28 vs val 2.2: first rung-2 run that overfits |
+| 4a | shaded view, scratch CNN | M11g | 8.8 / 24.4 | 8.6 / 24.1 | = depth view (M9i 8.5 / 25.0) |
+| 4a | shaded view, DINOv2-S/14 unfrozen | M11h | 9.5 / 25.5 | 9.3 / 25.5 | = frozen (M9h 9.2); still behind scratch |
+| 3 | Sonata fine-tune | M11j/k | not run | | package not installed on the cluster |
+
+Reading:
+- **Pose was the position problem at rung 2.** With invariant inputs the unknown-pose model
+  reaches 5.8 cm on a stricter metric than M8d's 6.9, the same level as the known-pose model
+  (M9a 5.7). It also fits train (5.1) for the first time, and the field+intrinsic run (M11e) has
+  train loss an order of magnitude below val. Rung 2 is no longer optimisation-limited; it is now
+  on the same data slope as rung 1.
+- **Direction collapsed to 38 deg on every intrinsic run, at both rungs.** The intrinsic path
+  zeroed the global vector (centroid drift) to avoid leaking the pose. That vector is the direction
+  cue: a push moves the whole sheet along the force, and the baseline reads direction mostly from
+  that drift (train direction 16 deg vs val 39 says the deformation pattern alone does not
+  generalise to direction). Fix in M12: the drift enters as its components in each cell's local
+  frame, which is rotation-invariant, so nothing of the pose leaks.
+- **The lenient D4 metric must not be used on invariant models** (M11a2): their directions are
+  world vectors mapped through local frames, so the material-coordinate symmetry no longer
+  commutes with the direction transform, and the 16-way min over wrong equivalents confuses
+  training (train 7.0 cm).
+- **The dense-field primary head loses by 4 cm** (M11c, and M11d's val loss stalled). Peak
+  decoding (NMS + windowed soft-argmax) is not a better estimator than the global regression; the
+  field stays as the aux loss, which is where it helped.
+- **The posterior is wide: an oracle over 8 flow samples is 1.9 cm better than the point
+  estimate** (3.7 vs 5.6 cm) while the sample mean is worse (6.9). That gap is what re-simulation
+  selection can recover; the selector job failed only because it was queued before the candidate
+  file existed (M12-f2).
+- **Shading and fine-tuned DINOv2 do not move rung 4a.** The scratch CNN on a shaded view equals
+  the depth view, and unfrozen DINOv2 equals frozen, 0.7 cm behind scratch. The single-view loss
+  (8.5-8.8 vs 5.8-6.9) is about seeing one side, not about the feature extractor.
+- Magnitude / impulse at chance everywhere (velocity clamp), unchanged.
+
 ## 2026-10-29: ds256_free (256x256 free flight, 2,453 train / 306 val / 306 test), matrices M8-M9
 
 cnn_reg width 32 / pointtf d128 L4 as in the ladder; bf16, TTA off, D4-symmetric metric when the

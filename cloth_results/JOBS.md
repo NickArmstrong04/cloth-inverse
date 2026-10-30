@@ -283,19 +283,19 @@ M9j pending; rung 4a M9i 8.5 / 25.0, M9h (frozen DINO) 9.2 / 28.2.
 
 | id | job id | status | what | command | result |
 |---|---|---|---|---|---|
-| M11-a | | planned | rung 2, intrinsic inputs + aux, 1000 ep (the main test: does built-in invariance remove the optimisation limit? vs M9j / M8d) | `sbatch --job-name=M11a --mem=60G cluster/run.sbatch $S2 --model cnn_reg --intrinsic --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --aux-w 1 --out runs/M11a` | |
-| M11-a2 | | planned | same, graded on the lenient D4 metric for a like-for-like with M8d | `sbatch --job-name=M11a2 --mem=60G cluster/run.sbatch $S2 --model cnn_reg --intrinsic --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --aux-w 1 --sym on --out runs/M11a2` | |
-| M11-b | | planned | rung 1, intrinsic + aux, 300 ep (does invariance cost anything at known pose? vs M9a) | `sbatch --job-name=M11b --mem=60G cluster/run.sbatch $S2 --model cnn_reg --intrinsic --epochs 300 --no-rot --amp --tta 0 --no-vel --aux-w 1 --out runs/M11b` | |
-| M11-c | | planned | rung 1, dense field as primary head, 300 ep (vs M9a) | `sbatch --job-name=M11c --mem=60G cluster/run.sbatch $S2 --model cnn_field --epochs 300 --no-rot --amp --tta 0 --no-vel --aux-w 1 --out runs/M11c` | |
-| M11-d | 31317952 | running 2026-10-29 (ep 850/1000 at 2 h 48) | rung 2, dense field head, 1000 ep (vs M9j) | `sbatch --job-name=M11d --mem=60G cluster/run.sbatch $S2 --model cnn_field --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --aux-w 1 --out runs/M11d` | |
-| M11-e | 31317953 | running 2026-10-29 (ep 850/1000 at 2 h 48) | rung 2, dense field head + intrinsic inputs, 1000 ep (levers 1+2) | `sbatch --job-name=M11e --mem=60G cluster/run.sbatch $S2 --model cnn_field --intrinsic --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --aux-w 1 --out runs/M11e` | |
-| M11-f | | planned | rung 1, flow head (8 candidates) + aux, 300 ep: oracle best-of-8 vs mean-of-8 says how multimodal the posterior is | `sbatch --job-name=M11f --mem=60G cluster/run.sbatch $S2 --model cnn_reg --flow --flow-k 8 --epochs 300 --no-rot --amp --tta 0 --no-vel --aux-w 1 --out runs/M11f` | |
-| M11-f2 | | after M11-f | re-sim selection among M11-f's candidates, first 50 test samples (50 x 8 sims, ~5 h) | `sbatch --job-name=M11f2 cluster/resim.sbatch $S2 runs/M11f --limit 50 --k 8` | |
-| M11-g | | planned | rung 4a, scratch CNN on the shaded view (control for M11-h; vs M9i) | `sbatch --job-name=M11g --mem=60G cluster/run.sbatch $S2 --model cnn_reg --epochs 300 --amp --tta 0 --no-vel --view --view-shade --aux-w 1 --out runs/M11g` | |
-| M11-h | | planned | rung 4a, DINOv2-S/14 UNFROZEN on the shaded view (vs M9h frozen 9.2, M9i 8.5) | `sbatch --job-name=M11h --mem=60G cluster/run.sbatch $S2 --model dino_reg --dino-finetune --epochs 300 --amp --tta 0 --no-vel --view --view-shade --lr 1e-4 --aux-w 1 --out runs/M11h` | |
+| M11-a | 31317948 (attempt 31315352: old train.py, unpushed commit) | done 2026-10-29 (1 h 11) | rung 2, intrinsic inputs + aux, 1000 ep (the main test: does built-in invariance remove the optimisation limit? vs M9j / M8d) | `sbatch --job-name=M11a --mem=60G cluster/run.sbatch $S2 --model cnn_reg --intrinsic --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --aux-w 1 --out runs/M11a` | test **5.8 cm** / 38.4 deg (val 5.9 / 39.1, train 5.1 / 16.0), strict metric. Position at rung 2 reaches the rung-1 level (M9a 5.7) and beats M8d 6.9 on a stricter metric: pose was the position problem. Direction collapsed (M9a 14 deg): the intrinsic path zeroed the centroid drift, which is the direction cue (fixed in M12) |
+| M11-a2 | 31317949 (attempt 31315354) | done 2026-10-29 (1 h 42) | same, graded on the lenient D4 metric for a like-for-like with M8d | `sbatch --job-name=M11a2 --mem=60G cluster/run.sbatch $S2 --model cnn_reg --intrinsic --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --aux-w 1 --sym on --out runs/M11a2` | test 7.0 / 37.5 (val 7.4 / 39.3, train 7.0 / 36.4). With the 16-way D4 equivalence the invariant model cannot even fit train; the lenient metric is wrong for an invariant model (its directions are world vectors, the D4 element is applied in material coordinates). Grade intrinsic runs strictly |
+| M11-b | 31317950 (attempt 31315355) | done 2026-10-29 (25 min) | rung 1, intrinsic + aux, 300 ep (does invariance cost anything at known pose? vs M9a) | `sbatch --job-name=M11b --mem=60G cluster/run.sbatch $S2 --model cnn_reg --intrinsic --epochs 300 --no-rot --amp --tta 0 --no-vel --aux-w 1 --out runs/M11b` | test 6.2 / 37.8 (val 5.9 / 38.2, train 5.7 / 22.4). Known pose: +0.5 cm vs M9a 5.7 and direction 14 -> 38 deg, same drift-cue loss as M11-a |
+| M11-c | 31317951 (attempt 31315356) | done 2026-10-29 (52 min) | rung 1, dense field as primary head, 300 ep (vs M9a) | `sbatch --job-name=M11c --mem=60G cluster/run.sbatch $S2 --model cnn_field --epochs 300 --no-rot --amp --tta 0 --no-vel --aux-w 1 --out runs/M11c` | test 9.8 / 41.4 (val 10.1, train 10.4). Dense-field decoding (NMS peaks + soft-argmax) is far behind the regression head at known pose (M9a 5.7 / 14.4) and underfits (train 10.4). Dropped as a primary head; keep the field as aux loss |
+| M11-d | 31317952 (attempt 31315357) | running 2026-10-29 (ep 875/1000 at 2 h 51; val loss flat at 2.60 since ep ~500) | rung 2, dense field head, 1000 ep (vs M9j) | `sbatch --job-name=M11d --mem=60G cluster/run.sbatch $S2 --model cnn_field --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --aux-w 1 --out runs/M11d` | pending; expect ~M11-c level |
+| M11-e | 31317953 (attempt 31315358) | running 2026-10-29 (ep 875/1000; train loss 0.28 vs val 2.21, best 2.03 at ep ~500) | rung 2, dense field head + intrinsic inputs, 1000 ep (levers 1+2) | `sbatch --job-name=M11e --mem=60G cluster/run.sbatch $S2 --model cnn_field --intrinsic --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --aux-w 1 --out runs/M11e` | pending; first rung-2 run that overfits (train << val), i.e. the invariant input removed the optimisation limit |
+| M11-f | 31317954 (attempt 31315359) | done 2026-10-29 (21 min) | rung 1, flow head (8 candidates) + aux, 300 ep: oracle best-of-8 vs mean-of-8 says how multimodal the posterior is | `sbatch --job-name=M11f --mem=60G cluster/run.sbatch $S2 --model cnn_reg --flow --flow-k 8 --epochs 300 --no-rot --amp --tta 0 --no-vel --aux-w 1 --out runs/M11f` | regression head test 5.6 / 14.5 (= M9a, flow head costs nothing). Flow candidates: best-of-8 **3.7 cm / 17.0 deg**, mean-of-8 6.9 cm (val 3.8 / 7.3). Oracle selection is 1.9 cm better than the point estimate: the posterior is wide/multimodal and the re-sim selector (M11-f2) is worth running |
+| M11-f2 | 31317955 failed (submitted together with M11-f, ran before test_candidates.json existed; exit 1 in 1 s) | resubmit (M12-f2) | re-sim selection among M11-f's candidates, first 50 test samples (50 x 8 sims, ~5 h) | `sbatch --job-name=M11f2 cluster/resim.sbatch $S2 runs/M11f --limit 50 --k 8` |  |
+| M11-g | 31317956 (attempt 31315360) | done 2026-10-29 (30 min) | rung 4a, scratch CNN on the shaded view (control for M11-h; vs M9i) | `sbatch --job-name=M11g --mem=60G cluster/run.sbatch $S2 --model cnn_reg --epochs 300 --amp --tta 0 --no-vel --view --view-shade --aux-w 1 --out runs/M11g` | test 8.8 / 24.4 (val 8.9, train 8.6). Shaded view = depth+mask view (M9i 8.5 / 25.0): shading adds nothing for the scratch CNN |
+| M11-h | 31317957 (attempt 31315361) | done 2026-10-29 (33 min) | rung 4a, DINOv2-S/14 UNFROZEN on the shaded view (vs M9h frozen 9.2, M9i 8.5) | `sbatch --job-name=M11h --mem=60G cluster/run.sbatch $S2 --model dino_reg --dino-finetune --epochs 300 --amp --tta 0 --no-vel --view --view-shade --lr 1e-4 --aux-w 1 --out runs/M11h` | test 9.5 / 25.5 (val 9.5, train 9.3). Unfrozen DINOv2-S/14 on the shaded view: 0.7 cm behind the scratch CNN (M11-g), no better than frozen (M9h 9.2). Pretrained image features do not help at this data size even fine-tuned |
 | M11-i | | optional | rung 4a, DINOv3 ViT-S/16 unfrozen (after the gated weights are in `~/.cache/dinov3/`; `--view-size 224` is a multiple of 16) | `sbatch --job-name=M11i --mem=60G cluster/run.sbatch $S2 --model dino_reg --dino-repo facebookresearch/dinov3 --dino-arch dinov3_vits16 --dino-weights ~/.cache/dinov3/dinov3_vits16_pretrain_lvd1689m.pth --dino-finetune --epochs 300 --amp --tta 0 --no-vel --view --view-shade --lr 1e-4 --aux-w 1 --out runs/M11i` | |
-| M11-j | | after setup_sonata.sh | rung 3, Sonata fine-tuned on the full point cloud (vs M9d 7.6 / 22.3, pointtf) | `sbatch --job-name=M11j --mem=60G cluster/run.sbatch $S2 --model sonata_reg --epochs 300 --amp --tta 0 --no-vel --eval-rotated --bs 8 --lr 1e-4 --aux-w 1 --out runs/M11j` | |
-| M11-k | | after M11-j runs | rung 4a, Sonata on the visible points (vs M9f2/M9g) | `sbatch --job-name=M11k --mem=60G cluster/run.sbatch $S2 --model sonata_reg --epochs 300 --amp --tta 0 --no-vel --view --bs 8 --lr 1e-4 --aux-w 1 --out runs/M11k` | |
+| M11-j | 31317961 failed: `ModuleNotFoundError: No module named 'sonata'` (attempt 31315362 old train.py) | needs `bash cluster/setup_sonata.sh` on the login node first | rung 3, Sonata fine-tuned on the full point cloud (vs M9d 7.6 / 22.3, pointtf) | `sbatch --job-name=M11j --mem=60G cluster/run.sbatch $S2 --model sonata_reg --epochs 300 --amp --tta 0 --no-vel --eval-rotated --bs 8 --lr 1e-4 --aux-w 1 --out runs/M11j` |  |
+| M11-k | 31317962 failed: same | after setup_sonata.sh | rung 4a, Sonata on the visible points (vs M9f2/M9g) | `sbatch --job-name=M11k --mem=60G cluster/run.sbatch $S2 --model sonata_reg --epochs 300 --amp --tta 0 --no-vel --view --bs 8 --lr 1e-4 --aux-w 1 --out runs/M11k` |  |
 
 Submit (CPU allocation, from `cloth_data_generation/transfer`, after `git pull`):
 
@@ -315,3 +315,47 @@ M11-c/d say whether the dense head beats the regression head; M11-f's best-of-8 
 is the multimodality measurement and M11-f2 says how much of it re-sim selection recovers;
 M11-g/h repeat the pretrained-vs-scratch test with a fair input. Gather:
 `python3 cluster/summarize_runs.py 'M11*'`.
+
+### M11 outcome (2026-10-29 evening, 9 of 13 done)
+
+Collected with `bash cluster/collect.sh M11`. Position: intrinsic inputs take rung 2 from 6.9 to
+5.8 cm on a stricter metric (M11-a), the rung-1 level, and M11-e is the first unknown-pose run with
+train loss far below val. Direction: every intrinsic run sits at 38 deg because `IntrinsicInput`
+zeroed the global vector (centroid drift), which is how the baseline reads the force direction (a
+push moves the whole sheet). Flow head: best-of-8 is 1.9 cm better than the point estimate at rung 1.
+Dense-field primary head, shaded views and unfrozen DINOv2 all lose. Full table in RESULTS.md.
+
+## Matrix M12: intrinsic inputs + drift channel (2026-10-29 night)
+
+Change (commit after 5f41ae1): the intrinsic path now also receives the centroid drift (and mean
+velocity when `--no-vel` is off) as its components in every cell's local frame (`F^T g`, 3 channels
+per vector), so the drift cue is kept and the input stays rotation-invariant (checked: features
+move 1e-4 under a random rotation, directions equivariant to 2e-6). Smoke-tested locally on the
+128 splits (cnn_reg / cnn_field + flow / with velocity). Also resubmits the re-sim selector with a
+dependency and the Sonata rows after the install.
+
+| id | job id | status | what | command | result |
+|---|---|---|---|---|---|
+| M12-a | | planned | rung 2, intrinsic + drift channel + aux, 1000 ep (vs M11-a 5.8 / 38.4; target: position 5.8, direction back to ~20 deg) | `sbatch --job-name=M12a --mem=60G cluster/run.sbatch $S2 --model cnn_reg --intrinsic --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --aux-w 1 --out runs/M12a` | |
+| M12-b | | planned | rung 1, intrinsic + drift, 300 ep (vs M11-b 6.2 / 37.8, M9a 5.7 / 14.4) | `sbatch --job-name=M12b --mem=60G cluster/run.sbatch $S2 --model cnn_reg --intrinsic --epochs 300 --no-rot --amp --tta 0 --no-vel --aux-w 1 --out runs/M12b` | |
+| M12-c | | planned | rung 2, intrinsic + drift + flow head (8 candidates), 1000 ep: rung-2 candidates for re-sim selection | `sbatch --job-name=M12c --mem=60G cluster/run.sbatch $S2 --model cnn_reg --intrinsic --flow --flow-k 8 --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --aux-w 1 --out runs/M12c` | |
+| M12-d | | planned | rung 2, intrinsic + drift, with velocities (the mean velocity enters the same way; vs M12-a) | `sbatch --job-name=M12d --mem=60G cluster/run.sbatch $S2 --model cnn_reg --intrinsic --epochs 1000 --amp --tta 0 --eval-rotated --aux-w 1 --out runs/M12d` | |
+| M12-e | | planned | rung 2, intrinsic + drift, seed 2 (spread) | `sbatch --job-name=M12e --mem=60G cluster/run.sbatch $S2 --model cnn_reg --intrinsic --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --aux-w 1 --seed 2 --out runs/M12e` | |
+| M12-f2 | | planned | re-sim selection on M11-f's candidates (file now exists), first 50 test samples, 8 candidates each (~5 h) | `sbatch --job-name=M12f2 cluster/resim.sbatch $S2 runs/M11f --limit 50 --k 8` | |
+| M12-c2 | | after M12-c | re-sim selection on the rung-2 candidates | `sbatch --job-name=M12c2 --dependency=afterok:<M12c id> cluster/resim.sbatch $S2 runs/M12c --limit 50 --k 8` | |
+| M12-j | | after setup_sonata.sh | rung 3, Sonata fine-tuned (M11-j rerun) | `sbatch --job-name=M12j --mem=60G cluster/run.sbatch $S2 --model sonata_reg --epochs 300 --amp --tta 0 --no-vel --eval-rotated --bs 8 --lr 1e-4 --aux-w 1 --out runs/M12j` | |
+
+Submit (from `cloth_data_generation/transfer`):
+
+```bash
+cd /home/naa79/scratch_pi_sz622/naa79/cloth-inverse && git pull && cd cloth_data_generation/transfer
+S2=/home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_free_splits
+grep -c n_glob ../inverse/models.py     # non-zero = the drift-channel commit is in
+# M12-a..e, M12-f2: paste the sbatch lines above; M12-c2 once M12-c has an id
+bash cluster/setup_sonata.sh && sbatch ... M12j
+bash cluster/collect.sh M12             # when done; paste the output
+```
+
+Reading: M12-a vs M11-a is the direction test (position should stay at 5.8, direction should return
+to the baseline 20 deg or better); M12-b vs M9a says whether the invariant model now matches the
+world-frame model at known pose; M12-c + M12-c2 is the first rung-2 re-sim selection.

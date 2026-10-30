@@ -4,7 +4,7 @@ force-field head decoded by peak finding ("cnn_field"); a point transformer
 ("pointtf"); pretrained vision ("dino_reg") and point-cloud ("sonata_reg") backbones.
 
 Options shared by the grid models:
-  intrinsic=True  rotation-invariant inputs (strain + curvature in material coordinates,
+  intrinsic=True  rotation-invariant inputs (strain + curvature in material coordinates, centroid drift in local frames,
                   geometry.py) and directions predicted in the local tangent frame.
   flow=True       an extra conditional flow-matching head that samples K candidate
                   force pairs from the pooled features (multimodal posterior), for
@@ -83,20 +83,30 @@ def aux_field_loss(pred, target, m0=1.0):
 # ----------------------------------------------------------------------------- intrinsic inputs
 
 class IntrinsicInput(nn.Module):
-    """Turns raw centred positions (B, 3[+3], H, W) into invariant features and keeps the
-    local frames for the direction heads. A learnable per-channel affine replaces the
+    """Turns raw centred positions (B, 3[+3], H, W) and the raw global vectors g (B, 3*n_glob:
+    centroid drift [, mean velocity], metres / m s^-1) into invariant features and keeps the
+    local frames for the direction heads. The globals enter as their components in every cell's
+    local frame (F^T g), so the rigid drift of the sheet, which is the main direction cue (a push
+    moves the whole sheet along the force; M11-a/b lost it and direction went 14 -> 38 deg), is
+    kept without re-introducing the pose. A learnable per-channel affine replaces the
     dataset-level input standardisation that train.py applies to raw positions."""
 
-    def __init__(self, with_vel: bool):
+    def __init__(self, with_vel: bool, n_glob: int = 0, glob_scale: float = 10.0):
         super().__init__()
-        self.cin = 9 if with_vel else 6
+        self.n_glob, self.glob_scale = n_glob, glob_scale
+        self.cin = (9 if with_vel else 6) + 3 * n_glob
         self.scale = nn.Parameter(torch.ones(1, self.cin, 1, 1))
         self.shift = nn.Parameter(torch.zeros(1, self.cin, 1, 1))
         self.frames = None
 
-    def forward(self, x):
-        vel = x[:, 3:6] if (self.cin == 9 and x.shape[1] >= 6) else None
+    def forward(self, x, g=None):
+        vel = x[:, 3:6] if (self.cin - 3 * self.n_glob == 9 and x.shape[1] >= 6) else None
         f, self.frames = intrinsic(x[:, :3].float(), vel.float() if vel is not None else None)
+        if self.n_glob:
+            B, _, H, W = f.shape
+            gl = [to_local_field(g[:, 3 * k:3 * k + 3].float()[:, :, None, None].expand(B, 3, H, W), self.frames)
+                  for k in range(self.n_glob)]
+            f = torch.cat([f] + [v * self.glob_scale for v in gl], 1)
         return (f * self.scale + self.shift).to(x.dtype)
 
 
@@ -156,17 +166,17 @@ class GridModel(nn.Module):
     """Shared machinery for the grid models: optional intrinsic input, optional flow head,
     direction frame handling."""
 
-    def _setup(self, cin, intrinsic_in, flow, cdim, uv_scale, flow_steps):
+    def _setup(self, cin, intrinsic_in, flow, cdim, uv_scale, flow_steps, gdim=0):
         self.intrinsic = intrinsic_in
-        self.pre = IntrinsicInput(with_vel=cin >= 6) if intrinsic_in else None
+        self.pre = IntrinsicInput(with_vel=cin >= 6, n_glob=gdim // 3) if intrinsic_in else None
         self.uv_scale = uv_scale
         self.flow = None  # built by the subclass once the feature width is known
         self.flow_targets = None  # set per step by train.py: (S, B, 2, 7) equivalent targets
         self._feat = None
         return self.pre.cin if intrinsic_in else cin
 
-    def _inputs(self, x):
-        return self.pre(x) if self.pre is not None else x
+    def _inputs(self, x, g=None):
+        return self.pre(x, g) if self.pre is not None else x
 
     def _dirs_to_world(self, pred):
         """pred (B, 2, 7) with local-frame directions -> world directions (intrinsic only)."""
@@ -218,7 +228,7 @@ class CNNReg(GridModel):
     def __init__(self, w=32, hidden=256, p_drop=0.2, in_size=128, cin=6, gdim=6, aux=False, intrinsic=False,
                  flow=False, uv_scale=None, flow_steps=32, **_):
         super().__init__()
-        enc_in = self._setup(cin, intrinsic, flow, 0, uv_scale, flow_steps)
+        enc_in = self._setup(cin, intrinsic, flow, 0, uv_scale, flow_steps, gdim)
         self.enc = Encoder(enc_in, w, in_size)
         self.gdim = gdim
         cdim = self.enc.c_out + gdim
@@ -234,9 +244,9 @@ class CNNReg(GridModel):
         self.aux_m0 = 1.0  # set by train.py: mean squared target per cell
 
     def forward(self, x, g, a=None):
+        mid, out = self.enc(self._inputs(x, g))
         if self.pre is not None:
-            g = torch.zeros_like(g)  # world-frame globals carry pose; invariant model ignores them
-        mid, out = self.enc(self._inputs(x))
+            g = torch.zeros_like(g)  # world-frame globals carry pose; they entered in local coordinates above
         f = torch.cat([out.mean((-1, -2)), g], 1)
         self._feat = f
         a = self._aux_target(a)
@@ -296,7 +306,7 @@ class CNNField(GridModel):
     def __init__(self, w=32, hidden=256, p_drop=0.2, in_size=128, cin=6, gdim=6, uv_scale=None, intrinsic=False,
                  flow=False, flow_steps=32, win=3, heat_w=1.0, **_):
         super().__init__()
-        enc_in = self._setup(cin, intrinsic, flow, 0, uv_scale, flow_steps)
+        enc_in = self._setup(cin, intrinsic, flow, 0, uv_scale, flow_steps, gdim)
         self.enc = Encoder(enc_in, w, in_size)
         cm, cd = self.enc.c_mid, max(32, self.enc.c_mid // 2)
         self.dec = nn.Sequential(
@@ -331,9 +341,9 @@ class CNNField(GridModel):
         return (yy.clamp(0, h - 1) * w + xx.clamp(0, w - 1)), ok, yy, xx
 
     def forward(self, x, g, a=None):
+        mid, out = self.enc(self._inputs(x, g))
         if self.pre is not None:
             g = torch.zeros_like(g)
-        mid, out = self.enc(self._inputs(x))
         d = self.dec(mid)
         B, cd, h, w = d.shape
         logits, field = self.heat(d), self.field(d)
