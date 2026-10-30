@@ -174,3 +174,23 @@ caps every sample at 0.38 m/s, so the final state carries almost no magnitude in
 
 Re-simulating cnn_heat's test predictions gave 0.27 m RMSE shape error vs a 0.02 m chaos floor.
 A no-augmentation run memorised train (0.5 cm, 2 deg) with test at chance: code sound, data-limited.
+
+## Impulse (F*t) as a single target: M13 runs (2026-10-30)
+
+Question: should force and duration be merged into one impulse (or energy) target? `inverse/impulse_report.py`
+on the five finished M13 runs (808 paired test forces; M13-e still training). Median relative error:
+
+| run | force | duration | impulse F*t | corr(eF, et) | R2 log F |
+|---|---|---|---|---|---|
+| M13-a rung-1 baseline | 0.33 | 0.045 | 0.35 | +0.08 | 0.22 |
+| M13-b rung-1 + velocities | 0.33 | 0.029 | 0.32 | -0.13 | 0.24 |
+| M13-c rung-2 baseline | 0.35 | 0.060 | 0.37 | +0.15 | 0.21 |
+| M13-d rung-2 intrinsic + drift | 0.18 | 0.043 | 0.20 | +0.06 | 0.69 |
+| M13-f rung-1 intrinsic + drift | 0.19 | 0.051 | 0.21 | +0.03 | 0.65 |
+| constant predictor | 0.46 | 0.19 | 0.47 | | 0 |
+
+Reading: duration is solved by every model (3-6% vs 19% floor) and the force/duration errors are
+uncorrelated, so there is no trade-off for an impulse target to absorb; impulse error equals force
+error. Energy (~J^2) would only square the force error. The result to report is force magnitude,
+where the intrinsic inputs halve the error (0.33 -> 0.18, R2 0.2 -> 0.7) at both rungs. Velocities
+help duration only (M13-b vs M13-a). Labels are nominal F*t, not delivered momentum.
