@@ -131,6 +131,16 @@ bottleneck of 4b on clean renders; the open costs are 3D lifting (monocular dept
 instead of oracle depth) and the rung-4a model itself. Next: the lifting step, then evaluate the
 rung-4a checkpoint on the oracle and SAM packages.
 
+### Rung 4b, step 3 (2026-10-30): VGGT lifts the photo to 3D
+
+Meta-only perception stack (Nick's preference): SAM 3 for the mask, VGGT (`inverse/lift.py`)
+for depth + intrinsics from the single image; SAM 3D Objects deferred to the cluster (32 GB
+VRAM). VGGT's cloud is ~4 cm RMSE from the oracle after the best similarity transform (7 cm
+with only scale + centring), depth error 4% median: the lift, not segmentation, is the cost
+of the perception stage, and scale is unknown (13% spread). Packages for oracle / SAM / VGGT
+inputs exist for all 56 views (`cloth_results/photos/*/views/`); the proof-of-concept number
+needs the rung-4a checkpoint run on them.
+
 ## Queued work
 
 - Decision 2026-10-28 evening: the bench (table + gravity) profile goes NaN when the sheet

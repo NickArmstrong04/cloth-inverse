@@ -30,7 +30,6 @@ import numpy as np
 from PIL import Image
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from data import encode_forces  # noqa: E402
 
 
 def slug(s: str) -> str:
@@ -69,6 +68,7 @@ def package(gt_path: str, mask: np.ndarray, source: str, out_dir: str) -> dict:
     size, fov = int(g["size"]), float(g["fov_deg"])
     pts = unproject(mask, depth, fov)
     centroid = pts.mean(0) if len(pts) else np.zeros(3, np.float32)
+    from data import encode_forces  # lazy: data.py needs h5py, which the SAM/VGGT venv (lift.py) lacks
     fp = json.loads(str(g["force_params"]))
     y = encode_forces(fp) if fp else np.zeros((2, 7), np.float32)
     y[:, 2:5] = y[:, 2:5] @ R.T  # directions into the camera frame (view_batch: R @ dir)

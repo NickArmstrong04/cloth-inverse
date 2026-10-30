@@ -1,7 +1,7 @@
 #!/bin/bash
 # SAM 3 environment for the rung-4b segmentation step (inverse/segment.py).
 # Separate venv: SAM 3 pins numpy < 2 while the cloth venv runs numpy 2.5 for Newton.
-# Usage: bash setup_sam3.sh [venv_dir] [repo_dir]      (workstation WSL or a Bouchet node)
+# Usage: bash setup_sam3.sh [venv_dir] [sam3_repo_dir] [vggt_repo_dir]      (workstation WSL or a Bouchet node)
 # Afterwards, once, with your Hugging Face token (facebook/sam3 access): hf auth login
 set -e
 VENV=${1:-$HOME/sam3env}
@@ -19,6 +19,10 @@ pip install -q torch torchvision --index-url https://download.pytorch.org/whl/cu
 [ -d "$REPO" ] || git clone -q https://github.com/facebookresearch/sam3.git "$REPO"
 pip install -q -e "$REPO"
 pip install -q pillow matplotlib einops pycocotools opencv-python-headless scikit-image scipy   # imported by sam3 at runtime but missing from its dependency list
+# VGGT (Meta, single-image depth / point maps) for the 3D-lifting step (inverse/lift.py); weights facebook/VGGT-1B
+VGGT=${3:-$HOME/vggt}
+[ -d "$VGGT" ] || git clone -q https://github.com/facebookresearch/vggt.git "$VGGT"
+pip install -q -e "$VGGT"
 python - <<'EOF'
 import torch, numpy, sam3, timm
 print("torch", torch.__version__, "cuda", torch.cuda.is_available(), "numpy", numpy.__version__, "timm", timm.__version__)

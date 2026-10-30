@@ -288,3 +288,22 @@ Reading:
   feeds a model whose rung-4a error is 8.5 cm / 25 deg (M9i). Next: monocular depth (SAM 3D Objects
   or a depth model) in place of oracle depth, then the rung-4a checkpoint on both packages.
 
+## Rung 4b, step 3: VGGT single-image lifting (2026-10-30, branch photo-render)
+
+Same 56 views; SAM "fabric" mask x VGGT (facebook/VGGT-1B) depth, scored against the oracle
+cloud at the same pixels (`inverse/lift.py`; tables in `cloth_results/photos/README.md`).
+
+| lift | cloth point RMSE | paper point RMSE | note |
+|---|---|---|---|
+| oracle depth (step 2) | 0 | 0 | SAM keeps 98-99% of oracle points |
+| VGGT, scale + centring fitted | 7.1 cm | 7.3 cm | depth rel. error median 4%, p90 10% |
+| VGGT, best similarity (pose + scale) | **4.0 cm** | **4.9 cm** | what a pose-invariant model sees |
+
+Reading:
+- **The perception cost sits in the 3D lift, at the fold scale (~4 cm on a 50 cm sheet)**, not
+  in segmentation. Monocular scale is unknown and spreads 13% between views.
+- The rung-4a model's own error is 8.5 cm / 25 deg (M9i, oracle visible points), so the
+  proof-of-concept number will be bounded by the model before the lift; both need work.
+- Next: a loader shim for the `views/*_pts_*.npz` packages (normalise by sheet size), then the
+  rung-4a checkpoint on oracle vs SAM vs VGGT packages on the same views (cluster run).
+

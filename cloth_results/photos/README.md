@@ -86,3 +86,36 @@ Packages (`views/`, `package_views.py --prompt fabric`): 48 + 8 SAM packages nex
 ones. Points per view: SAM / oracle = 0.968 mean on cloth (0.985-0.993 on every found view; the one
 miss gives an empty package) and 0.990 on paper; oracle median 33.6k (cloth) / 38.1k (paper) points
 from 512 px views.
+
+## VGGT lifting (rung 4b, step 3, 2026-10-30)
+
+Meta's VGGT (`facebook/VGGT-1B`, installed by `setup_sam3.sh` into the SAM venv) predicts a
+depth map and intrinsics from each single RGB photo; `inverse/lift.py` unprojects the pixels
+inside the SAM "fabric" mask, scores against the oracle cloud at the same pixels, and writes
+`views/<stem>_pts_vggt[_knownfov].npz` (unscaled cloud + `scale_to_oracle`). SAM 3D Objects
+was ruled out on the workstation (32 GB VRAM minimum, conda + Kaolin + PyTorch3D stack); it is
+a Bouchet L40S job if object-level reconstruction is wanted later.
+
+| metric (median over views) | cloth, 47 views | paper, 8 views |
+|---|---|---|
+| depth relative error after one scale factor, median / p90 | 0.040 / 0.096 | 0.033 / 0.091 |
+| scale factor to the oracle (monocular has none), median / log-spread | 1.12 / 0.13 | 1.11 / 0.13 |
+| focal length, predicted / true | 0.88 | 0.86 |
+| point RMSE, scale + centring only, VGGT intrinsics | 7.1 cm | 7.3 cm |
+| point RMSE, scale + centring only, true intrinsics (`--known-fov`) | 6.6 cm | 6.6 cm |
+| point RMSE after the best similarity (rotation + translation + scale) | **4.0 cm** | **4.9 cm** |
+| same with true intrinsics | 4.3 cm | 4.6 cm |
+
+Findings:
+- **Lifting, not segmentation, is the cost of the perception stage.** SAM keeps 98-99% of the
+  oracle points; VGGT places them with ~4 cm RMSE on a 50 cm sheet after pose and scale are
+  fitted, i.e. at the fold scale. A 4% median depth error at ~1.1 m is ~4.5 cm, which is where
+  the number comes from.
+- **Scale is unknown and varies 13% (log std) view to view**, so the model input must be
+  normalised (ROADMAP: by the known sheet size or `--view-norm`); a real photo has no oracle.
+- **VGGT's own intrinsics are self-consistent**: forcing the true focal length lowers the
+  centred error (7.1 -> 6.6 cm) but raises the similarity-aligned one (4.0 -> 4.3 cm), so
+  use VGGT's intrinsics with its depth.
+- Runtime: ~1 s per 512 px view on the 4070 Ti after a 10 s model load (one earlier run took
+  22 s per view for no reproducible reason; a re-run was 1 s).
+
