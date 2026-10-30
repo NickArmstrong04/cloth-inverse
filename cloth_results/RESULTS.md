@@ -194,3 +194,31 @@ uncorrelated, so there is no trade-off for an impulse target to absorb; impulse 
 error. Energy (~J^2) would only square the force error. The result to report is force magnitude,
 where the intrinsic inputs halve the error (0.33 -> 0.18, R2 0.2 -> 0.7) at both rungs. Velocities
 help duration only (M13-b vs M13-a). Labels are nominal F*t, not delivered momentum.
+
+## M14: force-magnitude levers on ds256_const (2026-10-30)
+
+Base M13-f (rung 1, intrinsic + drift, 300 ep). Median relative force error / position / direction on
+the 808 paired test forces (`impulse_report.py`, `test/tta0` lines):
+
+| run | change | force | pos cm | dir deg | dur s |
+|---|---|---|---|---|---|
+| M13-f | base | 0.192 | 4.3 | 18.1 | 0.051 |
+| M14-e | seed 2 | 0.189 | 4.3 | 18.7 | 0.051 |
+| M14-a | + max pooling | 0.200 | 4.7 | 19.3 | 0.058 |
+| M14-b | + w_mag 4 | 0.197 | 5.4 | 21.8 | 0.058 |
+| M14-c | + strain scale 100 | 0.194 | 4.3 | 18.7 | 0.053 |
+| M14-d | all three | 0.173 | 5.3 | 24.0 | 0.077 |
+| M14-f | width 64 | 0.193 | 4.4 | 19.3 | 0.048 |
+| M14-g | all three + velocities | 0.165 | 5.5 | 24.6 | 0.072 |
+| M13-e | rung 2, intrinsic + velocities, 1000 ep | **0.157** | 4.1 | 14.7 | 0.039 |
+| M13-b | rung 1 baseline + velocities | 0.44 | **1.7** | **5.1** | 0.029 |
+
+Reading: none of the three levers beats the seed band (0.003 on the median) without costing
+position and direction; the combination trades 2 points of force for 1 cm and 6 deg. Width 64 does
+nothing, so capacity is not the limit. The one real lever is the release velocity field: M13-e cuts
+force error to 0.157 with no cost (vs M13-d 0.183 without velocities). Best per field is split
+across models: the raw-position baseline with velocities (M13-b) has 1.7 cm / 5.1 deg but 0.44 on
+force; the intrinsic model has 0.16 on force but 4 cm / 15 deg. Taking position/direction from
+M13-b and magnitude from M13-e gives 1.7 cm / 5.1 deg / 0.16 at rung 1 today. Next lever: a hybrid
+input (raw positions + intrinsic channels) at rung 1, and the identifiability floor (M14-0) to see
+how far 0.16 is from what the data allows.
