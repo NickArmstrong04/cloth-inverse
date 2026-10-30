@@ -459,8 +459,8 @@ S4=/home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_const_paper_splits
 
 | id | job id | status | what | command | result |
 |---|---|---|---|---|---|
-| M15-a | | ready (splits exist 2026-10-30) | M13-b recipe on paper: rung 1, positions + velocities, cnn_reg + aux, 300 ep (vs M13-b 1.7 / 5.1 / 0.44 on cloth) | `sbatch --job-name=M15a --mem=60G cluster/run.sbatch $S4 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --out runs/M15a` | |
-| M15-b | | ready | size-matched cloth control: M13-b recipe on ds256_const with `--n-train 1356` (paper has 1,356 train vs ~2,300; separates material from data size) | `sbatch --job-name=M15b --mem=60G cluster/run.sbatch $S3 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --n-train 1356 --out runs/M15b` | |
+| M15-a | 31403577 | running | M13-b recipe on paper: rung 1, positions + velocities, cnn_reg + aux, 300 ep (vs M13-b 1.7 / 5.1 / 0.44 on cloth) | `sbatch --job-name=M15a --mem=60G cluster/run.sbatch $S4 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --out runs/M15a` | |
+| M15-b | 31403576 | running | size-matched cloth control: M13-b recipe on ds256_const with `--n-train 1356` (paper has 1,356 train vs ~2,300; separates material from data size) | `sbatch --job-name=M15b --mem=60G cluster/run.sbatch $S3 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --n-train 1356 --out runs/M15b` | |
 
 Submit (from `cloth_data_generation/transfer`; J-006 merged 2026-10-30 with 1356/169/169):
 
