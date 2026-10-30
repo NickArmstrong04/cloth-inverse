@@ -16,7 +16,7 @@ paste the output into a chat with Claude to update this file. Per-run metrics in
 | J-002 | | 2026-10-28 | running | stability sweep substeps 60/90/150 on failed force configs; find a setting where the velocity clamp does not tear the sheet (magnitude identifiability) | `cluster/stability.py --dataset ds768_night` then `--report` | |
 | J-003 | 31144541 (earlier attempts 31134453, 31139874, 31140657 cancelled) | 2026-10-28 | running (rung 3b) | ladder run 2, rungs 0,1,2,3,3b sequentially (D4-symmetric metric, TTA off), one GPU | `sbatch cluster/ladder.sbatch $S 300` | rungs 0/1/2/3 = 3.9/12.8, 4.5/15.9, 8.5/32.8, 8.3/31.1 (cm/deg); RESULTS.md |
 | J-004 | | | dropped | ds512_v1 free-floating generation; superseded by the bench profile (M6) after the resolution result | | |
-| J-005 | | 2026-10-29 night | planned | ds256_const: first dataset under the constant-force model (no ramp, every substep, capture at release, 5 snapshots with velocities), free-flight cloth at 256, magnitudes halved to 0.15-1.25 N (full impulse tore 1/3 of attempts at 0.3-2.5 N). Generation is ~9x faster per attempt (CUDA graph, solver reuse, vectorized QC). 3000 slots, seeds 100000+slot (same force configs per slot as ds256_free apart from the magnitude draw) | `python3 cluster/submit.py --n 3000 --name ds256_const --tasks 0-29 --max-concurrent 30 --no-merge` then `--tasks 30-59 --partition scavenge_gpu --max-concurrent 30 --no-merge`; morning: `merge_summaries.py` + `package_splits.py` | |
+| J-005 | 31345274 (`gpu`, tasks 0-29); scavenge array id pending | 2026-10-29 night | generated (merge pending) | ds256_const: first dataset under the constant-force model (no ramp, every substep, capture at release, 5 snapshots with velocities), free-flight cloth at 256, magnitudes halved to 0.15-1.25 N (full impulse tore 1/3 of attempts at 0.3-2.5 N). Generation is ~9x faster per attempt (CUDA graph, solver reuse, vectorized QC). 3000 slots, seeds 100000+slot (same force configs per slot as ds256_free apart from the magnitude draw) | `python3 cluster/submit.py --n 3000 --name ds256_const --tasks 0-29 --max-concurrent 30 --no-merge` then `--tasks 30-59 --partition scavenge_gpu --max-concurrent 30 --no-merge`; morning: `merge_summaries.py` + `package_splits.py` | 2026-10-30 morning: 3,269 attempts, 1,109 rejected (34%), all QC (no NaN, no capture failures): stretch 2.0-2.5 is the bulk (elastic stretch under load at release), tail to 37.9 (real tearing), ~130 also failed piercing (>100 pairs). Passing set biased to gentler draws; recalibrate the stretch gate / magnitude range from `rejected/` before the next generation run. Final counts after merge |
 
 Submitted 2026-10-28 ~13:00: M1 (31153218-24), M2 (31153226-28), M3 (31153239-42), M1a-d ran on L40S; the other ten were resubmitted ~13:30 as GPU-agnostic jobs (31155587-96) after an in-queue scontrol edit cancelled them (sacct: CANCELLED, never assigned). GPU-agnostic placement worked: runs landed on RTX 5000 Ada (32 GB, data on CPU), A40, A5000 (24 GB, data on CPU) and L40S.
 
@@ -360,3 +360,43 @@ bash cluster/collect.sh M12             # when done; paste the output
 Reading: M12-a vs M11-a is the direction test (position should stay at 5.8, direction should return
 to the baseline 20 deg or better); M12-b vs M9a says whether the invariant model now matches the
 world-frame model at known pose; M12-c + M12-c2 is the first rung-2 re-sim selection.
+
+## Matrix M13: the M12 recipes on the constant-force data (2026-10-30)
+
+ds256_const (J-005) is the first dataset under the constant-force model: captured at release with
+the force still acting, velocities stored, no settle. It is not comparable to ds256_free, so the
+matrix carries its own rung-1/rung-2 baselines (M9a / M9j recipes) next to the intrinsic+drift
+runs planned as M12. Two new questions the data makes possible: the release velocity field now
+encodes the impulse directly, so runs with velocities (no `--no-vel`) are in; and the captured
+shape is a taut band or early fold rather than a settled fold, so the baseline error itself says
+whether the new model is easier or harder to invert. `--frames post` is useless here (every
+snapshot is at or before t_end); `--frames all` would use them but is not in this matrix.
+
+S3=/home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_const_splits
+
+| id | job id | status | what | command | result |
+|---|---|---|---|---|---|
+| M13-a | | planned | rung 1 baseline, cnn_reg + aux, 300 ep (M9a recipe; vs M9a 5.7 / 14.4 on ds256_free) | `sbatch --job-name=M13a --mem=60G cluster/run.sbatch $S3 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --no-vel --aux-w 1 --out runs/M13a` | |
+| M13-b | | planned | rung 1 baseline WITH release velocities (vs M13-a: how much the velocity field adds now that it is the impulse) | `sbatch --job-name=M13b --mem=60G cluster/run.sbatch $S3 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --out runs/M13b` | |
+| M13-c | | planned | rung 2 baseline, cnn_reg + aux, 1000 ep (M9j recipe) | `sbatch --job-name=M13c --mem=60G cluster/run.sbatch $S3 --model cnn_reg --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --aux-w 1 --out runs/M13c` | |
+| M13-d | | planned | rung 2, intrinsic + drift + aux, 1000 ep (M12-a recipe; the main run) | `sbatch --job-name=M13d --mem=60G cluster/run.sbatch $S3 --model cnn_reg --intrinsic --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --aux-w 1 --out runs/M13d` | |
+| M13-e | | planned | rung 2, intrinsic + drift, with velocities (M12-d recipe; vs M13-d) | `sbatch --job-name=M13e --mem=60G cluster/run.sbatch $S3 --model cnn_reg --intrinsic --epochs 1000 --amp --tta 0 --eval-rotated --aux-w 1 --out runs/M13e` | |
+| M13-f | | planned | rung 1, intrinsic + drift, 300 ep (M12-b recipe; vs M13-a) | `sbatch --job-name=M13f --mem=60G cluster/run.sbatch $S3 --model cnn_reg --intrinsic --epochs 300 --no-rot --amp --tta 0 --no-vel --aux-w 1 --out runs/M13f` | |
+| M13-g | | planned | rung 2, intrinsic + drift + flow head (8 candidates), 1000 ep (M12-c recipe; candidates for re-sim) | `sbatch --job-name=M13g --mem=60G cluster/run.sbatch $S3 --model cnn_reg --intrinsic --flow --flow-k 8 --epochs 1000 --amp --tta 0 --no-vel --eval-rotated --aux-w 1 --out runs/M13g` | |
+| M13-g2 | | after M13-g | re-sim selection on M13-g's candidates, first 50 test samples (resim.sbatch must use the constant-force flags, which are now the generate_sample defaults) | `sbatch --job-name=M13g2 --dependency=afterok:<M13g id> cluster/resim.sbatch $S3 runs/M13g --limit 50 --k 8` | |
+
+Submit (CPU allocation, from `cloth_data_generation/transfer`, after the merge + package of J-005):
+
+```bash
+cd /home/naa79/scratch_pi_sz622/naa79/cloth-inverse && git pull && cd cloth_data_generation/transfer
+S3=/home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_const_splits
+ls $S3/train/*.h5 | wc -l; ls $S3/test/*.h5 | wc -l      # ~2300 / ~290 expected
+# M13-a..g: paste the sbatch lines above; M13-g2 once M13-g has an id
+squeue -u $USER -o "%.10i %.14j %.8T %.10M %R"
+bash cluster/collect.sh M13             # when done; paste the output
+```
+
+Reading: M13-a vs M9a is the dataset-difficulty number (same recipe, same size, new force model);
+M13-b vs M13-a is the value of the release velocity; M13-d vs M13-c repeats the M11-a test on this
+data and, with the drift channel in, should hold direction near the baseline; M13-e vs M13-d says
+whether the intrinsic model uses the velocity; M13-g's best-of-8 gap is the multimodality measurement.
