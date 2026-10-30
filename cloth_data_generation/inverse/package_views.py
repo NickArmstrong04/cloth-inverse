@@ -68,6 +68,10 @@ def package(gt_path: str, mask: np.ndarray, source: str, out_dir: str) -> dict:
     size, fov = int(g["size"]), float(g["fov_deg"])
     pts = unproject(mask, depth, fov)
     centroid = pts.mean(0) if len(pts) else np.zeros(3, np.float32)
+    # training's global feature under --no-vel is the sheet's WORLD centroid (its drift from the rest
+    # position), rotated into the camera frame by view_batch; carried here as an oracle for eval_views --g
+    has_c = "centroid" in g
+    g_world = (R @ g["centroid"]).astype(np.float32) if has_c else np.zeros(3, np.float32)
     from data import encode_forces  # lazy: data.py needs h5py, which the SAM/VGGT venv (lift.py) lacks
     fp = json.loads(str(g["force_params"]))
     y = encode_forces(fp) if fp else np.zeros((2, 7), np.float32)
@@ -75,6 +79,7 @@ def package(gt_path: str, mask: np.ndarray, source: str, out_dir: str) -> dict:
     stem = os.path.basename(gt_path)[: -len("_gt.npz")]
     path = os.path.join(out_dir, f"{stem}_pts_{source}.npz")
     np.savez_compressed(path, pts=pts - centroid, g=np.concatenate([centroid, np.zeros(3, np.float32)]),
+                        g_world=g_world, has_centroid=has_c,
                         y=y, R=R, d=d, size=size, fov_deg=fov, n_oracle_visible=int(g["vis"].sum()),
                         source=source, material=str(g["material"]))
     return {"stem": stem, "source": source, "N": int(len(pts)), "path": path, "size": size, "fov": fov}

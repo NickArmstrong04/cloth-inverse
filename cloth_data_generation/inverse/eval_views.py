@@ -10,9 +10,11 @@ perception costs: oracle -> sam3 = segmentation, sam3 -> vggt = 3D lifting.
 
 Input conventions follow train.forward_batch for the point model: camera-frame positions
 restricted to the visible points (here: all package points), divided by the saved xstd;
-the global feature is the sheet's world centroid in training, meaningless for a camera-frame
-package, so it is zeroed (a 3-vector of zeros is also its typical training value since the
-grids are centred). Scale: `--scale metric` feeds metres as stored (oracle/SAM are metric;
+the global feature is the sheet's WORLD centroid in training (its drift from the rest position,
+rotated into the camera frame): in a free-flight dataset the sheet flies ~1 m along the applied
+force, so it is a strong cue that a photo aimed at the sheet does not show. `--g zero` (default)
+feeds zeros, `--g oracle` the true drift carried by the oracle package (photo.py --gt stores the
+centroid; package_views writes g_world). Scale: `--scale metric` feeds metres as stored (oracle/SAM are metric;
 VGGT is multiplied by its `scale_to_oracle`, i.e. an oracle scale, flagged in the output);
 `--scale norm` rescales every cloud so its largest x/y extent is 0.8 * extent, as
 `--view-norm` does in training (no oracle; use with checkpoints trained with --view-norm).
@@ -81,9 +83,12 @@ class Run:
                 f"{self.args['model']} on a {self.size}px orthographic view, extent {self.extent} m, shade {self.shade}")
 
     @torch.no_grad()
-    def predict(self, p: torch.Tensor) -> np.ndarray:
-        """p: (N, 3) camera-frame points, already scaled. Returns (2, 7) raw-scale prediction."""
+    def predict(self, p: torch.Tensor, g_world: np.ndarray | None = None) -> np.ndarray:
+        """p: (N, 3) camera-frame points, already scaled; g_world: camera-frame sheet centroid (3,) or None
+        (zeros). Returns (2, 7) raw-scale prediction."""
         g = torch.zeros(1, self.gdim, device=self.dev)
+        if g_world is not None:
+            g[0, :3] = torch.from_numpy(np.asarray(g_world, np.float32)).to(self.dev) / self.gstd[0, :3]
         if self.point:
             x = p.T.reshape(1, 3, -1, 1) / self.xstd[:, :3]
             vis = torch.ones(1, x.shape[2], dtype=torch.bool, device=self.dev)
@@ -109,6 +114,7 @@ def load_packages(photos: list[str], source: str) -> list[dict]:
             stem = os.path.basename(f).split("_pts_")[0]
             out.append({"stem": stem, "set": os.path.basename(pdir), "pts": z["pts"].astype(np.float32),
                         "y": z["y"] if "y" in z else None,
+                        "g_world": z["g_world"] if ("g_world" in z and bool(z["has_centroid"])) else None,
                         "scale_to_oracle": float(z["scale_to_oracle"]) if "scale_to_oracle" in z else 1.0,
                         "material": str(z["material"]) if "material" in z else ""})
     return out
@@ -129,6 +135,8 @@ def main():
     ap.add_argument("--sources", nargs="*", default=["oracle", "sam3", "vggt"])
     ap.add_argument("--scale", choices=["metric", "norm"], default=None,
                     help="default: norm if the run used --view-norm, else metric")
+    ap.add_argument("--g", choices=["zero", "oracle"], default="zero",
+                    help="global feature: zeros, or the true world centroid (drift) from the oracle package")
     ap.add_argument("--passes", type=int, default=4, help="average the metrics over random point subsets")
     ap.add_argument("--out", default=None, help="json path (default <run>/eval_views.json)")
     args = ap.parse_args()
@@ -137,8 +145,16 @@ def main():
     scale = args.scale or ("norm" if run.args.get("view_norm") else "metric")
     extent = run.extent
     print(f"run {args.run}: {run.describe()}; trained view_norm={run.args.get('view_norm')} -> scale {scale}")
-    labels = {p["stem"]: p["y"] for p in load_packages(args.photos, "oracle")}  # labels live in the oracle package
-    res = {"run": args.run, "scale": scale, "sources": {}}
+    orc = load_packages(args.photos, "oracle")  # labels (and the drift oracle) live in the oracle package
+    labels = {p["stem"]: p["y"] for p in orc}
+    gws = {p["stem"]: p["g_world"] for p in orc}
+    if args.g == "oracle":
+        missing = [s for s, v in gws.items() if v is None]
+        assert not missing, f"--g oracle needs packages from photo.py --gt with the centroid (re-render); missing e.g. {missing[:3]}"
+    else:
+        gws = {s: None for s in gws}
+    print(f"global feature: {args.g}")
+    res = {"run": args.run, "scale": scale, "g": args.g, "sources": {}}
     rows = []
     for src in args.sources:
         pk = [p for p in load_packages(args.photos, src) if p["stem"] in labels and labels[p["stem"]] is not None]
@@ -147,8 +163,8 @@ def main():
             continue
         ms = []
         for _ in range(args.passes):
-            preds = np.stack([run.predict(scaled_points(p["pts"], dev, scale, extent, p["scale_to_oracle"]))
-                              for p in pk])
+            preds = np.stack([run.predict(scaled_points(p["pts"], dev, scale, extent, p["scale_to_oracle"]),
+                                          gws[p["stem"]]) for p in pk])
             ms.append(pair_metrics(preds, np.stack([labels[p["stem"]] for p in pk]), sym=True))
         m = np.mean(ms, 0)
         s = summarize(m)

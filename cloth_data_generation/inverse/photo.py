@@ -295,6 +295,7 @@ def main():
     for f in files:
         grid_np, fp, material = load_grid(f)
         grid = torch.from_numpy(grid_np).to(dev)
+        c_world = grid_np.reshape(-1, 3).mean(0).astype(np.float32)  # sheet drift from its rest position (train g)
         R, d = sample_cameras(grid.reshape(-1, 3) - grid.reshape(-1, 3).mean(0), args.views)
         rgb, gt = photograph(grid, R, d, tex, args.size, args.fov, args.splat, args.bg)
         stem = os.path.splitext(os.path.basename(f))[0]
@@ -307,13 +308,15 @@ def main():
                                     uv=gt["uv"][k].cpu().numpy(), vis=gt["vis"][k].cpu().numpy(),
                                     vpix=gt["vpix"][k].cpu().numpy().astype(np.int32),
                                     R=R[k].cpu().numpy(), d=float(d[k]), fov_deg=args.fov, size=args.size,
-                                    force_params=json.dumps(fp), material=material)
+                                    force_params=json.dumps(fp), material=material, centroid=c_world)
             manifest["views"].append({"png": name, "h5": f, "material": material, "view": k,
+                                      "centroid": c_world.tolist(),
                                       "R": R[k].tolist(), "d": float(d[k]),
                                       "visible_frac": float(gt["vis"][k].float().mean()),
                                       "mask_frac": float(gt["mask"][k].float().mean()),
                                       "force_params": fp})
-        print(f"{stem}: {args.views} views, visible {gt['vis'].float().mean(1).tolist()}")
+        print(f"{stem}: {args.views} views, visible {[round(v, 3) for v in gt['vis'].float().mean(1).tolist()]}, "
+              f"drift |c| {np.linalg.norm(c_world) * 100:.0f} cm")
     with open(os.path.join(args.out, "manifest.json"), "w") as fh:
         json.dump(manifest, fh, indent=1)
     print(f"{len(files)} samples x {args.views} views in {time.time() - t0:.1f}s -> {args.out}")
