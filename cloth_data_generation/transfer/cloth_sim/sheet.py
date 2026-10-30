@@ -120,11 +120,10 @@ def build_sheet(cfg: SheetConfig, device: str = "cuda:0"):
         model = builder.finalize()
         if cfg.contact_ke is not None:
             model.soft_contact_ke = cfg.contact_ke
-        if cfg.table and cfg.z_jitter > 0.0:
-            rng = np.random.default_rng(cfg.jitter_seed)
-            q = model.particle_q.numpy().copy()
-            q[:, 2] += rng.uniform(0.0, cfg.z_jitter * min(cell_x, cell_y), size=len(q)).astype(q.dtype)
-            model.particle_q.assign(q)
+        q_flat = model.particle_q.numpy().copy()
+        q0 = initial_positions(cfg, q_flat, cfg.jitter_seed)
+        if q0 is not q_flat:
+            model.particle_q.assign(q0)
 
     meta = {
         "nx": nx,
@@ -133,8 +132,22 @@ def build_sheet(cfg: SheetConfig, device: str = "cuda:0"):
         "cell_y": cell_y,
         "mass_per_particle": mass_p,
         "sheet": asdict(cfg),
+        "q_flat": q_flat,  # unjittered rest positions (per-sample jitter: initial_positions)
     }
     return model, meta
+
+
+def initial_positions(cfg: SheetConfig, q_flat: np.ndarray, seed: int) -> np.ndarray:
+    """Per-sample initial positions: the flat grid, plus seeded height noise with
+    ``cfg.table`` (``z_jitter`` x cell). Returns ``q_flat`` itself when no jitter
+    applies, so a reused SimSession can reset to it per sample."""
+    if not (cfg.table and cfg.z_jitter > 0.0):
+        return q_flat
+    cell_x, cell_y = particle_spacing(cfg)
+    rng = np.random.default_rng(seed)
+    q = q_flat.copy()
+    q[:, 2] += rng.uniform(0.0, cfg.z_jitter * min(cell_x, cell_y), size=len(q)).astype(q.dtype)
+    return q
 
 
 def grid_index(i: int, j: int, nx: int) -> int:

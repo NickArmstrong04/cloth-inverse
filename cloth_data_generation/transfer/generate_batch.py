@@ -1,8 +1,11 @@
 """Run N independent cloth samples with random force parameters.
 
-Batch strategy: one OS process per worker (default 8), each running
-generate_sample.py as a subprocess. Instances trivially cannot interact
-(no shared model/state). One HDF5 file per sample.
+Batch strategy: one OS process per worker (default 8). Each worker imports
+the simulator once and keeps one SimSession (model + VBD solver + CUDA graph)
+for the batch's configuration, so per sample only the state is reset and the
+frames replayed (the solver setup alone was ~4 s per sample at 128x128, more
+than the simulation itself once the graph is used). ``--subprocess`` restores
+the original one-process-per-sample isolation. One HDF5 file per sample.
 
 Newton does provide ModelBuilder.replicate() for multi-world single-model
 batching; per-world force routing and per-world contact logging were not
@@ -29,7 +32,10 @@ STRETCH_MAX = {"cloth": 2.0, "paper": 1.3}
 
 
 LOADINGS = ("free", "pusher")
-MAG_RANGE = {"free": (np.log(0.3), np.log(2.5)), "pusher": (np.log(0.1), np.log(1.0))}  # log-uniform, N
+# log-uniform, N. free: 0.15-1.25 N since 2026-10-29 (constant-force model delivers the full
+# impulse; the 0.3-2.5 N range of ds768_night/ds256_free tore 1/3 of attempts at full impulse,
+# and at the legacy ~53% impulse it was equivalent to 0.16-1.3 N).
+MAG_RANGE = {"free": (np.log(0.15), np.log(1.25)), "pusher": (np.log(0.1), np.log(1.0))}
 
 
 def sample_direction(rng: np.random.Generator, loading: str, u: float = 0.5, v: float = 0.5) -> np.ndarray:
@@ -67,7 +73,7 @@ def sample_forces(rng: np.random.Generator, res_scale: float = 1.0,
             "u": u,
             "v": v,
             "direction": [float(x) for x in d],
-            # free flight: the whole sheet accelerates, 0.3-2.5 N folds it. On a table
+            # free flight: the whole sheet accelerates, 0.15-1.25 N folds it. On a table
             # friction anchors the sheet and the same force tears the patch out (smoke
             # test 2026-10-28: 1.2-2 N tore cloth and NaN'd paper, 0.5-0.85 N were fine).
             "magnitude": float(np.exp(rng.uniform(*MAG_RANGE[loading]))),
@@ -94,10 +100,39 @@ def sample_forces(rng: np.random.Generator, res_scale: float = 1.0,
     return pair
 
 
+_CACHE = None  # per-worker SessionCache (created lazily after fork)
+
+
+def _simulate_in_process(argv: list[str]) -> tuple[int, str]:
+    """Run generate_sample in this worker, reusing its session. Returns (rc, stderr)."""
+    global _CACHE
+    import io
+    import traceback
+    import contextlib
+
+    import warp as wp
+
+    import generate_sample as gs  # imported in the worker, after the fork
+
+    if _CACHE is None:
+        wp.init()
+        _CACHE = gs.SessionCache()
+    err = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(err):
+            spec = gs.configure(gs.build_parser().parse_args(argv))
+            gs.generate(spec, cache=_CACHE, verbose=False)
+        return 0, err.getvalue()
+    except Exception:
+        _CACHE = None  # rebuild the session after any failure
+        return 1, err.getvalue() + traceback.format_exc()
+
+
 def run_one(slot: int, seed: int, outdir: str, extra: list[str],
             max_attempts: int = 3, resume: bool = False,
             res_scale: float = 1.0, check_pierce: bool = True,
-            stretch_max: float = 2.0, loading: str = "free") -> dict:
+            stretch_max: float = 2.0, loading: str = "free",
+            in_process: bool = True) -> dict:
     """Run one dataset slot (with QC-gated retries).
 
     With ``resume=True`` a slot whose passing HDF5 already exists in
@@ -144,18 +179,21 @@ def run_one(slot: int, seed: int, outdir: str, extra: list[str],
                              "resumed": True})
             continue
         t0 = time.time()
-        p = subprocess.run(
-            [sys.executable, os.path.join(HERE, "generate_sample.py"),
-             "--seed", str(aseed), "--force-json", fpath, "--out", opath,
-             *extra],
-            capture_output=True, text=True,
-        )
+        argv = ["--seed", str(aseed), "--force-json", fpath, "--out", opath, *extra]
+        if in_process:
+            rc, stderr = _simulate_in_process(argv)
+        else:
+            p = subprocess.run(
+                [sys.executable, os.path.join(HERE, "generate_sample.py"), *argv],
+                capture_output=True, text=True,
+            )
+            rc, stderr = p.returncode, p.stderr
         wall = time.time() - t0
-        if p.returncode != 0:
+        if rc != 0:
             attempts.append({"seed": aseed, "ok": False, "wall": wall,
-                             "error": p.stderr[-1000:]})
-            fatal = ("primary context" in p.stderr or "CUDA driver" in p.stderr
-                     or "no CUDA-capable device" in p.stderr or "ModuleNotFoundError" in p.stderr)
+                             "error": stderr[-1000:]})
+            fatal = ("primary context" in stderr or "CUDA driver" in stderr
+                     or "no CUDA-capable device" in stderr or "ModuleNotFoundError" in stderr)
             if fatal:
                 # the GPU/environment is broken for this process; retrying other
                 # seeds cannot help, and a resubmission (resume) will redo the slot
@@ -204,6 +242,9 @@ def main() -> None:
     ap.add_argument("--resume", action="store_true",
                     help="skip slots already passing in --outdir and attempts "
                          "already in --outdir/rejected")
+    ap.add_argument("--subprocess", action="store_true",
+                    help="one generate_sample.py process per sample (original isolation) "
+                         "instead of reusing one solver session per worker")
     args = ap.parse_args()
     os.makedirs(args.outdir, exist_ok=True)
     extra = args.sample_args.split() if args.sample_args else []
@@ -234,7 +275,7 @@ def main() -> None:
     with concurrent.futures.ProcessPoolExecutor(max_workers=args.jobs) as ex:
         futs = {ex.submit(run_one, args.slot0 + k, args.seed0 + args.slot0 + k,
                           args.outdir, extra, 3, args.resume, res_scale, check_pierce,
-                          STRETCH_MAX[args.material], args.loading): k
+                          STRETCH_MAX[args.material], args.loading, not args.subprocess): k
                 for k in range(args.n)}
         for fut in concurrent.futures.as_completed(futs):
             r = fut.result()
@@ -258,6 +299,7 @@ def main() -> None:
                "nx": args.nx, "ny": ny, "res_scale": res_scale, "pierce_qc": check_pierce,
                "material": args.material, "stretch_max": STRETCH_MAX[args.material],
                "loading": args.loading, "table": args.table,
+               "in_process": not args.subprocess,
                "sample_args": extra,
                "distribution": sample_forces.__doc__,
                "results": results}

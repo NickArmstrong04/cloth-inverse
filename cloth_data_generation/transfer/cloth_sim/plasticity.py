@@ -72,6 +72,11 @@ class PlasticHinges:
         self.rest0 = model.edge_rest_angle.numpy().copy()
         self.plastic_work = wp.zeros(model.edge_count, dtype=float, device=model.device)
 
+    def reset(self) -> None:
+        """Forget all creases (rest angles back to the flat sheet, work zeroed)."""
+        self.model.edge_rest_angle.assign(self.rest0)
+        self.plastic_work.zero_()
+
     def update(self, state) -> None:
         wp.launch(plastic_hinge_update, dim=self.model.edge_count,
                   inputs=[state.particle_q, self.model.edge_indices, self.model.edge_rest_angle,

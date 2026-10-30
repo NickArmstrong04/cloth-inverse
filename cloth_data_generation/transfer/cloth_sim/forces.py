@@ -1,8 +1,11 @@
 """Two linear force vectors applied as Gaussian patches in material space.
 
 Each force is defined by an application point (u, v) in [0, 1]^2, a 3D unit
-direction, a magnitude in newtons, and a duration in seconds. Particles are
-selected by grid indices (material coordinates), never by world position.
+direction, a magnitude in newtons, and a duration in seconds. The force is a
+constant vector held over [0, duration) and then dropped; the sample is
+captured at release (no settle) so the deformation is recorded before the
+stored energy relaxes. Particles are selected by grid indices (material
+coordinates), never by world position.
 Patch weights are normalized so the vector sum of applied forces equals
 ``magnitude * direction`` exactly.
 """

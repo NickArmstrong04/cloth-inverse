@@ -20,16 +20,20 @@ def main() -> None:
     ap.add_argument("--nx", type=int, default=128)
     ap.add_argument("--ny", type=int, default=128)
     ap.add_argument("--material", choices=sorted(MATERIALS), default="cloth")
-    ap.add_argument("--settle", type=float, default=0.7,
-                    help="seconds after the forces end (paper: try 2-3 to see the creases hold)")
-    ap.add_argument("--force-every-substep", action="store_true")
+    ap.add_argument("--settle", type=float, default=0.0,
+                    help="seconds after the forces end (0 = stop at release, the dataset "
+                         "default; paper: try 2-3 to see the creases hold)")
+    ap.add_argument("--ramp", type=float, default=0.0,
+                    help="force envelope (0 = hard-edged constant; 0.15 = legacy smoothstep)")
+    ap.add_argument("--force-once-per-frame", dest="force_every_substep",
+                    action="store_false", default=True, help="legacy half-impulse write")
     args = ap.parse_args()
 
     wp.init()
     forces = default_forces()
     sheet = sheet_config(args.material, nx=args.nx, ny=args.ny)
     t_capture = max(f.duration for f in forces) + args.settle
-    sim = SimConfig(t_capture=t_capture, ramp_frac=0.15,
+    sim = SimConfig(t_capture=t_capture, ramp_frac=args.ramp,
                     capture_every=args.capture_every,
                     force_every_substep=args.force_every_substep)
     model, meta = build_sheet(sheet)

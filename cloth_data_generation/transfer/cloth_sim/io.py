@@ -35,12 +35,15 @@ def save_sample_h5(path: str, *, final_grid: np.ndarray, final_vel: np.ndarray,
                    force_params: list[dict], sim_config: dict, seed: int,
                    ke: np.ndarray, max_speed: np.ndarray, contacts: np.ndarray,
                    frame_dt: float, momentum: np.ndarray | None = None,
-                   plastic: dict | None = None) -> None:
+                   plastic: dict | None = None,
+                   intermediate_vels: np.ndarray | None = None) -> None:
     with h5py.File(path, "w") as h:
         h.create_dataset("final_grid", data=final_grid)
         h.create_dataset("final_vel", data=final_vel)
         h.create_dataset("intermediate_grids", data=intermediate_grids)
         h.create_dataset("intermediate_times", data=intermediate_times)
+        if intermediate_vels is not None:
+            h.create_dataset("intermediate_vels", data=intermediate_vels)
         h.create_dataset("force_params", data=json.dumps(force_params))
         h.create_dataset("sim_config", data=json.dumps(sim_config))
         h.create_dataset("seed", data=np.int64(seed))
@@ -77,6 +80,8 @@ def load_sample_h5(path: str) -> dict:
         out["sim_config"] = json.loads(h["sim_config"][()].decode()
                                        if isinstance(h["sim_config"][()], bytes)
                                        else h["sim_config"][()])
+        if "intermediate_vels" in h:
+            out["intermediate_vels"] = h["intermediate_vels"][()]
         out["sim_log"] = {k: h["sim_log"][k][()] for k in h["sim_log"]}
         if "plastic" in h:
             out["plastic"] = {k: h["plastic"][k][()] for k in h["plastic"]}

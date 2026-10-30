@@ -59,6 +59,20 @@ Solver: `newton.solvers.SolverVBD` with particle self-contact.
 
 ## 4. How to run
 
+Force model (since 2026-10-29): each patch holds a **constant** force for
+its `duration` (no ramp, applied every substep = nominal impulse) and the
+sample is captured at release (`--settle 0`), before the stored energy
+relaxes. State snapshots (positions + velocities) are stored at every fifth
+of the deformation (`--snapshots 5`). Legacy datasets (up to ds768_night)
+reproduce with `--ramp 0.15 --settle 0.7 --force-once-per-frame`.
+
+Throughput: one frame of substeps is replayed as a CUDA graph (off with
+`--no-graph` and in `--deterministic` mode), `generate_batch.py` keeps one
+solver session per worker and resets it between samples (`--subprocess`
+restores one process per sample), and the piercing QC is vectorized. At
+128x128 one attempt is ~6 s on an RTX 4070 Ti (was ~55 s: 26 s sim + 8 s
+setup + 21 s QC).
+
 ```bash
 cd ~/cloth
 # one sample, default forces (writes sample_seed0.h5 + force JSON is built in)
@@ -91,10 +105,11 @@ Note: pass forwarded flags as `--sample-args=--deterministic` (with `=`);
 argparse otherwise consumes the flag itself.
 
 Key flags for `generate_sample.py`: `--nx/--ny` (default 128),
-`--t-capture` (default: max force duration + `--settle 0.7`),
+`--t-capture` (default: max force duration + `--settle 0`, i.e. capture at release),
 `--magnitude` (override), `--edge-ke`, `--substeps`, `--iterations`,
-`--margin/--gap` (self-contact), `--ramp` (force envelope, default 0.15),
-`--deterministic` (bit-exact repeats, ~10x slower), `--device`,
+`--margin/--gap` (self-contact), `--ramp` (force envelope, default 0 = hard-edged constant; 0.15 = legacy smoothstep),
+`--deterministic` (bit-exact repeats, ~10x slower, no CUDA graph), `--device`,
+`--snapshots N` (states at k/N of t_capture), `--no-graph`,
 `--material {cloth,paper}` (paper: stiff sheet with plastic creases,
 `--yield-curvature`, `--plastic-rate`; also on `generate_batch.py` and
 `cluster/submit.py`, see `cluster/README.md` section 3b'),
@@ -121,7 +136,8 @@ and `--table`; both are forwarded by `cluster/submit.py` via `BATCH_ARGS`.
 ## 6. HDF5 contents
 
 `final_grid` (128,128,3), `final_vel` (128,128,3),
-`intermediate_grids` (K,128,128,3) + `intermediate_times`,
+`intermediate_grids` (K,128,128,3) + `intermediate_vels` + `intermediate_times`
+(K = `--snapshots`, at k/K of t_capture; the last equals the final state),
 `force_params` (JSON), `sim_config` (JSON), `seed`, `sim_log`
 (kinetic_energy, max_speed, soft_contacts per frame + frame_dt),
 package versions as attributes. Grid convention: axis0 = v (j rows),
