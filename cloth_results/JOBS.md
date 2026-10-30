@@ -445,3 +445,35 @@ squeue -u $USER -o "%.10i %.14j %.8T %.10M"
 Reading: M14-e minus M13-f is the noise band; a lever counts only if it beats M13-f by more than that.
 M14-0's strain-oracle error is the floor a magnitude reader can reach from shape alone; if the
 delivered-momentum fraction has a wide IQR, velocity readers (M13-b/e, M14-g) are capped by it.
+
+## Matrix M15: the per-field best rung-1 recipe on the paper data (2026-10-30)
+
+M13-b (rung 1, raw positions + release velocities, cnn_reg + aux, 300 ep) is the best
+position/direction model on ds256_const (1.7 cm / 5.1 deg, force 0.44). ds256_const_paper
+(J-006) is slot-paired with ds256_const, so the same recipe on it is a direct material
+comparison: same force draws, creasing paper sheet instead of cloth. Depends on J-006 being
+generated and merged (`bash cluster/paper.sh full`, then `merge`); the splits dir must exist
+before submitting.
+
+S4=/home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_const_paper_splits
+
+| id | job id | status | what | command | result |
+|---|---|---|---|---|---|
+| M15-a | | blocked on J-006 merge | M13-b recipe on paper: rung 1, positions + velocities, cnn_reg + aux, 300 ep (vs M13-b 1.7 / 5.1 / 0.44 on cloth) | `sbatch --job-name=M15a --mem=60G cluster/run.sbatch $S4 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --out runs/M15a` | |
+
+Submit (from `cloth_data_generation/transfer`, after `bash cluster/paper.sh merge`):
+
+```bash
+cd /home/naa79/scratch_pi_sz622/naa79/cloth-inverse && git pull && cd cloth_data_generation/transfer
+S4=/home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_const_paper_splits
+ls $S4/train/*.h5 | wc -l; ls $S4/test/*.h5 | wc -l      # must be non-zero before submitting
+sbatch --job-name=M15a --mem=60G cluster/run.sbatch $S4 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --out runs/M15a
+squeue -u $USER -o "%.10i %.14j %.8T %.10M"
+# when done: bash cluster/collect.sh M15 ; cd ../inverse && ../transfer/.venv/bin/python impulse_report.py runs/M13b runs/M15a
+```
+
+Reading: M15-a vs M13-b is the material cost at known pose. Creases lock the deformation at the
+patch, so position should hold or improve; direction may degrade (the grid-axis crease artifact
+could pull predicted directions toward the axes); force magnitude is expected to stay near chance
+as on cloth. If paper comes out clearly easier or harder, the M13-e recipe (rung 2, intrinsic +
+velocities, 1000 ep) is the next row.
