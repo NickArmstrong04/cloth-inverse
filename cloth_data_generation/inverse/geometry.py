@@ -56,6 +56,30 @@ def intrinsic(x: torch.Tensor, vel: torch.Tensor | None = None, curv_scale: floa
     return torch.stack(feats, 1), frames
 
 
+def rest_grid(H: int, W: int, device, dtype=torch.float32) -> torch.Tensor:
+    """Centred flat rest positions of the material grid, (3, H, W): x = u - 0.5, y = v - 0.5 (in m), z = 0."""
+    u = torch.linspace(-SHEET_SIZE / 2, SHEET_SIZE / 2, W, device=device, dtype=dtype)
+    v = torch.linspace(-SHEET_SIZE / 2, SHEET_SIZE / 2, H, device=device, dtype=dtype)
+    yy, xx = torch.meshgrid(v, u, indexing="ij")
+    return torch.stack([xx, yy, torch.zeros_like(xx)], 0)
+
+
+def kabsch(x: torch.Tensor) -> torch.Tensor:
+    """Rigid pose of a material-indexed grid, (B, 3, H, W) centred positions in any world pose ->
+    R (B, 3, 3) with R @ x ~ rest grid (least squares over all cells, det +1). The indexing gives the
+    correspondence, so at rung 2 (unknown pose, known indexing) the pose is recoverable in closed form
+    up to the residual deformation; the network then sees a canonical frame (M16-d)."""
+    B, _, H, W = x.shape
+    r = rest_grid(H, W, x.device, torch.float32).reshape(3, -1)  # (3, N)
+    p = x.float().reshape(B, 3, -1)
+    Hm = torch.einsum("in,bjn->bij", r, p)  # sum_n rest_n p_n^T  (B, 3, 3)
+    U, S, Vh = torch.linalg.svd(Hm)
+    d = torch.sign(torch.det(U @ Vh))
+    D = torch.ones(B, 3, device=x.device)
+    D[:, 2] = d
+    return U @ torch.diag_embed(D) @ Vh  # (B,3,3): R p ~ r
+
+
 def to_local_field(a: torch.Tensor, frames: torch.Tensor) -> torch.Tensor:
     """World vector field (B, 3, H, W) -> components in each cell's local frame (F^T a)."""
     return torch.einsum("bhwij,bihw->bjhw", frames, a)

@@ -55,8 +55,13 @@ def main():
             grid = h["final_grid"][()].astype(np.float64)
             fp = h["force_params"][()]
             fp = json.loads(fp.decode() if isinstance(fp, bytes) else fp)[:2]
-            P = (h["sim_log"]["momentum"][()][-1].astype(np.float64)
-                 if "sim_log" in h and "momentum" in h["sim_log"] else None)
+            if "sim_log" in h and "momentum" in h["sim_log"]:
+                P = h["sim_log"]["momentum"][()][-1].astype(np.float64)
+            else:  # test files keep no log; free flight: total momentum at capture = delivered impulse
+                cfg = h["sim_config"][()]
+                sh = json.loads(cfg.decode() if isinstance(cfg, bytes) else cfg)["sheet"]
+                m_p = sh["mass_per_area"] * sh["size_x"] * sh["size_y"] / (sh["nx"] * sh["ny"])
+                P = m_p * h["final_vel"][()].reshape(-1, 3).astype(np.float64).sum(0)
         ny, nx = grid.shape[:2]
         st = strain_trace(grid)
         jj, ii = np.mgrid[0:ny, 0:nx]
@@ -87,7 +92,7 @@ def main():
         print(f"momentum oracle : median |rel err| {rel(Fmom):.3f} (raw least squares, no calibration); "
               f"after dividing by the median fraction {rel((Fmom + 1) / np.median(ratio) - 1):.3f}")
     else:
-        print("momentum oracle : no sim_log/momentum in these files")
+        print("momentum oracle : no momentum available")
 
 
 if __name__ == "__main__":

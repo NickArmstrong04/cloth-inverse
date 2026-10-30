@@ -521,3 +521,65 @@ Reading: M15-r1 vs M15-r2 is the first joint score of the two "best" models; if 
 position, far better magnitude) re-simulates closer to the truth than M13-b, the shape is
 magnitude-limited and the per-field split in RESULTS.md was the wrong ranking. The impulse_report
 columns `MAE N` / `R2 lin` are the magnitude numbers to quote against the tactile literature.
+
+## Matrix M16: improvements to the two best models (2026-10-30)
+
+Code (commit after 7fd5711): six flag-gated changes in `inverse/`, all smoke-tested on the 128 split
+(scratch, 1 epoch each, rung 1 and rung 2 paths, TTA, flow sampling).
+
+| flag | what | for |
+|---|---|---|
+| `--hybrid` | raw standardised channels AND the intrinsic strain/curvature features into the encoder; world directions, globals kept | M13-b: magnitude at chance; intrinsic halves it |
+| `--snap` | two-snapshot input: `(x_final - x_snap)/dt` and `(v_final - v_snap)/dt` (the acceleration) as channels 6:12 from the stored snapshot before the capture. Test files need snapshots: re-package with `package_splits.py --test-keep-frames` | magnitude: F = m a while the force acts |
+| `--patch-head k` | cnn_reg: a k x k window of the mid map sampled around each predicted (u, v) corrects that force's log-magnitude | mean pooling dilutes the sub-cell patch 64x |
+| `--kabsch` | canonicalise the pose: Kabsch-align the indexed grid to the flat rest grid, rotate every input field in and the directions back (unit check: 0.4 mm residual at 1 cm deformation noise, det +1) | rung 2 without invariant features: the pose is recoverable in closed form from the indexing |
+| `--intrinsic-rel` | `--intrinsic` also gets each cell's centroid-relative position in its own local frame (3 invariant channels) | M13-e: position 4.1 cm vs 1.7 for the raw model |
+| `--label delivered|scaled` | magnitude label from the delivered momentum (`m_p sum v` at capture): per-force least squares, or both nominal magnitudes scaled by the sample's delivered fraction (robust; the smoke sample's least-squares split sent one force to the floor) | labels are nominal F*t; the solver delivers ~8% of it |
+
+Also: `identifiability.py` now computes the momentum from `final_vel` when the file has no log (test
+files), so M14-0 / M16-0 reports both oracles; `_rotate` handles globals narrower than the grid.
+
+Recipes: R1 = M13-b (`--model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1`, velocities on),
+R2 = M13-e (`--model cnn_reg --intrinsic --epochs 1000 --amp --tta 0 --eval-rotated --aux-w 1`).
+Every training job runs with `RESIM=50` so the re-simulation score comes with it.
+S3 = ds256_const_splits; S3F = the same split re-packaged with snapshots in the test files.
+
+| id | job id | status | what | command | result |
+|---|---|---|---|---|---|
+| M16-0 | login node | planned | identifiability floors on the test split (strain oracle, delivered fraction + IQR, momentum oracle) | `cd ../inverse && ../transfer/.venv/bin/python identifiability.py $S3/test` | |
+| M16-p | login node | planned | re-package ds256_const with snapshots in the test files (same split seed -> same membership) | `.venv/bin/python package_splits.py --indir $D/ds256_const --outdir $D/ds256_const_splits_fr --test-keep-frames` | |
+| M16-a | | planned | R1 + hybrid input (vs M13-b 1.7 / 5.1 / 0.44) | `RESIM=50 sbatch --job-name=M16a --mem=60G cluster/run.sbatch $S3 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --hybrid --out runs/M16a` | |
+| M16-b | after M16-p | planned | R1 + two-snapshot input | `RESIM=50 sbatch --job-name=M16b --mem=60G cluster/run.sbatch $S3F --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --snap --out runs/M16b` | |
+| M16-c | | planned | R1 + patch-conditioned magnitude head (k = 5) | `RESIM=50 sbatch --job-name=M16c --mem=60G cluster/run.sbatch $S3 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --patch-head 5 --out runs/M16c` | |
+| M16-d | | planned | rung 2 by canonicalisation: R1 recipe + `--kabsch --eval-rotated` (vs M13-e 4.1 / 14.7 / 0.157 and M13-b) | `RESIM=50 sbatch --job-name=M16d --mem=60G cluster/run.sbatch $S3 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --kabsch --eval-rotated --out runs/M16d` | |
+| M16-e | | planned | R2 + centroid-relative local-frame channels | `RESIM=50 sbatch --job-name=M16e --mem=60G cluster/run.sbatch $S3 --model cnn_reg --intrinsic --intrinsic-rel --epochs 1000 --amp --tta 0 --eval-rotated --aux-w 1 --out runs/M16e` | |
+| M16-f | | planned | R1 + delivered labels (per-force least squares) | `RESIM=50 sbatch --job-name=M16f --mem=60G cluster/run.sbatch $S3 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --label delivered --out runs/M16f` | |
+| M16-f2 | | planned | R1 + scaled labels (nominal x delivered fraction) | `RESIM=50 sbatch --job-name=M16f2 --mem=60G cluster/run.sbatch $S3 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --label scaled --out runs/M16f2` | |
+| M16-f3 | | planned | R2 + scaled labels | `RESIM=50 sbatch --job-name=M16f3 --mem=60G cluster/run.sbatch $S3 --model cnn_reg --intrinsic --epochs 1000 --amp --tta 0 --eval-rotated --aux-w 1 --label scaled --out runs/M16f3` | |
+| M16-g | | planned | R2 + flow head (8 candidates): M13-e with candidates for re-sim selection | `sbatch --job-name=M16g --mem=60G cluster/run.sbatch $S3 --model cnn_reg --intrinsic --flow --flow-k 8 --epochs 1000 --amp --tta 0 --eval-rotated --aux-w 1 --out runs/M16g` | |
+| M16-g2 | after M16-g | planned | re-sim selection among M16-g's candidates, first 50 test samples | `sbatch --job-name=M16g2 --dependency=afterok:<M16g id> cluster/resim.sbatch $S3 runs/M16g --limit 50 --k 8` | |
+| M16-h | after M16-p | planned | R1 + hybrid + snapshot + patch head (the three magnitude levers together) | `RESIM=50 sbatch --job-name=M16h --mem=60G cluster/run.sbatch $S3F --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --hybrid --snap --patch-head 5 --out runs/M16h` | |
+
+Submit (from `cloth_data_generation/transfer`):
+
+```bash
+cd /home/naa79/scratch_pi_sz622/naa79/cloth-inverse && git pull && cd cloth_data_generation/transfer
+D=/home/naa79/scratch_pi_sz622/naa79/cloth_data
+S3=$D/ds256_const_splits; S3F=$D/ds256_const_splits_fr
+(cd ../inverse && ../transfer/.venv/bin/python identifiability.py $S3/test)                       # M16-0
+.venv/bin/python package_splits.py --indir $D/ds256_const --outdir $S3F --test-keep-frames          # M16-p (~minutes)
+ls $S3F/test/*.h5 | wc -l
+# M16-a, c, d, e, f, f2, f3, g: paste the sbatch lines above
+# after M16-p: M16-b, M16-h; after M16-g has an id: M16-g2
+squeue -u $USER -o "%.10i %.14j %.8T %.10M"
+# when done:
+bash cluster/collect.sh M16
+cd ../inverse && ../transfer/.venv/bin/python impulse_report.py runs/M13b runs/M13e runs/M16a runs/M16b runs/M16c runs/M16d runs/M16e runs/M16f runs/M16f2 runs/M16f3 runs/M16h
+```
+
+Reading: M16-a/b/c/h vs M13-b is the magnitude question at rung 1 (force 0.44 -> ?; position must hold
+at 1.7 cm). M16-d vs M13-e is whether rung 2 needs invariant features at all (if the canonicalised raw
+model reaches ~2 cm / 6 deg, the rung-1 recipe is the rung-2 recipe). M16-e vs M13-e is the position
+cost of the invariant path. M16-f/f2 vs M13-b and M16-f3 vs M13-e: if the relabelled magnitude error
+drops far below 0.16, the remaining error was label inconsistency, not the model; M16-0's delivered
+fraction IQR says how much. The re-sim score ranks all of them jointly.

@@ -91,23 +91,32 @@ class IntrinsicInput(nn.Module):
     kept without re-introducing the pose. A learnable per-channel affine replaces the
     dataset-level input standardisation that train.py applies to raw positions."""
 
-    def __init__(self, with_vel: bool, n_glob: int = 0, glob_scale: float = 10.0, strain_scale: float = 10.0):
+    def __init__(self, n_extra: int = 0, n_glob: int = 0, glob_scale: float = 10.0, strain_scale: float = 10.0,
+                 rel: bool = False):
+        """n_extra: vector triplets after the positions in x (velocity, snapshot deltas, ...), each expressed
+        in the local frames. rel: add each cell's position relative to the centroid in its own local frame
+        (F^T x, 3 channels; rotation-invariant since both rotate). For a flat sheet that is just the material
+        coordinate, so the channels carry the global shape the strain / curvature features lose (M16-e)."""
         super().__init__()
-        self.n_glob, self.glob_scale, self.strain_scale = n_glob, glob_scale, strain_scale
-        self.cin = (9 if with_vel else 6) + 3 * n_glob
+        self.n_extra, self.n_glob, self.glob_scale, self.strain_scale, self.rel = n_extra, n_glob, glob_scale, strain_scale, rel
+        self.cin = 6 + 3 * n_extra + 3 * n_glob + (3 if rel else 0)
         self.scale = nn.Parameter(torch.ones(1, self.cin, 1, 1))
         self.shift = nn.Parameter(torch.zeros(1, self.cin, 1, 1))
         self.frames = None
 
     def forward(self, x, g=None):
-        vel = x[:, 3:6] if (self.cin - 3 * self.n_glob == 9 and x.shape[1] >= 6) else None
-        f, self.frames = intrinsic(x[:, :3].float(), vel.float() if vel is not None else None,
-                                   strain_scale=self.strain_scale)
+        f, self.frames = intrinsic(x[:, :3].float(), None, strain_scale=self.strain_scale)
+        feats = [f]
+        for k in range(self.n_extra):  # velocity-like fields -> local components
+            feats.append(to_local_field(x[:, 3 + 3 * k:6 + 3 * k].float(), self.frames))
+        if self.rel:
+            feats.append(to_local_field(x[:, :3].float(), self.frames) / (0.5 * 0.5))
         if self.n_glob:
             B, _, H, W = f.shape
             gl = [to_local_field(g[:, 3 * k:3 * k + 3].float()[:, :, None, None].expand(B, 3, H, W), self.frames)
                   for k in range(self.n_glob)]
-            f = torch.cat([f] + [v * self.glob_scale for v in gl], 1)
+            feats.extend(v * self.glob_scale for v in gl)
+        f = torch.cat(feats, 1)
         return (f * self.scale + self.shift).to(x.dtype)
 
 
@@ -167,29 +176,49 @@ class GridModel(nn.Module):
     """Shared machinery for the grid models: optional intrinsic input, optional flow head,
     direction frame handling."""
 
-    def _setup(self, cin, intrinsic_in, flow, cdim, uv_scale, flow_steps, gdim=0, strain_scale=10.0):
-        self.intrinsic = intrinsic_in
-        self.pre = (IntrinsicInput(with_vel=cin >= 6, n_glob=gdim // 3, strain_scale=strain_scale)
-                    if intrinsic_in else None)
+    def _setup(self, cin, intrinsic_in, flow, cdim, uv_scale, flow_steps, gdim=0, strain_scale=10.0, hybrid=False,
+               intrinsic_rel=False):
+        """hybrid (M16-a): the raw (standardised) channels AND the intrinsic features are fed to the encoder;
+        directions stay in the world frame and g is kept, so the model is not pose-invariant (rung 1 only).
+        The raw input then arrives in metres and is standardised here with x_scale / g_scale (set by train.py)."""
+        self.intrinsic = intrinsic_in or hybrid
+        self.hybrid = hybrid
+        self.local_dirs = intrinsic_in and not hybrid  # directions in the local tangent frame (pose-invariant path)
+        self.pre = (IntrinsicInput(n_extra=(cin - 3) // 3, n_glob=0 if hybrid else gdim // 3, strain_scale=strain_scale,
+                                   rel=intrinsic_rel) if self.intrinsic else None)
+        self.register_buffer("x_scale", torch.ones(1, cin, 1, 1))
+        self.register_buffer("g_scale", torch.ones(1, max(gdim, 1)))
         self.uv_scale = uv_scale
         self.flow = None  # built by the subclass once the feature width is known
         self.flow_targets = None  # set per step by train.py: (S, B, 2, 7) equivalent targets
         self._feat = None
+        if hybrid:
+            return cin + self.pre.cin
         return self.pre.cin if intrinsic_in else cin
 
     def _inputs(self, x, g=None):
-        return self.pre(x, g) if self.pre is not None else x
+        if self.pre is None:
+            return x
+        if self.hybrid:
+            return torch.cat([(x / self.x_scale).to(x.dtype), self.pre(x, None)], 1)
+        return self.pre(x, g)
+
+    def _globals(self, g):
+        """g for the pooled features: zero on the invariant path (world-frame pose), standardised when hybrid."""
+        if self.pre is None:
+            return g
+        return (g / self.g_scale).to(g.dtype) if self.hybrid else torch.zeros_like(g)
 
     def _dirs_to_world(self, pred):
-        """pred (B, 2, 7) with local-frame directions -> world directions (intrinsic only)."""
-        if self.pre is None:
+        """pred (B, 2, 7) with local-frame directions -> world directions (invariant path only)."""
+        if not self.local_dirs:
             return pred
         uv = _uv_from_norm(pred.float(), self.uv_scale)
         d = local_to_world(pred[..., 2:5].float(), uv, self.pre.frames)
         return torch.cat([pred[..., :2], d.to(pred.dtype), pred[..., 5:]], -1)
 
     def _aux_target(self, a):
-        return to_local_field(a, self.pre.frames) if (self.pre is not None and a is not None) else a
+        return to_local_field(a, self.pre.frames) if (self.local_dirs and a is not None) else a
 
     def _flow_loss(self, feat):
         """Flow-matching loss on the targets train.py handed over for this batch (consumed once);
@@ -198,7 +227,7 @@ class GridModel(nn.Module):
         if self.flow is None or self.flow_targets is None:
             return None
         t, self.flow_targets = self.flow_targets, None
-        if self.pre is not None:  # flow generates local-frame directions
+        if self.local_dirs:  # flow generates local-frame directions
             S, B = t.shape[:2]
             uv = _uv_from_norm(t.reshape(S * B, 2, 7), self.uv_scale)
             fr = self.pre.frames.repeat(S, 1, 1, 1, 1)
@@ -212,7 +241,7 @@ class GridModel(nn.Module):
         """K candidate (2, 7) normalised predictions per item, world directions: (B, K, 2, 7)."""
         self.forward(x, g)
         z = self.flow.sample(self._feat, K)
-        if self.pre is not None:
+        if self.local_dirs:
             B = z.shape[0]
             out = []
             for k in range(K):
@@ -228,10 +257,19 @@ class CNNReg(GridModel):
     dense force field (3, h, w); forward returns its loss when a target is given."""
 
     def __init__(self, w=32, hidden=256, p_drop=0.2, in_size=128, cin=6, gdim=6, aux=False, intrinsic=False,
-                 flow=False, uv_scale=None, flow_steps=32, pool="mean", strain_scale=10.0, **_):
+                 flow=False, uv_scale=None, flow_steps=32, pool="mean", strain_scale=10.0, hybrid=False,
+                 intrinsic_rel=False, patch_head=0, **_):
         super().__init__()
-        enc_in = self._setup(cin, intrinsic, flow, 0, uv_scale, flow_steps, gdim, strain_scale)
+        enc_in = self._setup(cin, intrinsic, flow, 0, uv_scale, flow_steps, gdim, strain_scale, hybrid, intrinsic_rel)
         self.enc = Encoder(enc_in, w, in_size)
+        # patch-conditioned magnitude head (M16-c): a k x k window of the mid map sampled around each predicted
+        # (u, v) -> MLP -> correction of that force's log-magnitude. Mean pooling dilutes the sub-cell patch
+        # by the whole map; this conditions the magnitude on where the push was. 0 = off, else window size k.
+        self.patch_k = patch_head
+        if patch_head:
+            cm = self.enc.c_mid
+            self.patch = nn.Sequential(nn.Linear(cm * patch_head * patch_head + 1, hidden), nn.GELU(), nn.Dropout(p_drop),
+                                       nn.Linear(hidden, 1))
         self.gdim = gdim
         self.pool = pool  # "mean" | "max": max adds the per-channel maximum of the final map, so a
         # local peak (the strain at the force patch, which sets the magnitude) is not averaged away
@@ -247,17 +285,34 @@ class CNNReg(GridModel):
                     if aux else None)
         self.aux_m0 = 1.0  # set by train.py: mean squared target per cell
 
+    def _patch_logmag(self, mid, pred):
+        """Sample a k x k window of ``mid`` (B, C, h, w) around each predicted (u, v) (detached) and return a
+        log-magnitude correction (B, 2)."""
+        B, C, h, w = mid.shape
+        k = self.patch_k
+        uv = _uv_from_norm(pred.detach().float(), self.uv_scale).clamp(0, 1)  # (B,2,2)
+        off = (torch.arange(k, device=mid.device, dtype=torch.float32) - (k - 1) / 2)
+        du, dv = torch.meshgrid(off / (w - 1), off / (h - 1), indexing="xy")  # cell-sized steps
+        grid = uv[:, :, None, None, :] + torch.stack([du, dv], -1)[None, None]  # (B,2,k,k,2) in [0,1]
+        grid = (grid * 2 - 1).reshape(B, 2 * k, k, 2)
+        s = F.grid_sample(mid.float(), grid, mode="bilinear", align_corners=True, padding_mode="border")  # (B,C,2k,k)
+        s = s.view(B, C, 2, k, k).permute(0, 2, 1, 3, 4).reshape(B, 2, C * k * k)
+        return self.patch(torch.cat([s, pred[..., 5:6].detach().float()], -1)).squeeze(-1)
+
     def forward(self, x, g, a=None):
         mid, out = self.enc(self._inputs(x, g))
-        if self.pre is not None:
-            g = torch.zeros_like(g)  # world-frame globals carry pose; they entered in local coordinates above
+        g = self._globals(g)
         pooled = [out.mean((-1, -2))] + ([out.amax((-1, -2))] if self.pool == "max" else [])
         f = torch.cat(pooled + [g], 1)
         self._feat = f
         a = self._aux_target(a)
         aux = aux_field_loss(self.aux(mid), a, self.aux_m0) if (self.aux is not None and a is not None) else None
         self._flow_loss(f)
-        pred = self._dirs_to_world(self.head(f).view(-1, 2, 7))
+        pred = self.head(f).view(-1, 2, 7)
+        if self.patch_k:
+            corr = self._patch_logmag(mid, pred).to(pred.dtype)
+            pred = torch.cat([pred[..., :5], pred[..., 5:6] + corr.unsqueeze(-1), pred[..., 6:]], -1)
+        pred = self._dirs_to_world(pred)
         return pred, aux
 
 
@@ -309,9 +364,9 @@ class CNNField(GridModel):
     as the aux loss (weight --aux-w, forced to >= 1 for this model)."""
 
     def __init__(self, w=32, hidden=256, p_drop=0.2, in_size=128, cin=6, gdim=6, uv_scale=None, intrinsic=False,
-                 flow=False, flow_steps=32, win=3, heat_w=1.0, **_):
+                 flow=False, flow_steps=32, win=3, heat_w=1.0, hybrid=False, intrinsic_rel=False, **_):
         super().__init__()
-        enc_in = self._setup(cin, intrinsic, flow, 0, uv_scale, flow_steps, gdim)
+        enc_in = self._setup(cin, intrinsic, flow, 0, uv_scale, flow_steps, gdim, hybrid=hybrid, intrinsic_rel=intrinsic_rel)
         self.enc = Encoder(enc_in, w, in_size)
         cm, cd = self.enc.c_mid, max(32, self.enc.c_mid // 2)
         self.dec = nn.Sequential(
@@ -347,8 +402,7 @@ class CNNField(GridModel):
 
     def forward(self, x, g, a=None):
         mid, out = self.enc(self._inputs(x, g))
-        if self.pre is not None:
-            g = torch.zeros_like(g)
+        g = self._globals(g)
         d = self.dec(mid)
         B, cd, h, w = d.shape
         logits, field = self.heat(d), self.field(d)
@@ -570,12 +624,15 @@ class SonataReg(nn.Module):
 
 def build(name: str, uv_scale=None, **kw):
     pool, strain_scale = kw.pop("pool", "mean"), kw.pop("strain_scale", 10.0)
+    grid_only = {k: kw.pop(k) for k in ("hybrid", "intrinsic_rel", "patch_head") if k in kw}
     if name == "cnn_reg":
-        return CNNReg(uv_scale=uv_scale, pool=pool, strain_scale=strain_scale, **kw)
+        return CNNReg(uv_scale=uv_scale, pool=pool, strain_scale=strain_scale, **grid_only, **kw)
     if name == "cnn_heat":
         return CNNHeat(uv_scale=uv_scale, **kw)
     if name == "cnn_field":
-        return CNNField(uv_scale=uv_scale, **kw)
+        assert not grid_only.get("patch_head"), "--patch-head is a cnn_reg option"
+        return CNNField(uv_scale=uv_scale, hybrid=grid_only.get("hybrid", False),
+                        intrinsic_rel=grid_only.get("intrinsic_rel", False), **kw)
     if name == "pointtf":
         kw.pop("in_size", None); kw.pop("w", None)
         return PointTF(**kw)

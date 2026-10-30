@@ -156,7 +156,7 @@ def main():
     simulator, rows = None, []
     for k, item in enumerate(preds):
         name = item["file"]
-        true_grid, true_vel, cfg, _ = load_sample(os.path.join(args.root, "test", name))
+        true_grid, true_vel, cfg, true_fp = load_sample(os.path.join(args.root, "test", name))
         if simulator is None:
             simulator = Simulator(cfg, workdir=out, device=args.device)
         base = os.path.join(out, name.replace(".h5", ""))
@@ -169,13 +169,14 @@ def main():
             print(f"  {name}: predicted forces failed to simulate: {str(e)[-200:]}", flush=True)
             row["pred"] = None
         if not args.no_floor:
-            fg, _ = simulator.run(item["true"], cfg["t_capture"], seed=900 + k, keep=keep("floor"))
+            # the file's own (nominal) forces, not item["true"]: a --label delivered run stores relabelled magnitudes
+            fg, _ = simulator.run(true_fp, cfg["t_capture"], seed=900 + k, keep=keep("floor"))
             row["floor"] = grid_error(fg, true_grid)
         if chance is not None:
             cg, _ = simulator.run(chance, cfg["t_capture"], seed=900 + k, keep=keep("chance"))
             row["chance"] = grid_error(cg, true_grid)
         rows.append(row)
-        fmt = lambda r: "%.3f" % r["rmse_centered_m"] if r else "fail"
+        fmt = lambda r: "%.3f" % r["rmse_centered_m"] if r else ("fail" if r is None and "pred" in row and row["pred"] is None else "-")
         print(f"{name}: pred {fmt(row.get('pred'))}  floor {fmt(row.get('floor'))}  chance {fmt(row.get('chance'))} m "
               f"(centred RMSE)  pos {item['metrics']['pos_cm']:.1f} cm", flush=True)
     tag = args.shard.replace("/", "of") if args.shard else "all"

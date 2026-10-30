@@ -13,7 +13,7 @@ import math
 import torch
 
 from data import TargetScaler, augment, decode_forces, load_frames, load_split, random_rotation
-from geometry import shade
+from geometry import kabsch, shade
 from metrics import NAMES as METRIC_NAMES, pair_metrics, summarize
 from models import PointTF, SonataReg, build, equivalent_targets, pair_loss
 from render import view_batch
@@ -73,9 +73,9 @@ def _rot_from_gen(n, gen, yaw_only=False):
 def _rotate(x, g, y, R):
     """Apply per-sample rotations R (N,3,3) to a dataset; works for 3 or 6 channels."""
     x, g, y = x.clone(), g.clone(), y.clone()
-    nvec = x.shape[1] // 3
-    for k in range(nvec):
+    for k in range(x.shape[1] // 3):  # every vector field on the grid (positions, velocities, snapshot deltas)
         x[:, 3 * k:3 * k + 3] = torch.einsum("bij,bjhw->bihw", R, x[:, 3 * k:3 * k + 3])
+    for k in range(g.shape[1] // 3):  # the globals may be fewer triplets than the grid (--snap)
         g[:, 3 * k:3 * k + 3] = torch.einsum("bij,bj->bi", R, g[:, 3 * k:3 * k + 3])
     y[:, :, 2:5] = torch.einsum("bij,bkj->bki", R, y[:, :, 2:5])
     return x, g, y
@@ -207,6 +207,28 @@ def main():
     ap.add_argument("--w-mag", type=float, default=1.0, help="weight of the log-magnitude term in the loss (M14)")
     ap.add_argument("--strain-scale", type=float, default=10.0,
                     help="--intrinsic: multiplier on the strain channels before the learnable affine (M14)")
+    ap.add_argument("--hybrid", action="store_true",
+                    help="M16-a: feed the raw (standardised) channels AND the intrinsic strain/curvature features; "
+                         "world-frame directions and globals kept (rung 1 only, not pose-invariant). Implies --intrinsic features")
+    ap.add_argument("--intrinsic-rel", action="store_true",
+                    help="M16-e: --intrinsic also gets each cell's centroid-relative position in its own local frame "
+                         "(3 invariant channels carrying the global shape)")
+    ap.add_argument("--patch-head", type=int, default=0,
+                    help="M16-c: cnn_reg magnitude correction from a k x k window of the mid map sampled around each "
+                         "predicted (u, v); 0 = off, typical 5")
+    ap.add_argument("--snap", action="store_true",
+                    help="M16-b: two-snapshot input: append (x_final - x_snap)/dt and (v_final - v_snap)/dt (acceleration) "
+                         "from the stored snapshot --snap-idx; needs velocities and a split packaged with --test-keep-frames")
+    ap.add_argument("--snap-idx", type=int, default=-2, help="--snap: which stored snapshot (-2 = the one before the capture)")
+    ap.add_argument("--kabsch", action="store_true",
+                    help="M16-d: canonicalise the pose before the network: Kabsch-align the material grid to the flat rest "
+                         "grid (indexing gives the correspondence), rotate every input vector field into that frame and the "
+                         "predicted directions back. Rung 2 with --eval-rotated then costs only the residual of the fit; "
+                         "strict metric, TTA off")
+    ap.add_argument("--label", choices=["nominal", "delivered", "scaled"], default="nominal",
+                    help="M16-f: magnitude label = nominal F (default); delivered = per-force least squares on the momentum "
+                         "the solver delivered; scaled = nominal x the sample's delivered fraction (robust). "
+                         "(data.delivered_magnitudes; the test file's true forces for re-sim stay nominal)")
     ap.add_argument("--epochs", type=int, default=400)
     ap.add_argument("--eval-only", action="store_true",
                     help="skip training: evaluate the --init checkpoint and write metrics.json (recover a run whose eval crashed)")
@@ -232,14 +254,25 @@ def main():
                 "shade": args.view_shade}
         args.tta = 0
     grid_model = args.model in ("cnn_reg", "cnn_field")
+    if args.hybrid:
+        assert grid_model and not args.view and not args.eval_rotated, "--hybrid is a rung-1 option for cnn_reg / cnn_field"
+        args.intrinsic = False  # the hybrid path is not invariant: raw channels, world directions, strict metric
     if args.intrinsic:
         assert grid_model and not args.view, "--intrinsic needs the material grid (cnn_reg / cnn_field, no --view)"
         args.tta = 0  # invariant by construction
+    if args.kabsch:
+        assert not args.view and not args.intrinsic, "--kabsch canonicalises the raw grid (not with --view / --intrinsic)"
+        args.tta = 0  # canonical frame: nothing to average over
+    if args.snap:
+        assert not args.no_vel, "--snap needs the velocity channels (its channels are velocity-like)"
     if args.flow:
         assert grid_model and not args.view, "--flow is implemented for cnn_reg / cnn_field without --view"
     out = args.out or (f"runs/{os.path.basename(os.path.normpath(args.root))}_{args.model}_s{args.seed}_e{args.epochs}"
                        + (f"_pool{args.pool}" if args.pool > 1 else "")
                        + ("_intr" if args.intrinsic else "") + ("_flow" if args.flow else "")
+                       + ("_hyb" if args.hybrid else "") + ("_rel" if args.intrinsic_rel else "") + ("_snap" if args.snap else "")
+                       + ("_kabsch" if args.kabsch else "") + (f"_patch{args.patch_head}" if args.patch_head else "")
+                       + (f"_{args.label}" if args.label != "nominal" else "")
                        + (f"_d{args.pt_dim}L{args.pt_layers}n{args.n_points}" if args.model == "pointtf" else "")
                        + ("_novel" if args.no_vel else "") + ("_evalrot" if args.eval_rotated else "") + ("_yaw" if args.yaw_only else "")
                        + ("_noaug" if args.no_aug else "") + ("_norot" if args.no_rot else ""))
@@ -250,7 +283,8 @@ def main():
     if dev.type == "cuda":
         print(f"device: {torch.cuda.get_device_name(0)} {torch.cuda.get_device_properties(0).total_memory / 1e9:.0f} GB", flush=True)
 
-    tr, va, te = (load_split(args.root, s, pool=args.pool) for s in ("train", "val", "test"))
+    tr, va, te = (load_split(args.root, s, pool=args.pool, snap=args.snap_idx if args.snap else None, label=args.label)
+                  for s in ("train", "val", "test"))
     for split, d in (("train", tr), ("val", va), ("test", te)):  # a single non-finite sample makes the split loss NaN
         ok = (torch.isfinite(d["x"]).flatten(1).all(1) & torch.isfinite(d["g"]).all(1) & torch.isfinite(d["y"]).flatten(1).all(1))
         if not bool(ok.all()):
@@ -329,7 +363,7 @@ def main():
         # With intrinsic inputs the material indexing is part of the input, so (u, v) are
         # identifiable; the D4 relabeling is only needed when the indexing is lost (points) or
         # the pose enters through world coordinates. Pass --sym on to grade on the lenient metric.
-        sym = (args.eval_rotated or args.view) and not args.intrinsic
+        sym = (args.eval_rotated or args.view) and not (args.intrinsic or args.kabsch)
     else:
         sym = args.sym == "on"
     sym_uv = uv_scale if sym else None
@@ -346,7 +380,11 @@ def main():
                   arch=args.dino_arch, size=args.view_size, finetune=args.dino_finetune,
                   repo=args.dino_repo, weights=args.dino_weights, intrinsic=args.intrinsic, flow=args.flow,
                   flow_steps=args.flow_steps, ckpt=args.sonata_ckpt, grid_size=args.sonata_grid,
-                  pool="max" if args.pool_max else "mean", strain_scale=args.strain_scale).to(dev)
+                  pool="max" if args.pool_max else "mean", strain_scale=args.strain_scale,
+                  hybrid=args.hybrid, intrinsic_rel=args.intrinsic_rel, patch_head=args.patch_head).to(dev)
+    if args.hybrid:  # the hybrid model receives raw metres (for the intrinsic features) and standardises the raw path itself
+        model.x_scale.copy_(xstd)
+        model.g_scale.copy_(gstd)
     if args.model == "sonata_reg":
         model.finetune = not args.no_finetune
         for p in model.backbone.parameters():
@@ -376,15 +414,43 @@ def main():
                 return x  # raw metres: the model derives invariant features / voxelises itself
             return x / xstd if x.shape[1] == xstd.shape[1] else x / img_scale[:, : x.shape[1]]  # rendered image
 
+        @staticmethod
+        def _canon(x, g, a):
+            """--kabsch: rotate every vector field of the batch into the frame of the flat rest grid."""
+            R = kabsch(x[:, :3])
+            rot = lambda t: torch.einsum("bij,bjhw->bihw", R, t.float()).to(t.dtype)
+            x = torch.cat([rot(x[:, 3 * k:3 * k + 3]) for k in range(x.shape[1] // 3)], 1)
+            g = torch.cat([torch.einsum("bij,bj->bi", R, g[:, 3 * k:3 * k + 3].float()).to(g.dtype)
+                           for k in range(g.shape[1] // 3)], 1)
+            a = rot(a) if a is not None else None
+            return x, g, a, R
+
+        @staticmethod
+        def _uncanon(pred, R):
+            """Predicted directions (world = R^T canonical) back to the world frame."""
+            d = torch.einsum("bji,bkj->bki", R, pred[..., 2:5].float()).to(pred.dtype)
+            return torch.cat([pred[..., :2], d, pred[..., 5:]], -1)
+
         def forward(self, x, g, a=None, **kw):
             a = a.to(dev, non_blocking=True) if a is not None else None
-            x = self._scale(x.to(dev, non_blocking=True))
-            return self.m(x, g if self._raw() else g / gstd, a, **kw)
+            x = x.to(dev, non_blocking=True)
+            R = None
+            if args.kabsch:
+                x, g, a, R = self._canon(x, g, a)
+            pred, aux = self.m(self._scale(x), g if self._raw() else g / gstd, a, **kw)
+            return (self._uncanon(pred, R) if R is not None else pred), aux
 
         @torch.no_grad()
         def sample(self, x, g, K):
             self.m.eval()
-            return self.m.sample(self._scale(x.to(dev, non_blocking=True)), g if self._raw() else g / gstd, K)
+            x = x.to(dev, non_blocking=True)
+            R = None
+            if args.kabsch:
+                x, g, _, R = self._canon(x, g, None)
+            z = self.m.sample(self._scale(x), g if self._raw() else g / gstd, K)
+            if R is not None:
+                z = torch.stack([self._uncanon(z[:, k], R) for k in range(z.shape[1])], 1)
+            return z
 
     img_scale = torch.tensor([args.view_extent, 1.0, 1.0], device=dev).view(1, 3, 1, 1)
     if args.view:
@@ -455,7 +521,9 @@ def main():
     res = {"model": args.model, "params": nparam, "best_val_loss": best, "train_time_s": time.time() - t0,
            "sym_d4": sym, "no_vel": args.no_vel, "eval_rotated": args.eval_rotated, "yaw_only": args.yaw_only,
            "view": args.view, "frames": args.frames, "aux_w": args.aux_w, "n_train": len(tr["names"]),
-           "intrinsic": args.intrinsic, "flow": args.flow, "history": hist}
+           "intrinsic": args.intrinsic, "flow": args.flow, "hybrid": args.hybrid, "intrinsic_rel": args.intrinsic_rel,
+           "patch_head": args.patch_head, "snap": args.snap_idx if args.snap else None, "kabsch": args.kabsch,
+           "label": args.label, "history": hist}
     if args.flow:  # K candidates per val/test item: oracle (best-of-K by position) and mean-of-K
         for nm, x, g, y, d in (("val", xva, gva, yva, va), ("test", xte, gte, yte, te)):
             cands = []

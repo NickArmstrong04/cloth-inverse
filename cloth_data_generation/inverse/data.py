@@ -66,11 +66,39 @@ def _force_params(path: str) -> list[dict]:
     return json.loads(fp.decode() if isinstance(fp, bytes) else fp)
 
 
-def load_split(root: str, split: str, pool: int = 1, cache: bool = True) -> dict:
+def delivered_magnitudes(fp: list[dict], final_vel: np.ndarray, sim_config: dict, mode: str = "delivered") -> np.ndarray:
+    """Force magnitudes consistent with the momentum the solver actually delivered (M16-f). In free
+    flight the total momentum at capture equals the delivered impulse, P = m_p * sum_i v_i; with the
+    known directions d_k and durations t_k, P = sum_k F_k t_k d_k is 3 equations in the 2 magnitudes
+    (least squares). The nominal label F*t over-states the delivered impulse (DATASETS.md: the VBD
+    velocity clamp), so a model reading the velocity field is capped by the nominal/delivered spread."""
+    sheet = sim_config["sheet"]
+    m_p = sheet["mass_per_area"] * sheet["size_x"] * sheet["size_y"] / (sheet["nx"] * sheet["ny"])
+    P = m_p * final_vel.reshape(-1, 3).astype(np.float64).sum(0)
+    d = np.array([np.asarray(f["direction"], float) / np.linalg.norm(f["direction"]) for f in fp[:2]])
+    t = np.array([f["duration"] for f in fp[:2]])
+    F0 = np.array([f["magnitude"] for f in fp[:2]])
+    if mode == "scaled":  # one ratio for both forces: robust when the per-force split is ill-conditioned
+        Jn = (F0 * t) @ d
+        return F0 * np.linalg.norm(P) / max(np.linalg.norm(Jn), 1e-9)
+    A = (t[:, None] * d).T  # (3, 2)
+    F, *_ = np.linalg.lstsq(A, P, rcond=None)
+    return np.clip(F, 1e-3, None)  # delivered magnitudes are ~5-10% of nominal (0.15-1.25 N); keep the log finite
+
+
+def load_split(root: str, split: str, pool: int = 1, cache: bool = True, snap: int | None = None,
+               label: str = "nominal") -> dict:
     """Load a packaged split at full resolution (default) or block-averaged by
     ``pool``. The assembled tensors are cached next to the split as
     <split>_pool<k>.pt and reused when the file list is unchanged, so a 768
-    dataset (~14 MB per sample) is read from HDF5 only once."""
+    dataset (~14 MB per sample) is read from HDF5 only once.
+    ``snap`` (M16-b): also read the stored snapshot with that index (e.g. -2 = the one before the
+    capture) and append two velocity-like fields, (x_final - x_snap) / dt and (v_final - v_snap) / dt
+    (the acceleration, i.e. the force per unit mass while it acts), as channels 6:12. Test files only
+    carry snapshots when packaged with --test-keep-frames.
+    ``label="delivered"`` (M16-f): the magnitude label is the one consistent with the delivered
+    momentum (delivered_magnitudes, per-force least squares); ``"scaled"``: both nominal magnitudes
+    times the sample's delivered fraction |P| / |J_nominal| (robust single ratio)."""
     files = sorted(glob.glob(os.path.join(root, split, "*.h5")))
     assert files, f"no files in {root}/{split}"
     manifest = os.path.join(root, "dataset_manifest.json")
@@ -80,7 +108,8 @@ def load_split(root: str, split: str, pool: int = 1, cache: bool = True) -> dict
         assert want == have, (f"{root}/{split} has {len(have)} files but the manifest lists {len(want)}: "
                               "packaging still in progress or incomplete; wait for package_splits.py to finish")
     names = [os.path.basename(f) for f in files]
-    cpath = os.path.join(root, f"{split}_pool{pool}.pt")
+    tag = (f"_snap{snap}" if snap is not None else "") + (f"_{label}" if label != "nominal" else "")
+    cpath = os.path.join(root, f"{split}_pool{pool}{tag}.pt")
     if cache and os.path.exists(cpath):
         d = torch.load(cpath, weights_only=False, mmap=True)
         if d.get("names") == names:
@@ -98,8 +127,12 @@ def load_split(root: str, split: str, pool: int = 1, cache: bool = True) -> dict
             return d
     with h5py.File(files[0], "r") as h:
         ny, nx = h["final_grid"].shape[:2]
+        if snap is not None:
+            assert "intermediate_vels" in h, (f"{files[0]} has no stored snapshots with velocities: --snap needs a "
+                                              "constant-force dataset packaged with --test-keep-frames")
     ny2, nx2 = ny // pool, nx // pool
-    X = torch.empty((len(files), 6, ny2, nx2), dtype=torch.float32)  # preallocate (~14 MB/sample at 768)
+    C = 12 if snap is not None else 6
+    X = torch.empty((len(files), C, ny2, nx2), dtype=torch.float32)  # preallocate (~14 MB/sample at 768)
     G = torch.empty((len(files), 6), dtype=torch.float32)
     Y = torch.empty((len(files), 2, 7), dtype=torch.float32)
     A = torch.empty((len(files), 3, ny2, nx2), dtype=torch.float32)  # dense force-field target
@@ -109,10 +142,22 @@ def load_split(root: str, split: str, pool: int = 1, cache: bool = True) -> dict
             vel = h["final_vel"][()].astype(np.float32)
             fp = h["force_params"][()]
             fp = json.loads(fp.decode() if isinstance(fp, bytes) else fp)
+            if snap is not None:
+                times = h["intermediate_times"][()]
+                dt = float(times[-1] - times[snap])
+                assert dt > 1e-6, f"{p}: snapshot {snap} coincides with the capture"
+                dpos = (pos - h["intermediate_grids"][snap][()].astype(np.float32)) / dt
+                dvel = (vel - h["intermediate_vels"][snap][()].astype(np.float32)) / dt
+            if label != "nominal":
+                cfg = h["sim_config"][()]
+                cfg = json.loads(cfg.decode() if isinstance(cfg, bytes) else cfg)
+                for f, m in zip(fp, delivered_magnitudes(fp, vel, cfg, mode=label)):
+                    f["magnitude"] = float(m)
         c = pos.reshape(-1, 3).mean(0)
         mv = vel.reshape(-1, 3).mean(0)
         pos, vel = _pool(pos, pool), _pool(vel, pool)
-        X[i] = torch.from_numpy(np.concatenate([pos - c, vel], axis=-1).transpose(2, 0, 1).copy())
+        chans = [pos - c, vel] + ([_pool(dpos, pool), _pool(dvel, pool)] if snap is not None else [])
+        X[i] = torch.from_numpy(np.concatenate(chans, axis=-1).transpose(2, 0, 1).copy())
         G[i] = torch.from_numpy(np.concatenate([c, mv]).astype(np.float32))
         Y[i] = torch.from_numpy(encode_forces(fp))
         A[i] = torch.from_numpy(force_field_map(fp, ny, nx, pool))

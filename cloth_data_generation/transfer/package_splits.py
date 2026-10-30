@@ -16,6 +16,7 @@ import h5py
 import numpy as np
 
 KEEP_TEST = ("final_grid", "final_vel", "force_params", "sim_config", "seed")
+KEEP_FRAMES = ("intermediate_grids", "intermediate_vels", "intermediate_times")  # with --test-keep-frames (M16-b)
 
 
 def main() -> None:
@@ -24,7 +25,11 @@ def main() -> None:
     ap.add_argument("--outdir", required=True, help="dataset output dir")
     ap.add_argument("--split-seed", type=int, default=7)
     ap.add_argument("--ratios", default="8,1,1")
+    ap.add_argument("--test-keep-frames", action="store_true",
+                    help="also keep the stored snapshots (positions, velocities, times) in the test files, for "
+                         "models that observe two instants (inverse/train.py --snap)")
     args = ap.parse_args()
+    keep_test = KEEP_TEST + (KEEP_FRAMES if args.test_keep_frames else ())
     if os.path.isdir(args.outdir):
         shutil.rmtree(args.outdir)  # start clean (a previous interrupted run leaves partial files)
 
@@ -54,12 +59,13 @@ def main() -> None:
             if split == "test":
                 dst = os.path.join(sdir, name)
                 with h5py.File(src, "r") as h_in, h5py.File(dst, "w") as h_out:
-                    for k in KEEP_TEST:
-                        h_out.create_dataset(k, data=h_in[k][()])
+                    for k in keep_test:
+                        if k in h_in:
+                            h_out.create_dataset(k, data=h_in[k][()])
                     for k, v in h_in.attrs.items():
                         h_out.attrs[k] = v
                     h_out.attrs["split"] = "test"
-                    h_out.attrs["note"] = "intermediates withheld"
+                    h_out.attrs["note"] = "snapshots kept" if args.test_keep_frames else "intermediates withheld"
             else:
                 dst = os.path.join(sdir, name)
                 if os.path.exists(dst):
