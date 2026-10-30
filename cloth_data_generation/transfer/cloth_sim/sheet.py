@@ -35,6 +35,9 @@ class SheetConfig:
     # Plastic bending (see plasticity.py). None = purely elastic (cloth).
     plastic_yield_curvature: float | None = None  # 1/m; bend past this leaves a crease
     plastic_rate: float = 1.0  # fraction of the excess bend made permanent per substep
+    # Crease softening: a yielded hinge keeps only this fraction of edge_ke, so the
+    # fold localizes into a sharp crease instead of a diffuse bend (1 = no softening).
+    plastic_soften: float = 1.0
     # Bench scenario: sheet resting on a table under gravity (the real-world setting the
     # inverse model is meant for). False = the original free-floating, zero-gravity sheet.
     table: bool = False
@@ -60,15 +63,22 @@ MATERIALS: dict[str, dict] = {
     # Yield 50 /m (2 cm radius) from the 2026-10-28 sweep: 20 creases 45% of the
     # edges diffusely, 100 barely creases; 50 gives localized crease lines.
     # (The preset carried 20 until 2026-10-30; no dataset was generated with it.)
+    # Crease sweep 2026-10-30 (constant force, capture at release, 256): without
+    # softening only 0.1-6% of hinges yield and almost all by < 0.4 rad (smooth
+    # bends, no visible creases). edge_ke 200 with yielded hinges softened to 10%
+    # gives sharp folds (p95 of yielded angles 1.1-2.7 rad, hundreds of hinges
+    # past 0.5 rad) at stretch 1.13-1.33; edge_ke 50 or softening <= 0.05 tears
+    # the sheet at the crease (stretch 2-4). REPORT.md, paper section.
     "paper": {
         "mass_per_area": 0.08,
         "tri_ke": 1.0e4,
         "tri_ka": 1.0e4,
         "tri_kd": 1.0e2,
-        "edge_ke": 50.0,
+        "edge_ke": 200.0,
         "edge_kd": 0.0,
         "plastic_yield_curvature": 50.0,
         "plastic_rate": 1.0,
+        "plastic_soften": 0.1,
     },
 }
 

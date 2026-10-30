@@ -56,6 +56,8 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--yield-curvature", type=float, default=None,
                     help="plastic crease yield curvature [1/m] (paper; 0 = elastic)")
     ap.add_argument("--plastic-rate", type=float, default=None)
+    ap.add_argument("--crease-soften", type=float, default=None,
+                    help="yielded hinges keep this fraction of edge_ke (paper; 1 = none)")
     ap.add_argument("--edge-ke", type=float, default=None)
     ap.add_argument("--tri-ke", type=float, default=None, help="membrane stiffness (also sets tri_ka)")
     ap.add_argument("--mass-per-area", type=float, default=None, help="kg/m^2 (cloth 0.2, paper 0.08)")
@@ -156,6 +158,8 @@ def configure(args: argparse.Namespace) -> SampleSpec:
         sheet.plastic_yield_curvature = args.yield_curvature or None
     if args.plastic_rate is not None:
         sheet.plastic_rate = args.plastic_rate
+    if args.crease_soften is not None:
+        sheet.plastic_soften = args.crease_soften
     if args.radius is not None:
         sheet.particle_radius = args.radius
     if args.margin is not None:

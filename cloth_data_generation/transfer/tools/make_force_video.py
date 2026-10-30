@@ -28,6 +28,9 @@ def main() -> None:
     ap.add_argument("--res-scaling", action="store_true",
                     help="scale particle radius / margin / gap with the cell as generate_batch does")
     ap.add_argument("--yield-curvature", type=float, default=None, help="override the preset (paper)")
+    ap.add_argument("--edge-ke", type=float, default=None, help="override the bending stiffness")
+    ap.add_argument("--crease-soften", type=float, default=None,
+                    help="yielded hinges keep this fraction of edge_ke (paper)")
     ap.add_argument("--settle", type=float, default=0.0,
                     help="seconds after the forces end (0 = stop at release, the dataset "
                          "default; paper: try 2-3 to see the creases hold)")
@@ -50,6 +53,10 @@ def main() -> None:
     sheet = sheet_config(args.material, nx=args.nx, ny=args.ny, **over)
     if args.yield_curvature is not None:
         sheet.plastic_yield_curvature = args.yield_curvature or None
+    if args.edge_ke is not None:
+        sheet.edge_ke = args.edge_ke
+    if args.crease_soften is not None:
+        sheet.plastic_soften = args.crease_soften
     t_capture = max(f.duration for f in forces) + args.settle
     sim = SimConfig(t_capture=t_capture, ramp_frac=args.ramp,
                     capture_every=args.capture_every,

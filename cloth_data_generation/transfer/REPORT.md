@@ -129,6 +129,31 @@ Compaction = mean over random material pairs of current / rest distance
 ending; creased paper stays folded. Paper stretch stays ~1.04-1.07 (cloth
 1.65), so the paper QC stretch limit is 1.3 instead of 2.0.
 
+Crease localization (2026-10-30, constant-force model, capture at release, 256,
+dataset slots 0 and 3 of ds256_const_paper): with the preset above only 2-6% of
+hinges yield and 95% of them by less than 0.4 rad, i.e. the sheet bends smoothly
+and shows no crease. Perfect plasticity alone does not localize: an unyielded
+hinge is as stiff as a yielded one, so curvature spreads. `plastic_soften` drops a
+yielded hinge to that fraction of `edge_ke` (VBD reads `edge_bending_properties`
+every solve, so it is a per-edge array update in the same kernel as the rest
+angle). Sweep (yield 50 /m):
+
+| edge_ke | soften | hinges > 0.5 rad (slot 0 / 3) | p95 yielded angle | stretch_max |
+|---|---|---|---|---|
+| 50 | 1 (none) | 71 / 136 | 0.22 / 0.41 | 1.29 / 1.07 |
+| 50 | 0.1 | 1930 / 986 | 1.46 / 2.26 | 1.31 / **4.01** (torn) |
+| **200** | **0.1** | 655 / 441 | 1.44 / 2.73 | 1.33 / 1.13 |
+| 200 | 0.02 | 799 / 621 | 1.91 / 2.76 | **2.02** / 1.13 |
+| 500 | 0.05 | 580 / 482 | 1.82 / 2.60 | 1.36 / **3.61** |
+
+edge_ke 200 with soften 0.1 is the preset now (slots 1, 2: 175 / 193 hinges past
+0.5 rad, stretch 1.31 / 1.19). Weaker sheets or stronger softening tear at the
+crease. Healthy paper under load reads stretch 1.1-1.35 at the force patches, so
+the paper QC gate is 1.5 (was 1.3, set on settled sheets). Known artifact: on the
+regular grid the creases run along the mesh axes (crease maps in
+`cloth_results/paper_crease_maps_sweep.png`); diagonal folds would need an
+irregular or diagonal-edge mesh.
+
 Caveats: (1) the momentum/velocity-cap issue of the cloth runs applies
 unchanged (peak speed 0.67 m/s at 256), so force magnitude is still weakly
 identifiable; (2) material constants are VBD units tuned for crease

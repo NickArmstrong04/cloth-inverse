@@ -27,6 +27,8 @@ def plastic_hinge_update(
     rate: float,
     max_angle: float,
     plastic_work: wp.array[float],
+    bend_props: wp.array2d[float],
+    ke_soft: float,
 ):
     e = wp.tid()
     # boundary edges have no opposite vertex and no bending term
@@ -58,29 +60,41 @@ def plastic_hinge_update(
         new_rest = wp.clamp(rest + wp.sign(d) * step, -max_angle, max_angle)
         rest_angle[e] = new_rest
         plastic_work[e] = plastic_work[e] + wp.abs(new_rest - rest)
+        # crease softening: a yielded hinge is weaker, so further bending
+        # concentrates there (VBD reads edge_bending_properties every solve)
+        if ke_soft >= 0.0 and bend_props[e, 0] > ke_soft:
+            bend_props[e, 0] = ke_soft
 
 
 class PlasticHinges:
     """Holds the per-edge plastic state for one model; call ``update`` after each substep."""
 
     def __init__(self, model, yield_curvature: float, cell: float, rate: float = 1.0,
-                 max_angle: float = 2.8):
+                 max_angle: float = 2.8, soften: float = 1.0):
         self.model = model
         self.yield_angle = float(yield_curvature * cell)
         self.rate = float(rate)
         self.max_angle = float(max_angle)
         self.rest0 = model.edge_rest_angle.numpy().copy()
         self.plastic_work = wp.zeros(model.edge_count, dtype=float, device=model.device)
+        # softening: yielded hinges drop to soften * edge_ke (ke_soft < 0 = disabled)
+        self.props0 = model.edge_bending_properties.numpy().copy()
+        self.soften = float(soften)
+        ke0 = float(self.props0[:, 0].max()) if len(self.props0) else 0.0
+        self.ke_soft = ke0 * self.soften if 0.0 <= self.soften < 1.0 else -1.0
 
     def reset(self) -> None:
-        """Forget all creases (rest angles back to the flat sheet, work zeroed)."""
+        """Forget all creases (rest angles and hinge stiffness back to the flat sheet)."""
         self.model.edge_rest_angle.assign(self.rest0)
         self.plastic_work.zero_()
+        if self.ke_soft >= 0.0:
+            self.model.edge_bending_properties.assign(self.props0)
 
     def update(self, state) -> None:
         wp.launch(plastic_hinge_update, dim=self.model.edge_count,
                   inputs=[state.particle_q, self.model.edge_indices, self.model.edge_rest_angle,
-                          self.yield_angle, self.rate, self.max_angle, self.plastic_work],
+                          self.yield_angle, self.rate, self.max_angle, self.plastic_work,
+                          self.model.edge_bending_properties, self.ke_soft],
                   device=self.model.device)
 
     def summary(self) -> tuple[float, int]:

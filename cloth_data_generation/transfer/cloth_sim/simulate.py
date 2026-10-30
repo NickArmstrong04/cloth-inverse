@@ -104,7 +104,8 @@ class SimSession:
             if sheet.get("plastic_yield_curvature"):
                 self.hinges = PlasticHinges(model, sheet["plastic_yield_curvature"],
                                             min(meta["cell_x"], meta["cell_y"]),
-                                            rate=sheet.get("plastic_rate", 1.0))
+                                            rate=sheet.get("plastic_rate", 1.0),
+                                            soften=sheet.get("plastic_soften", 1.0))
             # positions the model was built with (reset default)
             self.q0 = _host(model.particle_q).copy()
             # External force lives in a device buffer the (captured) frame copies

@@ -1,6 +1,7 @@
 #!/bin/bash
 # Paper dataset: the two-force free-flight scenario of ds256_const on a creasing paper
-# sheet (--material paper: plastic bending hinges, yield 50 /m, near-inextensible).
+# sheet (--material paper: plastic bending hinges, yield 50 /m, yielded hinges softened
+# to 10% of edge_ke 200 so folds localize into sharp creases; near-inextensible).
 # Same seeds and slots as ds256_const, so the two datasets are paired sample by sample:
 # slot k draws the same patches, directions, magnitudes and durations for both materials.
 #
@@ -14,7 +15,7 @@
 #   bash cluster/paper.sh compare            pass rate / QC stretch / attempts vs ds256_const
 #
 # Environment overrides: NAME (ds256_const_paper), N (3000), NX (256), SETTLE (0),
-# YIELD (50), MAXC (30). SETTLE > 0 adds free flight after the forces end so the
+# YIELD (50), EDGE_KE (200), SOFTEN (0.1), MAXC (30). SETTLE > 0 adds free flight after the forces end so the
 # snapshots also cover the relaxed, creased state; it breaks the time pairing with
 # ds256_const (captured at release), so it goes to a differently named dataset.
 set -euo pipefail
@@ -28,9 +29,11 @@ N="${N:-3000}"
 NX="${NX:-256}"
 SETTLE="${SETTLE:-0}"
 YIELD="${YIELD:-50}"
+EDGE_KE="${EDGE_KE:-200}"
+SOFTEN="${SOFTEN:-0.1}"
 MAXC="${MAXC:-30}"
 # Pinned in SAMPLE_ARGS (not only in the preset) so submission.json records the physics.
-SAMPLE_ARGS="--yield-curvature $YIELD --settle $SETTLE"
+SAMPLE_ARGS="--yield-curvature $YIELD --edge-ke $EDGE_KE --crease-soften $SOFTEN --settle $SETTLE"
 if [ "$SETTLE" != "0" ] && [ "$NAME" = "ds256_const_paper" ]; then
   NAME="ds256_const_paper_settle${SETTLE}"
 fi

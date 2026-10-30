@@ -26,9 +26,12 @@ import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
-# QC stretch limit per material: paper is near-inextensible (healthy runs
+# QC stretch limit per material: paper is near-inextensible (settled sheets
 # ~1.05), so a stretch cloth tolerates means a torn or exploded paper sheet.
-STRETCH_MAX = {"cloth": 2.0, "paper": 1.3}
+# Captured at release with the force still acting (constant-force model), healthy
+# creasing paper reads 1.1-1.35 at the patches; tears read 2-4. Gate 1.5 (was 1.3
+# for settled sheets, 2026-10-30 crease sweep).
+STRETCH_MAX = {"cloth": 2.0, "paper": 1.5}
 
 
 LOADINGS = ("free", "pusher")
