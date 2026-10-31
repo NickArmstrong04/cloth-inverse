@@ -462,3 +462,14 @@ no oracle input (photos/README.md). 10 deg pairs: 1.78 cm. MapAnything with true
 pose: 19-24% scale error, shape no better than single-view VGGT; dropped. Capture protocol for
 rung 5: two photos ~20 deg apart with a known camera motion; a non-repeating print removes the
 remaining scale aliases.
+
+## Rung 4b -> rung 1: the photo pair priced against the 1 cm model (2026-10-31)
+
+M16-a (0.92 cm / 4.8 deg on its 16 test files, reproduced locally by `eval_grid.py`) fed the
+photo chain's grid (`grid_from_views.py`, fixed-camera calibration, oracle correspondences):
+no velocity 3.5 cm / 12 deg; + hidden 69% harmonic-filled 9.4 / 25; + stereo depth on the
+visible vertices 17.5 / 44 (magnitude x3: the intrinsic strain features amplify 2.3 cm of noise
+at the 2 mm cell scale); smoothing the lifted grid (sigma 8) 12.6 / 36; photo-derived drift free.
+The perception side is at 2-4 cm of geometry; the gaps are model-side (velocity dependence,
+never-seen hidden fills and noise): JOBS.md M19 = `--no-vel --hybrid` retrain and training with
+simulated visibility + lift noise. Details photos/README.md Phase A.

@@ -314,3 +314,40 @@ error (1.2 cm) plus scale noise; the aliases vanish with a non-repeating print (
 template work, needed for correspondences anyway). Next: package the stereo lift for
 `eval_views.py` (the models still need the drift feature, M18) and decide the capture protocol
 with Nick: fixed base camera + a second shot, or a phone pose track.
+
+## Phase A: the photo pair as rung-1 input, priced one barrier at a time (2026-10-31)
+
+Plan (approved): feed the photo chain to the 1 cm model (M16-a, `cnn_reg --hybrid`, indexed
+256x256 grid, world frame, velocity, every vertex) instead of the 9 cm point-cloud models, and
+measure what each missing piece costs. `inverse/eval_grid.py` scores a grid checkpoint on inputs
+built outside train.py (verified: reproduces smoke_m14's and M16-a's own metrics.json);
+`inverse/grid_from_views.py` turns a stereo pair into that grid with the **fixed-camera
+calibration** (the camera pose in the world frame, so the lifted points land in the world frame
+with the drift) and fills hidden vertices by an exact harmonic solve from the visible boundary.
+Data: M16-a's own test split, 16 files copied from Bouchet (`~/cloth/ds256_const_test16`),
+rendered as 20 deg stereo pairs (`photos/stereo20_test`, 32 base views), SAM 3 "fabric" (IoU
+0.991), `lift_stereo.py --sam` (scale error 0.5% median / 1.9% p90 on these; visible-vertex
+error 2.3 cm median, 31% of the vertices visible in a median view).
+
+| input to M16-a (32 views; `stereo/eval_grid_M16a_ladder.json`) | pos cm | dir deg | mag rel | what it prices |
+|---|---|---|---|---|
+| oracle grid, velocity, g | **0.92** | **4.8** | 0.25 | the model's own number (metrics.json 1.0 / 4.3) |
+| + velocity channels and mean velocity zeroed | 3.51 | 12.4 | 0.71 | no velocity in a photo |
+| + hidden 69% filled (harmonic) from the TRUE visible vertices | 9.42 | 25.2 | 0.93 | the hidden side |
+| + visible vertices at the stereo depth (oracle correspondences) | 17.5 | 44.1 | 2.95 | 2.3 cm of lift noise |
+| + g from the lifted grid | 17.6 | 47.9 | 3.09 | the photo-derived drift (free: 2.2 cm error) |
+| photo, lifted grid smoothed sigma 2 / 4 / 8 cells | 16.5 / 14.7 / 12.6 | 46 / 44 / 36 | 2.7 / 1.8 / 1.0 | noise is not only high-frequency |
+
+Reading. Every barrier is real and none is the correspondence step (oracle here). (1) M16-a leans
+on velocity (2.6 cm, 8 deg), unlike the no-velocity rung-1 runs: a `--no-vel --hybrid` retrain
+is the first cluster job. (2) The hidden side costs 6 cm / 13 deg even with perfect visible
+vertices: a harmonic patch is not a folded sheet and the model has never seen one; the fix is
+on the model side (train with simulated visibility, the same fill), or a second camera facing
+the other side. (3) The 2.3 cm lift noise doubles the error and triples the magnitude error:
+the hybrid model's intrinsic features differentiate the grid at the 2 mm cell scale, so
+cm-level noise reads as enormous strain (strain ~ noise / cell); smoothing recovers part of it
+(sigma 8 cells: 12.6 cm) but the rest is low-frequency (inclination-like) and again needs the
+model to have seen it. (4) The drift from the lifted grid is free. Conclusion: with oracle
+correspondences the input side is done to ~2-4 cm of geometry; closing the remaining gap is
+retraining with photo-like degradations (JOBS.md M19), not better perception. Phase B (coded
+print, estimated correspondences) proceeds in parallel since it is on the path to real photos.

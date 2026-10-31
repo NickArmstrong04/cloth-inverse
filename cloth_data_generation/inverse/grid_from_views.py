@@ -34,6 +34,7 @@ import numpy as np
 import scipy.sparse as sp
 import scipy.sparse.linalg as spla
 from PIL import Image
+from scipy.ndimage import gaussian_filter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from data import encode_forces  # noqa: E402
@@ -96,6 +97,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--photos", nargs="+", required=True)
     ap.add_argument("--fill", choices=["harmonic", "sft"], default="harmonic")
+    ap.add_argument("--smooth", nargs="*", type=int, default=[2, 4, 8], help="Gaussian sigmas (cells) for smoothed variants")
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--out", default=None, help="default <photos>/grids")
     args = ap.parse_args()
@@ -145,6 +147,13 @@ def main():
                 "stereo": grid_input(X_stereo, None, 1, "override", g_override=c),
                 "photo": grid_input(X_stereo, None, 1, "oracle"),  # g = centroid of the lifted grid
             }
+            # the model's intrinsic features differentiate the grid at the 2 mm cell scale, so cm-level
+            # per-vertex noise reads as enormous strain: smoothed copies of the lifted grid (sigma in cells)
+            for s in args.smooth:
+                Xs = gaussian_filter(X_stereo, sigma=(s, s, 0), mode="nearest")
+                variants[f"photo_s{s}"] = grid_input(Xs, None, 1, "oracle")
+                variants[f"hidden_s{s}"] = grid_input(gaussian_filter(X_hidden, sigma=(s, s, 0), mode="nearest"),
+                                                      None, 1, "override", g_override=c)
             err = lambda X, m: float(np.linalg.norm((X - pos)[m], axis=-1).mean() * 100) if m.any() else float("nan")
             rec = dict(stem=stem, set=os.path.basename(os.path.normpath(pdir)), h5=v["h5"], scale_geo=s_geo,
                        visible_frac=float(vis.mean()), photo_visible_frac=float(pvis.mean()),
