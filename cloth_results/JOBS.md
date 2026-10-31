@@ -873,7 +873,7 @@ cd cloth_data_generation/transfer
 | id | job | status | what | command | result |
 |---|---|---|---|---|---|
 | J-007-devel | | planned | 4 rest-captured paper samples at 256 on gpu_devel: wall per sample (loading + settle), t_rest, QC pass | `PROFILE=rest bash cluster/paper.sh devel` then `PROFILE=rest bash cluster/paper.sh status` | |
-| J-007 | | planned (after devel) | `ds256_paper_rest`: 3000 slots at 256, same seeds as ds256_const / ds256_const_paper (slot-paired) | `PROFILE=rest bash cluster/paper.sh full`; when done `PROFILE=rest bash cluster/paper.sh merge` | |
+| J-007 | | planned (after devel) | `ds256_paper_rest`: 1000 slots at 256 (Nick, 2026-10-31; ~220 s per sample, ~3 h at 30 concurrent), same seeds as ds256_const / ds256_const_paper (slot-paired) | `PROFILE=rest N=1000 bash cluster/paper.sh full`; when done `PROFILE=rest N=1000 bash cluster/paper.sh merge` | |
 | M20-a | | planned (after J-007) | **the number this matrix is for**: M16-a recipe, positions only, on the rest state | `sbatch --job-name=M20a --mem=60G cluster/run.sbatch $S5 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --hybrid --no-vel --out runs/M20a` | |
 | M20-b | | planned | same recipe, positions only, paper at release (isolates the settle from the material; M17-b with velocities is 2.6 / 7.3 / 0.327) | `sbatch --job-name=M20b --mem=60G cluster/run.sbatch $S4 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --hybrid --no-vel --out runs/M20b` | |
 | M20-c | | planned (after J-007) | ceiling of the same files: release state with velocities (`--grid release`) | `sbatch --job-name=M20c --mem=60G cluster/run.sbatch $S5 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --hybrid --grid release --out runs/M20c` | |
