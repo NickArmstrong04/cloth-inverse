@@ -60,6 +60,14 @@ DRAG="${DRAG:-0}"
 REST_VMAX="${REST_VMAX:-0}"
 REST_FRAMES="${REST_FRAMES:-10}"
 REST_METRIC="${REST_METRIC:-vrms}"
+# Per-task time limit. cluster.env's 45 min fits 50 release-captured samples at ~50 s; a
+# rest-captured 256 sample takes ~220 s, so 50 of them need ~3.5 h plus retries. A task that
+# times out is resumed by re-running `full` (only tasks with missing slots are submitted).
+if [ "$PROFILE" = "rest" ]; then
+  TIME="${TIME:-05:00:00}"
+else
+  TIME="${TIME:-$(grep '^TIME=' cluster/cluster.env | cut -d= -f2 | cut -d' ' -f1)}"
+fi
 YIELD="${YIELD:-50}"
 EDGE_KE="${EDGE_KE:-200}"
 SOFTEN="${SOFTEN:-0.1}"
@@ -112,10 +120,10 @@ PYEOF
     half=$(( (N + 50 - 1) / 50 / 2 ))     # CHUNK=50 in cluster.env
     last=$(( (N + 50 - 1) / 50 - 1 ))
     python3 cluster/submit.py --n "$N" --nx "$NX" --material paper --name "$NAME" \
-      --sample-args "$SAMPLE_ARGS" --batch-args "$BATCH_ARGS" --tasks "0-$((half - 1))" --max-concurrent "$MAXC" --no-merge
+      --sample-args "$SAMPLE_ARGS" --batch-args "$BATCH_ARGS" --tasks "0-$((half - 1))" --max-concurrent "$MAXC" --time "$TIME" --no-merge
     python3 cluster/submit.py --n "$N" --nx "$NX" --material paper --name "$NAME" \
       --sample-args "$SAMPLE_ARGS" --batch-args "$BATCH_ARGS" --tasks "${half}-${last}" --partition scavenge_gpu \
-      --max-concurrent "$MAXC" --no-merge
+      --max-concurrent "$MAXC" --time "$TIME" --no-merge
     echo "monitor: bash cluster/paper.sh status ; when the arrays are done: bash cluster/paper.sh merge"
     ;;
   status)
