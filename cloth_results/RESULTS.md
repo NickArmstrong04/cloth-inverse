@@ -473,3 +473,12 @@ at the 2 mm cell scale); smoothing the lifted grid (sigma 8) 12.6 / 36; photo-de
 The perception side is at 2-4 cm of geometry; the gaps are model-side (velocity dependence,
 never-seen hidden fills and noise): JOBS.md M19 = `--no-vel --hybrid` retrain and training with
 simulated visibility + lift noise. Details photos/README.md Phase A.
+
+## Rung 4b -> rung 1, Phase B: correspondences from a coded print (2026-10-31)
+
+`photo.py --texture coded` + `decode_print.py`: 32x32 six-colour print with dihedral-unique 3x3
+windows; decoded at 512 px on 64 views with precision 1.00 median (p10 0.96), 46% of the visible
+vertices localised (p90 80%), 1.2 px median error. Through the full chain the decoded vertices
+sit at 2.7 cm (= oracle-correspondence stereo), the filled grid at 7.3 cm; M16-a scores the same
+on decoded and oracle correspondences (16.9 vs 16.5 cm), so the model side (M19) is the limit.
+The photo-only chain is complete end to end; details photos/README.md Phase B.

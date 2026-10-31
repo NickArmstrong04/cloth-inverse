@@ -351,3 +351,46 @@ model to have seen it. (4) The drift from the lifted grid is free. Conclusion: w
 correspondences the input side is done to ~2-4 cm of geometry; closing the remaining gap is
 retraining with photo-like degradations (JOBS.md M19), not better perception. Phase B (coded
 print, estimated correspondences) proceeds in parallel since it is on the path to real photos.
+
+## Phase B: correspondences from a coded print (2026-10-31)
+
+The oracle correspondences of Phase A replaced by ones read off the photo. `photo.py --texture
+coded` prints a 32x32 grid of cells in six saturated colours with dark grid lines; the colour
+code is drawn so that every 3x3 window is unique under the 8 dihedral transforms (the sheet is
+seen at any in-plane angle and from the back, mirrored); the code book goes into the manifest
+and `coded_print.png` is the file to print. `inverse/decode_print.py` (classic CV, cloth venv):
+SAM mask -> chromaticity class per pixel (shading is multiplicative, so chromaticity survives;
+dark = line) -> connected components inside the lines = cells -> for each cell the 12 nearest
+centroids, two lattice axes (nearest + nearest perpendicular, refined by least squares on the
+integer sites) -> 3x3 window -> code-book lookup (one unknown cell allowed when exactly one
+colour matches) -> labels propagate along the lattice with votes (a labelled cell recovers its
+orientation from 2 labelled neighbours) -> the 256-grid vertices get a pixel by a robust local
+affine fit over the decoded cells within 1.6 cells. Truth: the renderer's per-pixel (u, v).
+
+| 64 views of the 16 test files, SAM masks | 512 px photos | 1024 px |
+|---|---|---|
+| cell size in the photo (median) | 7.5 px | 13 px |
+| decoded cells per view (median) | 167 | 190 |
+| decode precision (median / p10; views below 0.9) | 1.00 / 0.96; 4 | 0.97 / 0.83; 11 |
+| visible vertices localised (median / p10 / p90) | 46% / 23% / 80% | 37% / 4% / 77% |
+| vertex pixel error median / p90; within 2 px | 1.2 / 1.9 px; 93% | 1.0 / 2.0 px; 90% |
+
+(1024 px is not better: SAM's masks are slightly worse there and the decoder's size thresholds
+were tuned at 512; a real 12 MP photo will need those thresholds scaled.) Coverage follows the
+visible fraction (corr 0.5): folds and foreshortened regions have cells of 2-4 px that no
+classifier separates; the frontal half of a sheet decodes almost completely. Precision is what
+matters downstream and it is ~1.0: wrong cells are caught by the lattice votes and by the affine
+outlier rejection. Through the chain (`grid_from_views.py --corr decoded`, `stereo/
+eval_grid_M16a_coded512.json`): decoded vertices cover 16% of the grid (oracle-visible 32%), at
+2.7 cm error (the same as the oracle-correspondence stereo vertices, 2.8 cm on this set), the
+whole grid at 7.3 cm after the harmonic fill (oracle 4.4), drift 3.8 cm (oracle 2.3). M16-a on
+it: `photo_dec` 16.9 cm / 47 deg vs `photo` 16.5 / 42 with oracle correspondences: at M16-a's
+noise sensitivity the correspondence step is not what separates the rows; the retrained M19
+models are where the two will differ. VGGT's stereo lift is unchanged on the print (1.9 cm,
+scale 0.8% median / 9% p90; `stereo/vggt_stereo_coded512.json`), SAM "fabric" IoU 0.988.
+
+So the photo-only chain exists end to end: two photos of a coded sheet -> SAM -> VGGT stereo ->
+known-motion scale -> decoded cells -> indexed world-frame grid -> rung-1 model. Its ceiling is
+set by the model side (M19). Levers on the perception side, in order: resolution per cell (a real
+camera has it), a second camera facing the other side (coverage), DINOv3 matching for the
+cells the classifier loses (the fallback was not needed to get here, so it stays unbuilt).

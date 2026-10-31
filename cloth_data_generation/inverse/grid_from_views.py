@@ -97,6 +97,9 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--photos", nargs="+", required=True)
     ap.add_argument("--fill", choices=["harmonic", "sft"], default="harmonic")
+    ap.add_argument("--corr", choices=["oracle", "decoded"], default="oracle",
+                    help="vertex pixels from the renderer (oracle) or from decode_print.py (decode/<stem>_corr.npz); "
+                         "decoded adds the variants stereo_dec / photo_dec (visible = decoded with stereo depth)")
     ap.add_argument("--smooth", nargs="*", type=int, default=[2, 4, 8], help="Gaussian sigmas (cells) for smoothed variants")
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--out", default=None, help="default <photos>/grids")
@@ -135,6 +138,21 @@ def main():
             rays = pixel_rays(vpix.reshape(-1, 2), int(gt["size"]), float(gt["fov_deg"])).reshape(ny, nx, 3)
             lifted_cam = rays * dvert[..., None]
             lifted = cam_to_world(lifted_cam.reshape(-1, 3), R, d, c).reshape(ny, nx, 3).astype(np.float32)
+            dec = None
+            if args.corr == "decoded":
+                cp = os.path.join(pdir, "decode", f"{stem}_corr.npz")
+                if not os.path.exists(cp):
+                    print(f"{stem}: no decoded correspondences, skipped")
+                    continue
+                cz = np.load(cp)
+                est, has = cz["vpix_est"].reshape(ny, nx, 2), cz["has_est"].reshape(ny, nx)
+                ei = np.clip(np.round(est).astype(int), 0, int(gt["size"]) - 1)
+                d_est = depth[ei[..., 1], ei[..., 0]]
+                dvis = has & (d_est > 0)
+                rays_e = pixel_rays(est.reshape(-1, 2), int(gt["size"]), float(gt["fov_deg"])).reshape(ny, nx, 3)
+                lifted_e = cam_to_world((rays_e * d_est[..., None]).reshape(-1, 3), R, d, c).reshape(ny, nx, 3).astype(np.float32)
+                X_dec = harmonic_fill(np.where(dvis[..., None], lifted_e, 0).astype(np.float32), dvis)
+                dec = dict(dvis=dvis, lifted_e=lifted_e, X_dec=X_dec)
             # ladder
             X_hidden = harmonic_fill(pos, vis)  # true visible positions, hidden filled
             X_stereo = harmonic_fill(np.where(pvis[..., None], lifted, 0).astype(np.float32), pvis)
@@ -147,6 +165,9 @@ def main():
                 "stereo": grid_input(X_stereo, None, 1, "override", g_override=c),
                 "photo": grid_input(X_stereo, None, 1, "oracle"),  # g = centroid of the lifted grid
             }
+            if dec is not None:
+                variants["stereo_dec"] = grid_input(dec["X_dec"], None, 1, "override", g_override=c)
+                variants["photo_dec"] = grid_input(dec["X_dec"], None, 1, "oracle")
             # the model's intrinsic features differentiate the grid at the 2 mm cell scale, so cm-level
             # per-vertex noise reads as enormous strain: smoothed copies of the lifted grid (sigma in cells)
             for s in args.smooth:
@@ -161,6 +182,10 @@ def main():
                        err_hidden_fill_stereo_cm=err(X_stereo, ~pvis), err_all_stereo_cm=err(X_stereo, np.ones_like(vis)),
                        drift_err_cm=float(np.linalg.norm(X_stereo.reshape(-1, 3).mean(0) - c) * 100),
                        drift_cm=float(np.linalg.norm(c) * 100), seconds=time.time() - t0)
+            if dec is not None:
+                rec.update(dec_visible_frac=float(dec["dvis"].mean()), dec_true_visible_frac=float((dec["dvis"] & vis).mean()),
+                           err_vis_dec_cm=err(dec["lifted_e"], dec["dvis"]), err_all_dec_cm=err(dec["X_dec"], np.ones_like(vis)),
+                           drift_err_dec_cm=float(np.linalg.norm(dec["X_dec"].reshape(-1, 3).mean(0) - c) * 100))
             recs.append(rec)
             save = {"y": y, "vis": vis, "pvis": pvis, "stem": stem}
             for k, (x, g) in variants.items():
@@ -171,8 +196,11 @@ def main():
                   f"from stereo {rec['err_hidden_fill_stereo_cm']:5.1f} | all {rec['err_all_stereo_cm']:5.2f} | "
                   f"drift err {rec['drift_err_cm']:4.1f} of {rec['drift_cm']:4.0f} cm | {rec['seconds']:.1f}s")
         med = lambda k: float(np.nanmedian([r[k] for r in recs]))
-        summary = {k: med(k) for k in ["visible_frac", "photo_visible_frac", "err_vis_stereo_cm", "err_hidden_fill_true_cm",
-                                       "err_hidden_fill_stereo_cm", "err_all_stereo_cm", "drift_err_cm"]}
+        keys = ["visible_frac", "photo_visible_frac", "err_vis_stereo_cm", "err_hidden_fill_true_cm",
+                "err_hidden_fill_stereo_cm", "err_all_stereo_cm", "drift_err_cm"]
+        if args.corr == "decoded":
+            keys += ["dec_visible_frac", "dec_true_visible_frac", "err_vis_dec_cm", "err_all_dec_cm", "drift_err_dec_cm"]
+        summary = {k: med(k) for k in keys}
         summary["n"] = len(recs)
         print(os.path.basename(os.path.normpath(pdir)), json.dumps(summary))
         with open(os.path.join(out, "grids.json"), "w") as fh:
