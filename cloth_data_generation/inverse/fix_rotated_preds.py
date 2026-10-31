@@ -11,7 +11,7 @@ duration are frame-free; only the direction needs R^T.
 
 The rotations are regenerated from the same seed and split sizes as train.py; the script checks
 them against the files' own force_params before writing (the saved "true" direction, un-rotated,
-must match the nominal direction to < 0.01 deg) and refuses otherwise. Idempotent: a run whose
+must match the nominal direction to < 0.5 deg; 0.04 deg observed, 171 deg before) and refuses otherwise. Idempotent: a run whose
 "true" already matches the files is left alone.
 """
 from __future__ import annotations
@@ -70,6 +70,13 @@ def main():
 
     pp = os.path.join(args.run, "test_predictions.json")
     preds = json.load(open(pp))
+    if len(preds) == 2 * n_test:  # runs before 2026-10-30 wrote every test sample twice (tta 0 twice)
+        seen, uniq = set(), []
+        for e in preds:
+            if e["file"] not in seen:
+                seen.add(e["file"]); uniq.append(e)
+        preds = uniq
+        print(f"{args.run}: duplicated test rows removed ({2 * n_test} -> {len(preds)})")
     assert len(preds) == n_test, f"{len(preds)} predictions for {n_test} test files"
     # check: the saved "true" direction is the rotated nominal one (R d_file); un-rotated it must match the file
     worst_rot, worst_id = 0.0, 0.0
@@ -78,10 +85,11 @@ def main():
         d_saved = np.array([f["direction"] for f in e["true"]], dtype=np.float64)
         worst_id = max(worst_id, _angle(d_saved, d_file))
         worst_rot = max(worst_rot, _angle(d_saved @ R[i], d_file))  # rows: (R^T d)_k = d_j R_jk
-    if worst_id < 0.01:
+    TOL = 0.5  # deg; the saved directions went through float32 / bf16 and a unit-normalisation (~0.04 deg)
+    if worst_id < TOL:
         print(f"{args.run}: saved forces already in the file frame (max {worst_id:.4f} deg); nothing to do")
         return
-    assert worst_rot < 0.01, (f"{args.run}: regenerated rotations do not reproduce the saved frame "
+    assert worst_rot < TOL, (f"{args.run}: regenerated rotations do not reproduce the saved frame "
                               f"(max {worst_rot:.3f} deg after un-rotation, {worst_id:.1f} deg before); not writing")
     print(f"{args.run}: {n_test} test items, saved frame = seeded rotation (check {worst_rot:.5f} deg); "
           f"un-rotating directions")
