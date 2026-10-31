@@ -323,6 +323,46 @@ Reading:
   better, because a 14 deg direction error moves the sheet more than a 0.2 relative magnitude error.
   Direction is the field that matters physically; magnitude the least.
 
+
+## M17: the hybrid input everywhere (2026-10-31)
+
+| run | rung | model | pos cm | dir deg | force (rel) | MAE/const | re-sim m |
+|---|---|---|---|---|---|---|---|
+| M16-a | 1 | hybrid (reference) | 1.0 | 4.3 | 0.156 | 0.44 | 0.018 |
+| M17-e | 1 | hybrid + flow, deterministic head | 1.05 | 4.5 | 0.24 * | | |
+| M17-e2 | 1 | **re-sim selection among its 8 candidates** (50 samples) | **0.82** | **4.35** | 0.24 * | | |
+| M17-e oracle | 1 | best of the 8 by position | 0.55 | 5.3 | | | |
+| M16-d | 2 | Kabsch, raw | 1.9 | 6.0 | 0.38 | 0.89 | 0.024 |
+| M17-a | 2 | **Kabsch + hybrid** | **1.4** | **6.3** | **0.199** | 0.51 | **0.021** |
+| M17-c / c2 | 2 | Kabsch + hybrid + flow, 300 ep: head / selected | 2.6 / 2.9 | 9.3 / 21.8 | 0.33 | | |
+| M15-a | paper | raw | 3.2 | 6.8 | 0.36 | 0.95 | 0.027 |
+| M17-b | paper | **hybrid** | **2.6** | 7.3 | 0.33 | 0.87 | 0.022 |
+| M17-d | 1 | hybrid + delivered labels | 1.5 | 5.7 | | 0.57 | |
+
+\* mean relative error (the median is not in the summary for the flow runs); M16-a's mean is 0.23.
+
+Reading:
+- **Rung 2 is 0.4 cm behind rung 1.** Kabsch + hybrid reaches 1.4 cm / 6.3 deg / 0.20 with the plain
+  300-epoch recipe, against 4.1 / 14.7 / 0.157 for the invariant-feature model that was the rung-2
+  answer two days ago. The unknown pose costs 0.4 cm, 2 deg and 0.04 of relative force. Both halves
+  mattered: Kabsch alone fixed position (1.9), the hybrid input on top fixed magnitude (0.38 -> 0.20).
+- **Re-simulation selection sets the new best numbers.** The hybrid flow head's point prediction equals
+  M16-a (1.05 cm / 4.5 deg); choosing among its 8 samples by re-simulation gives 0.82 cm / 4.35 deg,
+  with the position oracle at 0.55. The simulator at test time is worth a quarter of the position
+  error on the best model, and the gap to the oracle says a better selector or more candidates still
+  has room. Under Kabsch the same head underfits at 300 epochs (M17-c, val loss 1.9 vs 0.27) and the
+  deterministic head beats every candidate; it needs the 1000 epochs M16-g had.
+- **The magnitude gain does not transfer to paper.** The hybrid input improves paper position by 0.6 cm
+  (3.2 -> 2.6) but leaves magnitude at 0.33 (chance 0.45, R2 -0.06), where on cloth it went 0.33 -> 0.156.
+  Either creases destroy the correlation the model exploits on cloth, or 1,356 samples are too few to
+  learn it; the control (hybrid on 1,356 cloth samples) is one run.
+- **Magnitude is not physically readable from the final state** (M16-0). Peak strain is uncorrelated
+  with force (-0.07) and the momentum at capture is 4.7% of the nominal impulse with a 2x spread across
+  samples (IQR 0.032-0.069), so a momentum oracle scores 0.54 against a constant predictor's 0.46. The
+  0.156 the hybrid model reaches is therefore a learned regularity of this solver and this force
+  distribution, not the recovery of a conserved quantity, which is consistent with it not transferring
+  to a different material. Delivered-momentum labels (M17-d) do not help the hybrid model either.
+
 ## Rung 4b, step 2: SAM 3 on synthetic photos (2026-10-30, branch photo-render)
 
 Synthetic photos of 12 cloth + 2 paper 256-grid samples, 4 random pinhole views each

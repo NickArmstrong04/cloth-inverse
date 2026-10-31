@@ -546,7 +546,7 @@ S3 = ds256_const_splits; S3F = the same split re-packaged with snapshots in the 
 
 | id | job id | status | what | command | result |
 |---|---|---|---|---|---|
-| M16-0 | login node | run 2026-10-30 (output not pasted) | identifiability floors on the test split (strain oracle, delivered fraction + IQR, momentum oracle) | `cd ../inverse && ../transfer/.venv/bin/python identifiability.py $S3/test` | paste the output into this row |
+| M16-0 | login node | done 2026-10-31 | identifiability floors on the test split (strain oracle, delivered fraction + IQR, momentum oracle) | `cd ../inverse && ../transfer/.venv/bin/python identifiability.py $S3/test` | 202 files, F 0.15-1.23 N; constant predictor 0.460; **strain oracle 0.463 (corr(log peak strain, log F) = -0.07: the strain field carries no magnitude information)**; momentum at capture / nominal impulse median **0.047, IQR 0.032-0.069** (the delivered fraction varies 2x across samples), angle 13.4 deg; momentum oracle 0.951 raw, 0.54 after calibrating by the median fraction: **worse than chance**. No physical oracle beats 0.46; the hybrid model's 0.156 comes from learned correlations, not from a readable physical quantity |
 | M16-p | login node | done (S3F exists, 1.8 GB) | re-package ds256_const with snapshots in the test files (same split seed -> same membership) | `.venv/bin/python package_splits.py --indir $D/ds256_const --outdir $D/ds256_const_splits_fr --test-keep-frames` | |
 | M16-a | 31411391 | done (62 min incl. resim) | R1 + hybrid input (vs M13-b 1.7 / 5.1 / 0.44) | `RESIM=50 sbatch --job-name=M16a --mem=60G cluster/run.sbatch $S3 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --hybrid --out runs/M16a` | test **1.0 cm / 4.3 deg / mag 0.23 (0.109 N)** / dur 0.016 s; median rel force 0.156, R2 lin 0.70, MAE 0.109 N (M13-b: 1.7 / 5.1 / 0.44, 0.199 N; M13-e force 0.157). Resim 50 (M16-r, 1e-5 floor): pred 0.0279 m, floor < 1e-4, chance 0.1185, score 0.24 (param metrics valid; re-sim 50 provisional: predictions were simulated with the 128 footprint, see round 3) |
 | M16-b | 31411399 -> 31422382 | done (27 min) | R1 + two-snapshot input | `RESIM=50 sbatch --job-name=M16b --mem=60G cluster/run.sbatch $S3F --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --snap --out runs/M16b` | test 1.6 cm / 5.2 deg / mag 0.50 (0.217 N), median rel 0.359, R2 lin -0.03: **no gain** over M13-b (0.327). Resim pred 0.0303, score 0.25 (provisional) |
@@ -756,13 +756,13 @@ hybrid, Kabsch + hybrid + flow with 4 candidates). H = `--hybrid --aux-w 1 --amp
 
 | id | job id | status | what | command | result |
 |---|---|---|---|---|---|
-| M17-a | 31539933 | queued 2026-10-31 | **rung 2 = Kabsch + hybrid** (M16-d 1.9 / 6.0 / 0.38 -> M16-a's 1.0 / 4.3 / 0.156?) | `RESIM=50 sbatch --job-name=M17a --mem=60G cluster/run.sbatch $S3 --model cnn_reg --no-rot --kabsch --eval-rotated --hybrid --aux-w 1 --amp --tta 0 --epochs 300 --out runs/M17a` | |
-| M17-b | 31539934 | queued 2026-10-31 | **hybrid on paper** (M15-a 3.2 / 6.8 / 0.36) | `RESIM=50 sbatch --job-name=M17b --mem=60G cluster/run.sbatch $S4 --model cnn_reg --no-rot --hybrid --aux-w 1 --amp --tta 0 --epochs 300 --out runs/M17b` | |
-| M17-c | 31539935 | queued 2026-10-31 | Kabsch + hybrid + flow (8 candidates) for re-sim selection at rung 2 | `sbatch --job-name=M17c --mem=60G cluster/run.sbatch $S3 --model cnn_reg --no-rot --kabsch --eval-rotated --hybrid --flow --flow-k 8 --aux-w 1 --amp --tta 0 --epochs 300 --out runs/M17c` | |
-| M17-c2 | 31539936 | queued (afterok M17-c) | re-sim selection among M17-c's candidates | `sbatch --job-name=M17c2 --dependency=afterok:<M17c id> cluster/resim.sbatch $S3 runs/M17c --limit 50 --k 8` | |
-| M17-d | 31539937 | queued 2026-10-31 | hybrid + delivered labels (does the label gain of M16-f add to the hybrid's?) | `RESIM=50 sbatch --job-name=M17d --mem=60G cluster/run.sbatch $S3 --model cnn_reg --no-rot --hybrid --label delivered --aux-w 1 --amp --tta 0 --epochs 300 --out runs/M17d` | |
-| M17-e | 31539938 | queued 2026-10-31 | hybrid + flow at rung 1 (selection on the best model; M16-a is the mean-prediction reference) | `sbatch --job-name=M17e --mem=60G cluster/run.sbatch $S3 --model cnn_reg --no-rot --hybrid --flow --flow-k 8 --aux-w 1 --amp --tta 0 --epochs 300 --out runs/M17e` | |
-| M17-e2 | 31539939 | queued (afterok M17-e) | re-sim selection among M17-e's candidates | `sbatch --job-name=M17e2 --dependency=afterok:<M17e id> cluster/resim.sbatch $S3 runs/M17e --limit 50 --k 8` | |
+| M17-a | 31539933 | done (58 min) | **rung 2 = Kabsch + hybrid** (M16-d 1.9 / 6.0 / 0.38 -> M16-a's 1.0 / 4.3 / 0.156?) | `RESIM=50 sbatch --job-name=M17a --mem=60G cluster/run.sbatch $S3 --model cnn_reg --no-rot --kabsch --eval-rotated --hybrid --aux-w 1 --amp --tta 0 --epochs 300 --out runs/M17a` | test **1.4 cm / 6.3 deg / mag median rel 0.199 (0.126 N)**, R2 lin 0.61; resim 0.0212 m (score 0.17). Best rung-2 model: 0.4 cm / 2 deg / 0.04 rel behind rung 1 (M16-a), vs 4.1 / 14.7 for the intrinsic path |
+| M17-b | 31539934 | done (55 min) | **hybrid on paper** (M15-a 3.2 / 6.8 / 0.36) | `RESIM=50 sbatch --job-name=M17b --mem=60G cluster/run.sbatch $S4 --model cnn_reg --no-rot --hybrid --aux-w 1 --amp --tta 0 --epochs 300 --out runs/M17b` | test 2.6 cm / 7.3 deg / mag 0.327 (0.209 N), R2 lin -0.06; resim 0.0221 (M15-a 0.0266). Position gains 0.6 cm; **the magnitude gain does not carry to paper** (0.36 -> 0.33, chance 0.45) |
+| M17-c | 31539935 | done (18 min) | Kabsch + hybrid + flow (8 candidates) for re-sim selection at rung 2 | `sbatch --job-name=M17c --mem=60G cluster/run.sbatch $S3 --model cnn_reg --no-rot --kabsch --eval-rotated --hybrid --flow --flow-k 8 --aux-w 1 --amp --tta 0 --epochs 300 --out runs/M17c` | underfit (best val loss 1.89 vs 0.27 for M17-a): deterministic head 2.6 / 9.3 / 0.33; candidates mean-of-8 4.6 cm, best-of-8 2.0 cm / 30 deg. 300 epochs are too few for the flow head under Kabsch (M16-g had 1000) |
+| M17-c2 | 31539936 | done (103 min) | re-sim selection among M17-c's candidates | `sbatch --job-name=M17c2 --dependency=afterok:<M17c id> cluster/resim.sbatch $S3 runs/M17c --limit 50 --k 8` | selected 2.9 cm / 21.8 deg vs mean-of-8 4.5 / 33.6, oracle 1.9 / 27.9: selection helps the candidates but the deterministic head (2.6 / 9.3) is better than any of them; one candidate re-sim NaN |
+| M17-d | 31539937 | done (60 min) | hybrid + delivered labels (does the label gain of M16-f add to the hybrid's?) | `RESIM=50 sbatch --job-name=M17d --mem=60G cluster/run.sbatch $S3 --model cnn_reg --no-rot --hybrid --label delivered --aux-w 1 --amp --tta 0 --epochs 300 --out runs/M17d` | test 1.5 cm / 5.7 deg; MAE/const 0.57 (M16-a 0.44, M16-f 0.71), R2 lin 0.58; resim 0.0475 (delivered units). **No**: worse than hybrid + nominal on every field. `--label` is closed |
+| M17-e | 31539938 | done (17 min) | hybrid + flow at rung 1 (selection on the best model; M16-a is the mean-prediction reference) | `sbatch --job-name=M17e --mem=60G cluster/run.sbatch $S3 --model cnn_reg --no-rot --hybrid --flow --flow-k 8 --aux-w 1 --amp --tta 0 --epochs 300 --out runs/M17e` | deterministic head 1.05 / 4.5 / 0.24 (= M16-a); candidates mean-of-8 1.25 cm, **best-of-8 0.62 cm / 5.5 deg** |
+| M17-e2 | 31539939 | done (42 min) | re-sim selection among M17-e's candidates | `sbatch --job-name=M17e2 --dependency=afterok:<M17e id> cluster/resim.sbatch $S3 runs/M17e --limit 50 --k 8` | **selected 0.82 cm / 4.35 deg / mag 0.24** vs mean-of-8 1.18 / 5.9, oracle 0.55 / 5.3, deterministic head 1.05 / 4.5: **new best**, the selection beats the model's own point prediction on position and direction |
 
 ```bash
 cd /home/naa79/scratch_pi_sz622/naa79/cloth-inverse && git pull && cd cloth_data_generation/transfer
@@ -782,10 +782,14 @@ for r in M17c M17e; do python3 -c "import json; print('$r', json.load(open('../i
 cd ../inverse && ../transfer/.venv/bin/python impulse_report.py runs/M16a runs/M17a runs/M17b runs/M17d
 ```
 
-Reading: M17-a at ~1 cm / ~4 deg / ~0.16 closes the ladder's rung 2 with a single model (no invariant
-features, no 1000 epochs). M17-b vs M15-a is whether the hybrid gain carries to the plastic material.
-M17-c2 / M17-e2 vs their mean predictions: how much re-sim selection adds on top of the best model.
-Note `--eval-rotated` with `--kabsch` saves predictions in the file frame since 20faf27, so no repair.
+Outcome (2026-10-31 15:30, all done): rung 2 is at 1.4 cm / 6.3 deg / 0.20 with Kabsch + hybrid, 0.4 cm
+behind rung 1; re-sim selection over the hybrid flow head gives the best numbers so far at rung 1
+(0.82 cm / 4.35 deg on 50 samples); the hybrid's magnitude gain does not carry to paper; delivered labels
+and the 300-epoch Kabsch flow head are dead ends. M16-0 says no physical oracle reads the magnitude from
+the final state (strain and momentum both at or below chance), so 0.156 is a learned correlation.
+Next candidates: the hybrid flow head with 1000 epochs and 16 candidates (does the oracle drop below
+0.5 cm and the selection follow?), selection on the full test split, Kabsch + hybrid + flow at 1000
+epochs for rung 2, and hybrid on cloth at the paper's 1,356 samples to separate size from material.
 
 ## Matrix M18: rung 4b on the photo packages (2026-10-30, branch photo-render)
 
