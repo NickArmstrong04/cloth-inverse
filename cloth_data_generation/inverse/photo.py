@@ -118,9 +118,68 @@ def checker_texture(T: int = 512, cells: int = 8, dev="cpu") -> torch.Tensor:
     return tex
 
 
+CODED_LINE = 0.2  # grid-line width as a fraction of a cell (both sides together)
+CODED_COLOURS = [  # six saturated print colours, far apart in chromaticity (shading only scales them)
+    (0.90, 0.15, 0.15), (0.15, 0.65, 0.20), (0.15, 0.30, 0.90), (0.95, 0.80, 0.10), (0.85, 0.20, 0.80), (0.10, 0.80, 0.85)]
+
+
+def coded_code(cells: int = 32, k: int = 6, seed: int = 0) -> np.ndarray:
+    """(cells, cells) colour indices such that every 3x3 window is unique under the 8 dihedral
+    transforms (the sheet is seen at any in-plane angle and from the back, mirrored): a 2D
+    non-repeating print whose local appearance identifies the grid coordinate (Phase B)."""
+    rng = np.random.default_rng(seed)
+    code = rng.integers(0, k, (cells, cells))
+
+    def variants(w):
+        out = []
+        for r in range(4):
+            v = np.rot90(w, r)
+            out += [tuple(v.ravel()), tuple(v.T.ravel())]
+        return out
+
+    for _ in range(200):
+        seen, bad = {}, set()
+        for i in range(cells - 2):
+            for j in range(cells - 2):
+                keys = variants(code[i:i + 3, j:j + 3])
+                hit = [seen[kk] for kk in keys if kk in seen]
+                if hit:
+                    bad.add((i, j)); bad.update(hit)
+                else:
+                    for kk in keys:
+                        seen[kk] = (i, j)
+        if not bad:
+            return code
+        for (i, j) in bad:  # re-draw the centre cell of every colliding window
+            code[i + 1, j + 1] = rng.integers(0, k)
+    raise RuntimeError("no unique coded print found; lower cells or raise k")
+
+
+def coded_texture(T: int = 1024, cells: int = 32, seed: int = 0, dev="cpu") -> tuple[torch.Tensor, np.ndarray]:
+    """The coded print as a (3, T, T) texture plus its code (cells, cells): cell (i, j) covers
+    v in [i, i+1) / cells, u in [j, j+1) / cells (texture rows = v, cols = u, like checker_texture)."""
+    code = coded_code(cells, len(CODED_COLOURS), seed)
+    cols = torch.tensor(CODED_COLOURS, device=dev)  # (k, 3)
+    yy, xx = torch.meshgrid(torch.arange(T, device=dev), torch.arange(T, device=dev), indexing="ij")
+    idx = torch.from_numpy(code).to(dev)[yy * cells // T, xx * cells // T]
+    tex = cols[idx].permute(2, 0, 1)
+    # dark grid lines between cells (CODED_LINE of a cell) so same-colour neighbours never merge into
+    # one blob in the photo: the decoder segments cells by colour inside the lines
+    cell = T / cells
+    fy, fx = (yy.float() % cell) / cell, (xx.float() % cell) / cell
+    line = (fy < CODED_LINE / 2) | (fy > 1 - CODED_LINE / 2) | (fx < CODED_LINE / 2) | (fx > 1 - CODED_LINE / 2)
+    tex = torch.where(line, torch.full_like(tex, 0.05), tex)
+    return tex, code
+
+
 def load_texture(path: str | None, dev) -> torch.Tensor:
     if path is None:
         return checker_texture(dev=dev)
+    if path.startswith("coded"):  # "coded" or "coded:<cells>:<seed>"
+        parts = path.split(":")
+        cells = int(parts[1]) if len(parts) > 1 else 32
+        seed = int(parts[2]) if len(parts) > 2 else 0
+        return coded_texture(cells=cells, seed=seed, dev=dev)[0]
     from PIL import Image
     im = np.asarray(Image.open(path).convert("RGB"), dtype=np.float32) / 255.0
     return torch.from_numpy(im).permute(2, 0, 1).to(dev)
@@ -295,6 +354,13 @@ def main():
     torch.manual_seed(args.seed)
     manifest = {"args": vars(args), "fov_deg": args.fov, "camera": "R maps world (centred grid) to camera; "
                 "camera at origin looking down -z; sheet centre at (0, 0, -d)", "views": []}
+    if args.texture and args.texture.startswith("coded"):  # the decoder needs the code book
+        parts = args.texture.split(":")
+        cells = int(parts[1]) if len(parts) > 1 else 32
+        code = coded_code(cells, len(CODED_COLOURS), int(parts[2]) if len(parts) > 2 else 0)
+        manifest["coded"] = {"cells": cells, "colours": CODED_COLOURS, "code": code.tolist(),
+                             "layout": "code[i][j]: v in [i, i+1)/cells, u in [j, j+1)/cells"}
+        to_png(load_texture(args.texture, dev), os.path.join(args.out, "coded_print.png"))
     t0 = time.time()
     for f in files:
         grid_np, fp, material = load_grid(f)
