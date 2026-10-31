@@ -215,17 +215,20 @@ def main():
 
 def _report(rows: list[dict], out: str, run_dir: str) -> dict:
     summ = {"n": len(rows), "n_pred_failed": sum(1 for r in rows if r.get("pred") is None)}
+    c = "rmse_centered_m"
+    fin = lambda v: v is not None and np.isfinite(v[c])  # a simulation that blew up (NaN positions) is dropped
     for key in ("pred", "floor", "chance"):
-        vals = [r[key] for r in rows if r.get(key)]
+        vals = [r[key] for r in rows if fin(r.get(key))]
         if vals:
             summ[key] = {m: float(np.mean([v[m] for v in vals])) for m in vals[0]} | \
                         {m + "_median": float(np.median([v[m] for v in vals])) for m in vals[0]}
+    summ["n_chance_failed"] = sum(1 for r in rows if "chance" in r and not fin(r["chance"]))
     if "pred" in summ and "floor" in summ and "chance" in summ:
-        c = "rmse_centered_m"
+        ok = [r for r in rows if fin(r.get("chance")) and fin(r.get("floor"))]
         # failed predictions are scored at the chance level, so a model is not rewarded for blowing up
-        pred = np.array([(r["pred"] or r["chance"])[c] for r in rows if r.get("chance")])
-        floor = np.array([r["floor"][c] for r in rows if r.get("chance")])
-        chance = np.array([r["chance"][c] for r in rows if r.get("chance")])
+        pred = np.array([(r["pred"] if fin(r.get("pred")) else r["chance"])[c] for r in ok])
+        floor = np.array([r["floor"][c] for r in ok])
+        chance = np.array([r["chance"][c] for r in ok])
         summ["score"] = float((pred.mean() - floor.mean()) / max(chance.mean() - floor.mean(), 1e-9))
         summ["score_median"] = float((np.median(pred) - np.median(floor)) / max(np.median(chance) - np.median(floor), 1e-9))
         summ["frac_beats_chance"] = float((pred < chance).mean())

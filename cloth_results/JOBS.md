@@ -684,6 +684,41 @@ python3 cluster/summarize_runs.py "M13*" "M15*" "M16*" | grep -E "^run|resim"
 python3 -c "import json; print(json.dumps(json.load(open('../inverse/runs/M16g/resim_select/resim_select.json'))['summary'], indent=1))"
 ```
 
+### M16 round 3 results (2026-10-31 morning): rung 1 final, rung 2 still in the wrong frame
+
+Jobs 31456685-31456698, all COMPLETED (R3M13b, R3M13e, R3M15b, R3M16a, R3M16c, R3M16d, R3M16e, R3M16f,
+R3M16f2, R3M16f3, R3M16b, R3M16h, R3M15a, M16g2). Re-sim 50, centred RMSE m, with the dataset footprint:
+
+| run | pred | chance | score | note |
+|---|---|---|---|---|
+| **M16-a** | **0.0178** | 0.1260 | **0.14** | best; was 0.0279 with the 128 footprint |
+| M13-b | 0.0228 | 0.1260 | 0.18 | |
+| M16-c | 0.0238 | 0.1259 | 0.19 | |
+| M15-b | 0.0243 | 0.1260 | 0.19 | |
+| M16-b | 0.0253 | 0.1259 | 0.20 | |
+| M15-a (paper) | 0.0266 | 0.1181 | 0.22 | floor 0.0010 |
+| M16-h | 0.0225 | nan | nan | one chance simulation produced NaN; eval_resim now drops non-finite rows (`n_chance_failed`); pred 0.0225 puts it second |
+| M16-f / f2 | 0.0455 / 0.0435 | 0.1215 | 0.37 / 0.36 | predicted magnitudes are in delivered units (~8% of nominal), applied as nominal: not comparable |
+| M13-e / M16-d / M16-e / M16-f3 | 0.125-0.140 | 0.1304 / 0.1238 | 1.01-1.07 | **still at chance**: the repair was evidently not applied (their chance differs from the rung-1 runs' 0.1260, i.e. the saved "true" directions are still rotated) |
+| M16-g2 | selected pos 1.32 cm, mean-of-8 1.17, oracle 0.67 | | | selection among rotated-frame candidates is random; redo after the repair |
+
+Floor on cloth remains < 1e-4 m for every run (the solver is deterministic to 1e-5 perturbations at
+256), 1e-3 m on paper. Ranking at rung 1 by re-sim agrees with the parameter metrics: hybrid, then
+base ~ patch ~ snapshot, then paper.
+
+Rung 2 redo: run `fix_rotated_preds.py` and check its output (it must print "saved frame = seeded
+rotation" for each run; it refuses and prints the reason otherwise), then re-sim the five:
+
+```bash
+cd /home/naa79/scratch_pi_sz622/naa79/cloth-inverse && git pull && cd cloth_data_generation/inverse
+S3=/home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_const_splits
+ls runs/M16d runs/M16g          # a .rotframe file means the repair already ran
+for r in M16d M16e M16f3 M16g M13e; do ../transfer/.venv/bin/python fix_rotated_preds.py --run runs/$r --root $S3; done
+cd ../transfer
+for r in M13e M16d M16e M16f3; do sbatch --job-name=R4$r cluster/resim_eval.sbatch $S3 runs/$r --limit 50; done
+sbatch --job-name=R4M16g2 cluster/resim.sbatch $S3 runs/M16g --limit 50 --k 8
+```
+
 ### M16 reading from the parameter metrics (final)
 
 - **Magnitude at rung 1: the hybrid input is the whole effect.** M16-a 0.156 rel / 0.109 N / R2 0.70.
