@@ -33,3 +33,99 @@ stays on hold; `cluster.env` carries the bench profile as the target.
 
 Per-sample wall time at 256, 30 substeps: 90-120 s when the sheet stays smooth, ~300 s when
 it crumples (contact cost); 60 substeps roughly doubles it.
+
+## Rest capture sweep (2026-10-31, workstation, 128 grid, `transfer/rest_sweep.py`)
+
+Question (plan "concurrent-sprouting-gizmo", step 2): does the settled, still-image state of the
+paper sheet keep the force information of the release state? Settle machinery and the
+literature it follows: `transfer/REPORT.md`, "Capture at rest". Every run is loading as in the
+datasets, then a settle phase to a cap of 4 s with a rest criterion (sheet RMS speed < 3 mm/s
+for 10 frames). Outputs in WSL `~/cloth/smoke_runs/{rest_sweep128,mag_sweep128,sens128}`
+(`sweep.md`, `sweep.json`, renders).
+
+**1. The dataset's own force draws leave no record.** Six of M16-a's test draws (ds256_const
+forces, 0.15-0.55 N, uniform-sphere directions, patch rescaled to 128) on the paper preset:
+
+| settle | at rest by 4 s | plane RMS release -> rest [cm] | compaction release -> rest | yielded hinges |
+|---|---|---|---|---|
+| quasistatic | 0/6 (vrms 0.03 m/s at 4 s) | 4.6 -> 4.6 | 0.92 -> 0.96 | 0 (median; 2 of 6 draws ~55) |
+| drag 3/s | 6/6, median 3.8 s | 4.6 -> 0.05 | 0.92 -> 1.00 | 0 |
+| drag 10/s | 3/6, 2.8 s | 4.6 -> 0.5 | 0.92 -> 1.00 | 0 |
+| drag 30/s | 1/6 | 4.6 -> 2.0 | 0.92 -> 0.99 | 0 |
+| cloth, drag 10/s | 4/6, 2.9 s | 4.3 -> 0.6 | 1.02 -> 1.00 | (elastic) |
+
+Four of the six draws never yield a single hinge, the other two ~55 (of 48,641): at these
+magnitudes with random directions the paper bends smoothly, and once the free flight is
+damped it relaxes flat (render: `renders/render_drag10_sample_slot0029_seed100029.png`). The
+quasistatic numbers are not "memory": that mode had not converged (REPORT.md). The two draws
+that did yield are the ones with a compressive component between the patches; the two with
+fully in-plane but non-opposing forces (0.3-0.5 N) yielded nothing. The ds256_const_paper
+dataset (J-006, captured at release) therefore owes its creases largely to the un-scaled
+bending stiffness at 256 (REPORT.md caveat: 256 bends ~2x softer) and to being read under
+load; with `--bend-scale-res` and a settle it would come out flat.
+
+**2. Compression creases; magnitude barely matters above 0.25 N.** Two geometries (a: the two
+patches of smoke slot 0, one near-in-plane pull and one tilted push; b: opposing pushes at
+u = 0.2 / 0.8), both patches at the same magnitude, duration 0.5 s, drag 10/s, resolution-
+consistent bending:
+
+| yield / damage | geometry | 0.25 N | 0.5 N | 1 N | 1.5 N | 2 N | 2.5 N |
+|---|---|---|---|---|---|---|---|
+| 50 /m, step 10% | a: plane RMS rest [cm] / sharp hinges / compaction | 3.2 / 175 / 0.83 | 3.5 / 249 / 0.83 | 3.8 / 298 / 0.81 | 4.3 / 290 / 0.81 | 4.6 / 304 / 0.82 | 4.8 / 307 / 0.82 |
+| 50 /m, step 10% | b | 1.7 / 289 / 0.97 | 0.7 / 113 / 0.99 | 2.0 / 256 / 0.97 | 2.0 / 413 / 0.97 | 1.7 / 220 / 0.98 | 1.9 / 193 / 0.98 |
+| 20 /m, step 10% | a | 4.7 / 1145 / 0.73 | 4.8 / 1161 / 0.75 | 5.1 / 1196 / 0.74 | 5.3 / 1040 / 0.76 | 5.1 / 1107 / 0.75 | 5.8 / 1002 / 0.76 |
+| 20 /m, step 10% | b | 3.3 / 1473 / 0.82 | 3.5 / 1267 / 0.83 | 3.7 / 1318 / 0.80 | 3.6 / 1417 / 0.83 | 3.9 / 1791 / 0.79 | 3.7 / 1619 / 0.82 |
+| 50 /m, graded gamma 2 | a | 1.9 / 127 / 0.82 | 3.4 / 127 / 0.83 | 5.1 / 127 / 0.85 | 5.8 / 127 / 0.86 | 6.1 / 127 / 0.87 | 6.1 / 127 / 0.88 |
+| 50 /m, graded gamma 2 | b | 0.4 / 97 / 1.00 | 0.8 / 89 / 1.00 | 0.7 / 66 / 1.00 | 1.5 / 114 / 0.99 | 0.5 / 21 / 1.00 | 0.6 / 38 / 1.00 |
+
+(sharp = hinges with |rest angle| > 0.5 rad; compaction = mean current / rest distance over
+random material pairs, 1 = unfolded; stretch at release 1.6-2.2 in every run and 1.00-1.05 at
+rest with yield 50, 1.05-1.14 with yield 20.)
+
+Readings: (i) once the loading compresses the sheet, 0.25 N already creases it (175-290 sharp
+hinges) and the rest shape keeps 3-5 cm of out-of-plane deformation at compaction 0.8; the
+crease count saturates above ~1 N, so magnitude will be read from crease depth and extent,
+not count. (ii) Yield 20 /m keeps nearly all of the release deformation (compaction 0.73-0.83)
+with 4-5x the hinges (diffuse creasing, REPORT.md yield sweep) and a residual stretch. (iii)
+Graded damage (Narain's 1/(1 + gamma delta), gamma 2) localises everything into one line
+(exactly 127 sharp hinges = one row of the grid for geometry a) and lets the opposing-push
+sheets relax flat: not adopted; the step softening stays the preset. (iv) The release stretch
+of 1.6-2.2 is elastic over-stretch of VBD under load, not tearing (it relaxes to ~1.02), so the
+QC gate now applies to the rest grid and the release grid only gets an explosion guard at
+twice the limit. (v) Settle time to the rest criterion: 2.2-3.3 s at drag 10/s (10 of 12).
+
+**Decision for the rest dataset** (`cluster/paper.sh`, `PROFILE=rest`): opposing "scrunch"
+loading (`generate_batch.py --loading scrunch`: each patch pushes toward the other, +-30 deg
+heading jitter, +-35 deg out-of-plane tilt, 0.2-2 N log-uniform), yield 50 /m with the 10%
+step, resolution-consistent bending, air drag 10/s, rest criterion vrms < 3 mm/s, cap 4 s.
+
+**End-to-end smoke of the profile** (`PROFILE=rest bash cluster/paper.sh smoke 4 128`): 4/4
+pass first try, 0.2-1.8 N draws, rest in 2.5-2.9 s (one at the 4 s cap), rest plane RMS
+3.3-4.0 cm, 130-360 sharp hinges, rest stretch 1.02-1.17 with release stretch 1.29-1.78
+(renders `smoke_paper_rest_128/*.png` in the session scratchpad). One 256 sample with slot 0's
+draws: 285 s wall (270 frames; capture at release is ~80 s), 2,267 yielded hinges, crease
+total constant from 1.5 s on while the RMS speed plateaus at ~0.008 m/s (3,000+ self-contacts
+creeping under friction), so the 0.003 m/s criterion never fires at 256. Profile defaults
+therefore: REST_VMAX 0.01 (fires at ~2.6 s at 256), cap 3 s, i.e. ~220 s per 256 sample,
+~190 GPU-hours for 3,000 slots before retries.
+
+**3. Identifiability survives the settle (yield 50), and yield 20 is chaotic.** Finite
+differences through the simulator on three creasing loads (geometry a at 1 N and 0.5 N,
+geometry b at 1 N; drag 10/s): RMS change of the grid after the best rigid alignment, release
+-> rest, per label perturbation of force 1 (floor = magnitude x 1.0001):
+
+| load | floor | magnitude x1.1 | direction +5 deg | position +1 cm | duration x1.05 |
+|---|---|---|---|---|---|
+| a, 1 N, yield 50 | - | 0.13 -> 0.17 cm | 1.2 -> 1.6 | 0.7 -> 2.7 | 1.0 -> 1.2 |
+| b, 1 N, yield 50 | 0.02 -> 0.03 | 1.0 -> 2.1 | 2.3 -> 2.0 | 1.8 -> 3.1 | 1.8 -> 1.6 |
+| a, 0.5 N, yield 50 | 0.000 -> 0.000 | 0.21 -> 0.20 | 1.2 -> 1.1 | 0.8 -> 0.6 | 1.0 -> 0.6 |
+| a, 1 N, yield 20 | 0.02 -> **0.52** | 0.6 -> 2.0 | 1.9 -> 3.2 | 1.2 -> 2.3 | 0.8 -> 1.9 |
+| b, 1 N, yield 20 | 0.7 -> **1.75** | 1.3 -> 3.3 | 1.9 -> 4.1 | 2.2 -> 3.1 | 1.8 -> 2.4 |
+
+With yield 50 every label moves the rest shape at least as much as it moved the release shape
+(ratios 0.6-3.8) and 10-100x above the floor: the creased rest state is at least as informative
+as the state the current models read, and position / direction / duration are strong signals
+(0.6-3 cm per unit step). Magnitude is the weak label at the single-patch geometry (0.13-0.2 cm
+per 10%, consistent with the crease count saturating above 1 N) and strong for opposing pushes
+(1-2 cm per 10%). With yield 20 a 1e-4 perturbation moves the rest state by 0.5-1.75 cm: the
+diffusely creasing sheet is chaotic and its rest shape would not be learnable; yield 50 it is.

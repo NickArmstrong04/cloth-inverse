@@ -260,18 +260,27 @@ def qc_sample_h5(path: str, stretch_max: float = 2.0,
     reasons = []
     with h5py.File(path, "r") as h:
         final = h["final_grid"][()]
+        release = h["release_grid"][()] if "release_grid" in h else None
         ke = h["sim_log"]["kinetic_energy"][()]
         vm = h["sim_log"]["max_speed"][()]
+        t_rest = h["sim_log"].attrs.get("t_rest")
         import json
 
         cfg = json.loads(h["sim_config"][()])
     rest_h = cfg["sheet"]["size_x"] / (cfg["nx"] - 1)
     smap = edge_stretch_map(final, rest_h)
+    # Rest-captured samples store the release state too. Under load VBD over-stretches a
+    # stiff sheet (paper reads 1.6-2.2 at release and relaxes to ~1.02 at rest, mag sweep
+    # 2026-10-31), so the gate applies to the capture (rest) grid and the release grid only
+    # gets an explosion guard at twice the limit.
+    stretch_release = float(edge_stretch_map(release, rest_h).max()) if release is not None else None
     metrics = {
         "nan_time": cfg.get("nan_time"),
         "ke_final": float(ke[-1]),
         "vmax_max": float(vm.max()),
         "stretch_max": float(smap.max()),
+        "stretch_release": stretch_release,
+        "t_rest": None if t_rest is None else float(t_rest),
         # diagnostics (not gated): in-plane compression and out-of-plane relief. On a
         # table a sheet can slide and compress without buckling (height ~0); a healthy
         # crumple has height of several cm.
@@ -286,6 +295,8 @@ def qc_sample_h5(path: str, stretch_max: float = 2.0,
         reasons.append(f"vmax_max {metrics['vmax_max']:.2f} > {vmax_max}")
     if metrics["stretch_max"] > stretch_max:
         reasons.append(f"stretch_max {metrics['stretch_max']:.2f} > {stretch_max}")
+    if stretch_release is not None and stretch_release > 2.0 * stretch_max:
+        reasons.append(f"stretch_release {stretch_release:.2f} > {2.0 * stretch_max}")
     if check_pierce:
         pierce = count_self_intersections(final)
         metrics["piercing_pairs"] = pierce["piercing_pairs"]

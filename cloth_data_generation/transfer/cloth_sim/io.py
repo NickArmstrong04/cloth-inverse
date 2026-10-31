@@ -36,10 +36,20 @@ def save_sample_h5(path: str, *, final_grid: np.ndarray, final_vel: np.ndarray,
                    ke: np.ndarray, max_speed: np.ndarray, contacts: np.ndarray,
                    frame_dt: float, momentum: np.ndarray | None = None,
                    plastic: dict | None = None,
-                   intermediate_vels: np.ndarray | None = None) -> None:
+                   intermediate_vels: np.ndarray | None = None,
+                   release_grid: np.ndarray | None = None,
+                   release_vel: np.ndarray | None = None,
+                   settle: dict | None = None) -> None:
+    """``release_grid`` / ``release_vel``: the state at the end of the force window when
+    the sample was settled afterwards (``final_grid`` is then the rest state); ``settle``:
+    small scalars about that phase (t_force, t_rest, t_end, settle_mode, drag, rest_vmax),
+    stored as attributes of ``sim_log``."""
     with h5py.File(path, "w") as h:
         h.create_dataset("final_grid", data=final_grid)
         h.create_dataset("final_vel", data=final_vel)
+        if release_grid is not None:
+            h.create_dataset("release_grid", data=release_grid)
+            h.create_dataset("release_vel", data=release_vel)
         h.create_dataset("intermediate_grids", data=intermediate_grids)
         h.create_dataset("intermediate_times", data=intermediate_times)
         if intermediate_vels is not None:
@@ -54,6 +64,9 @@ def save_sample_h5(path: str, *, final_grid: np.ndarray, final_vel: np.ndarray,
         if momentum is not None:
             log.create_dataset("momentum", data=momentum)
         log.attrs["frame_dt"] = frame_dt
+        for k, v in (settle or {}).items():
+            if v is not None:
+                log.attrs[k] = v
         if plastic is not None:
             # hidden plastic state of paper sheets (not an observable)
             pg = h.create_group("plastic")
@@ -71,9 +84,10 @@ def save_sample_h5(path: str, *, final_grid: np.ndarray, final_vel: np.ndarray,
 
 def load_sample_h5(path: str) -> dict:
     with h5py.File(path, "r") as h:
+        # packaged splits (package_splits.py) drop the intermediates: optional
         out = {k: h[k][()] for k in
                ("final_grid", "final_vel", "intermediate_grids",
-                "intermediate_times", "seed")}
+                "intermediate_times", "seed") if k in h}
         out["force_params"] = json.loads(h["force_params"][()].decode()
                                          if isinstance(h["force_params"][()], bytes)
                                          else h["force_params"][()])
@@ -82,7 +96,12 @@ def load_sample_h5(path: str) -> dict:
                                        else h["sim_config"][()])
         if "intermediate_vels" in h:
             out["intermediate_vels"] = h["intermediate_vels"][()]
-        out["sim_log"] = {k: h["sim_log"][k][()] for k in h["sim_log"]}
+        if "release_grid" in h:
+            out["release_grid"] = h["release_grid"][()]
+            out["release_vel"] = h["release_vel"][()]
+        out["sim_log"] = {k: h["sim_log"][k][()] for k in h["sim_log"]} if "sim_log" in h else {}
+        out["settle"] = ({k: h["sim_log"].attrs[k] for k in h["sim_log"].attrs if k != "frame_dt"}
+                         if "sim_log" in h else {})
         if "plastic" in h:
             out["plastic"] = {k: h["plastic"][k][()] for k in h["plastic"]}
         out["attrs"] = dict(h.attrs)

@@ -10,6 +10,12 @@ to the new rest angles instead of flat, i.e. the crease stays.
 The yield is set as a curvature (1/m) and converted to a per-edge angle with
 the cell spacing, so a crease of a given sharpness yields at the same load at
 every resolution.
+
+Weakening of creased hinges (what makes folds localize, Narain et al. 2013): either
+the legacy step (``soften``: a yielded hinge drops to that fraction of edge_ke) or
+graded damage (``damage_gamma`` > 0): delta_e += excess / yield_angle per yield
+event and ke_e = ke0_e / (1 + gamma * delta_e), Narain's 1/(1 + gamma*delta) with
+delta the accumulated plastic strain over the yield curvature.
 """
 
 from __future__ import annotations
@@ -29,6 +35,9 @@ def plastic_hinge_update(
     plastic_work: wp.array[float],
     bend_props: wp.array2d[float],
     ke_soft: float,
+    ke0: wp.array[float],
+    damage: wp.array[float],
+    gamma: float,
 ):
     e = wp.tid()
     # boundary edges have no opposite vertex and no bending term
@@ -60,9 +69,13 @@ def plastic_hinge_update(
         new_rest = wp.clamp(rest + wp.sign(d) * step, -max_angle, max_angle)
         rest_angle[e] = new_rest
         plastic_work[e] = plastic_work[e] + wp.abs(new_rest - rest)
-        # crease softening: a yielded hinge is weaker, so further bending
+        # crease weakening: a yielded hinge is weaker, so further bending
         # concentrates there (VBD reads edge_bending_properties every solve)
-        if ke_soft >= 0.0 and bend_props[e, 0] > ke_soft:
+        if gamma > 0.0:
+            dmg = damage[e] + excess / yield_angle
+            damage[e] = dmg
+            bend_props[e, 0] = ke0[e] / (1.0 + gamma * dmg)
+        elif ke_soft >= 0.0 and bend_props[e, 0] > ke_soft:
             bend_props[e, 0] = ke_soft
 
 
@@ -70,31 +83,37 @@ class PlasticHinges:
     """Holds the per-edge plastic state for one model; call ``update`` after each substep."""
 
     def __init__(self, model, yield_curvature: float, cell: float, rate: float = 1.0,
-                 max_angle: float = 2.8, soften: float = 1.0):
+                 max_angle: float = 2.8, soften: float = 1.0, damage_gamma: float = 0.0):
         self.model = model
         self.yield_angle = float(yield_curvature * cell)
         self.rate = float(rate)
         self.max_angle = float(max_angle)
         self.rest0 = model.edge_rest_angle.numpy().copy()
         self.plastic_work = wp.zeros(model.edge_count, dtype=float, device=model.device)
-        # softening: yielded hinges drop to soften * edge_ke (ke_soft < 0 = disabled)
+        # weakening: graded damage (gamma > 0) or the legacy step to soften * edge_ke
+        # (ke_soft < 0 = disabled)
         self.props0 = model.edge_bending_properties.numpy().copy()
         self.soften = float(soften)
+        self.gamma = float(damage_gamma)
         ke0 = float(self.props0[:, 0].max()) if len(self.props0) else 0.0
-        self.ke_soft = ke0 * self.soften if 0.0 <= self.soften < 1.0 else -1.0
+        self.ke_soft = ke0 * self.soften if (0.0 <= self.soften < 1.0 and self.gamma <= 0.0) else -1.0
+        self.ke0 = wp.array(np.ascontiguousarray(self.props0[:, 0]), dtype=float, device=model.device)
+        self.damage = wp.zeros(model.edge_count, dtype=float, device=model.device)
 
     def reset(self) -> None:
         """Forget all creases (rest angles and hinge stiffness back to the flat sheet)."""
         self.model.edge_rest_angle.assign(self.rest0)
         self.plastic_work.zero_()
-        if self.ke_soft >= 0.0:
+        self.damage.zero_()
+        if self.ke_soft >= 0.0 or self.gamma > 0.0:
             self.model.edge_bending_properties.assign(self.props0)
 
     def update(self, state) -> None:
         wp.launch(plastic_hinge_update, dim=self.model.edge_count,
                   inputs=[state.particle_q, self.model.edge_indices, self.model.edge_rest_angle,
                           self.yield_angle, self.rate, self.max_angle, self.plastic_work,
-                          self.model.edge_bending_properties, self.ke_soft],
+                          self.model.edge_bending_properties, self.ke_soft,
+                          self.ke0, self.damage, self.gamma],
                   device=self.model.device)
 
     def summary(self) -> tuple[float, int]:
@@ -102,6 +121,10 @@ class PlasticHinges:
         rest = self.model.edge_rest_angle.numpy()
         work = self.plastic_work.numpy()
         return float(np.abs(rest - self.rest0).sum()), int((work > 0.0).sum())
+
+    def damage_array(self) -> np.ndarray:
+        """Per-edge accumulated damage delta (zeros unless damage_gamma > 0)."""
+        return self.damage.numpy().astype(np.float32)
 
     def crease_map(self, nx: int, ny: int) -> np.ndarray:
         """Per-particle crease strength (ny, nx): mean |rest angle| of incident edges.

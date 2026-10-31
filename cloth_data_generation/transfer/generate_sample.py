@@ -47,8 +47,30 @@ def build_parser() -> argparse.ArgumentParser:
                     help="default: max force duration + --settle, i.e. capture at the "
                          "instant the constant force is released")
     ap.add_argument("--settle", type=float, default=0.0,
-                    help="extra free-flight time after the forces end when --t-capture "
-                         "unset (0 = capture at release; legacy datasets used 0.7)")
+                    help="extra time after the forces end when --t-capture unset (0 = capture "
+                         "at release; legacy datasets used 0.7). With --rest-vmax it is the cap "
+                         "of the settle phase")
+    ap.add_argument("--settle-mode", choices=["dynamic", "quasistatic"], default="dynamic",
+                    help="frames after the forces end: dynamic = free flight; quasistatic = "
+                         "velocities zeroed before every frame (overdamped relaxation to the "
+                         "rest state, as the crumpling literature measures it)")
+    ap.add_argument("--drag", type=float, default=0.0,
+                    help="isotropic air drag during free flight [1/s] (dynamic mode)")
+    ap.add_argument("--rest-vmax", type=float, default=0.0,
+                    help="stop the settle phase once max speed < this [m/s] for --rest-frames "
+                         "frames (0 = run to the cap); the capture is then the rest state and "
+                         "the release state is stored as release_grid")
+    ap.add_argument("--rest-frames", type=int, default=10)
+    ap.add_argument("--rest-metric", choices=["vrms", "vmax"], default="vrms",
+                    help="speed the rest criterion reads: vrms = sqrt(2 KE / M) (default), vmax = fastest particle")
+    ap.add_argument("--self-mu", type=float, default=None,
+                    help="self-contact friction coefficient (Newton default 0.5)")
+    ap.add_argument("--bend-scale-res", action="store_true",
+                    help="scale edge_ke by (128-grid cell / cell) so bending stiffness means "
+                         "the same sheet at every resolution")
+    ap.add_argument("--damage-gamma", type=float, default=None,
+                    help="graded crease damage ke/(1+gamma*delta) (Narain 2013, paper 0.5); "
+                         "0 = legacy step softening (--crease-soften)")
     ap.add_argument("--magnitude", type=float, default=None,
                     help="override both force magnitudes (tuning aid)")
     ap.add_argument("--material", choices=sorted(MATERIALS), default="cloth",
@@ -111,7 +133,7 @@ class SampleSpec:
         return (json.dumps({k: v for k, v in self.sheet.__dict__.items() if k != "jitter_seed"},
                            sort_keys=True),
                 json.dumps({k: v for k, v in self.sim.__dict__.items()
-                            if k not in ("t_capture", "capture_every", "n_snapshots")},
+                            if k not in SimConfig.PER_SAMPLE},
                            sort_keys=True))
 
 
@@ -133,9 +155,18 @@ def configure(args: argparse.Namespace) -> SampleSpec:
     sim = SimConfig(t_capture=t_capture, device=args.device,
                     ramp_frac=args.ramp, deterministic=args.deterministic,
                     force_every_substep=args.force_every_substep,
-                    n_snapshots=args.snapshots, use_graph=not args.no_graph)
+                    n_snapshots=args.snapshots, use_graph=not args.no_graph,
+                    settle_mode=args.settle_mode, drag=args.drag,
+                    rest_vmax=args.rest_vmax, rest_frames=args.rest_frames,
+                    rest_metric=args.rest_metric)
     if args.table:
         sheet.table = True
+    if args.self_mu is not None:
+        sheet.self_contact_mu = args.self_mu
+    if args.bend_scale_res:
+        sheet.bend_scale_resolution = True
+    if args.damage_gamma is not None:
+        sheet.plastic_damage_gamma = args.damage_gamma
     sheet.jitter_seed = args.seed
     if args.gravity is not None:
         sheet.gravity = args.gravity
@@ -193,9 +224,8 @@ class SessionCache:
             self.session = SimSession(model, meta, spec.sim)
             self.meta, self.key = meta, key
         # per-sample pieces of the config
-        self.session.sim.t_capture = spec.sim.t_capture
-        self.session.sim.n_snapshots = spec.sim.n_snapshots
-        self.session.sim.capture_every = spec.sim.capture_every
+        for k in SimConfig.PER_SAMPLE:
+            setattr(self.session.sim, k, getattr(spec.sim, k))
         return self.session, self.meta
 
 
@@ -225,7 +255,11 @@ def generate(spec: SampleSpec, cache: SessionCache | None = None,
         "nan_time": res["nan_time"],
         "cuda_graph": res["graph"],
         "session_reused": cache is not None,
+        "edge_ke_effective": meta.get("edge_ke_effective"),
+        "self_contact_mu": meta.get("self_contact_mu"),
+        "t_force": res["t_force"], "t_rest": res["t_rest"], "t_end": res["t_end"],
     }
+    settle = {k: res[k] for k in ("t_force", "t_rest", "t_end", "settle_mode", "drag", "rest_vmax", "rest_metric")}
     save_sample_h5(
         spec.out,
         final_grid=res["final_grid"], final_vel=res["final_vel"],
@@ -236,15 +270,21 @@ def generate(spec: SampleSpec, cache: SessionCache | None = None,
         seed=spec.seed, ke=res["ke"], max_speed=res["max_speed"],
         contacts=res["contacts"], frame_dt=res["frame_dt"],
         momentum=res["momentum"], plastic=res["plastic"],
+        release_grid=res["release_grid"], release_vel=res["release_vel"], settle=settle,
     )
     if verbose:
         print(f"saved {spec.out}")
         print(f"wall {res['wall_time']:.1f}s graph={res['graph']} frames={len(res['ke'])} "
               f"snapshots={[round(float(t), 4) for t in res['intermediate_times']]} "
               f"ke_final={res['ke'][-1]:.3e} ke_max={res['ke'].max():.3e} "
-              f"vmax_max={res['max_speed'].max():.2f} "
+              f"vmax_max={res['max_speed'].max():.2f} vmax_final={res['max_speed'][-1]:.4f} "
               f"contacts_max={res['contacts'].max()} contacts_final={res['contacts'][-1]} "
               f"nan={res['nan_time']} gpu_mem={mem_before}->{mem_after} MB")
+        if res["release_grid"] is not None:
+            print(f"settle: mode={res['settle_mode']} drag={res['drag']} t_force={res['t_force']:.3f} "
+                  f"t_end={res['t_end']:.3f} t_rest={res['t_rest']} "
+                  f"({res['rest_metric']} < {res['rest_vmax']}) self_mu={meta.get('self_contact_mu')} "
+                  f"edge_ke_eff={meta.get('edge_ke_effective'):.1f}")
         if res["plastic"] is not None:
             pl = res["plastic"]
             print(f"plastic: crease_total={pl['crease_total'][-1]:.3f} rad "

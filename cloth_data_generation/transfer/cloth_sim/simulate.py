@@ -59,6 +59,34 @@ class SimConfig:
     # substep). Results are kernel-for-kernel identical to eager launches.
     use_graph: bool = True
     device: str = "cuda:0"
+    # -- settling after the forces end (the still-image capture) ----------------
+    # The crumpling literature measures the sheet at rest, never mid-motion
+    # (Andrejevic & Rycroft 2021 solve the crumpled state quasistatically; Ren et
+    # al. 2018 / Chen et al. 2019 read the load off the permanent deformation after
+    # the dynamics have died). These knobs act only on frames after the last force
+    # ends; the loading phase is unchanged, so release states stay comparable with
+    # the capture-at-release datasets.
+    # "dynamic": free flight as before. "quasistatic": zero the velocities before
+    # every frame, which turns VBD's implicit Euler step into a damped energy
+    # minimisation (the overdamped limit, no inertia carried between frames).
+    settle_mode: str = "dynamic"
+    # Isotropic air drag during free flight (1/s): v *= exp(-drag * frame_dt) once
+    # per frame (Andrejevic & Rycroft's b_iso term). 0 = none.
+    drag: float = 0.0
+    # Rest criterion: stop the settle phase as soon as the max particle speed stays
+    # below rest_vmax (m/s) for rest_frames consecutive frames; t_capture is the cap.
+    # 0 = run to t_capture. In quasistatic mode the "speed" is the displacement of
+    # the last substep over its dt, i.e. a convergence measure of the minimisation.
+    rest_vmax: float = 0.0
+    rest_frames: int = 10
+    # which speed the criterion reads: "vmax" = fastest particle (strict; a single
+    # flickering contact can hold it up), "vrms" = sqrt(2 KE / M), the sheet's
+    # energy-weighted speed (smoke 2026-10-31: vrms settles monotonically, vmax does not)
+    rest_metric: str = "vrms"
+
+    # fields that vary per sample and do not change the solver / graph
+    PER_SAMPLE = ("t_capture", "capture_every", "n_snapshots", "settle_mode", "drag",
+                  "rest_vmax", "rest_frames", "rest_metric")
 
 
 def _host(arr) -> np.ndarray:
@@ -105,7 +133,8 @@ class SimSession:
                 self.hinges = PlasticHinges(model, sheet["plastic_yield_curvature"],
                                             min(meta["cell_x"], meta["cell_y"]),
                                             rate=sheet.get("plastic_rate", 1.0),
-                                            soften=sheet.get("plastic_soften", 1.0))
+                                            soften=sheet.get("plastic_soften", 1.0),
+                                            damage_gamma=sheet.get("plastic_damage_gamma", 0.0))
             # positions the model was built with (reset default)
             self.q0 = _host(model.particle_q).copy()
             # External force lives in a device buffer the (captured) frame copies
@@ -196,14 +225,21 @@ def run_simulation(model, forces: list[ForceParams], sim: SimConfig,
     """Step the model to t_capture; return grids, velocities, and per-frame log.
 
     Force activity is evaluated per frame (frame time < duration => active).
-    Snapshots (positions and velocities) are taken at k/n_snapshots of
-    t_capture; the final state is the last snapshot. Pass a ``session`` built
-    on the same model to skip the solver setup; it is reset (to ``q0`` if
-    given) before the run.
+    Snapshots (positions and velocities) are taken at k/n_snapshots of the
+    force window (the last one is the release state); the final state is the
+    capture. When t_capture is past the force window the frames in between are
+    the settle phase (``sim.settle_mode`` / ``drag`` / ``rest_vmax``), the
+    release state is returned separately as ``release_grid`` / ``release_vel``
+    and the run stops early once the rest criterion holds (``t_rest``). Pass a
+    ``session`` built on the same model to skip the solver setup; it is reset
+    (to ``q0`` if given) before the run.
     """
     nx, ny = meta["nx"], meta["ny"]
     frame_dt = 1.0 / sim.fps
     n_frames = int(round(sim.t_capture / frame_dt))
+    t_force = max(f.duration for f in forces)
+    n_force = min(int(round(t_force / frame_dt)), n_frames)
+    settling = n_frames > n_force
     if session is None:
         session = SimSession(model, meta, sim)
     elif session.model is not model:
@@ -221,10 +257,16 @@ def run_simulation(model, forces: list[ForceParams], sim: SimConfig,
     inter_times: list[float] = []
     dense: list[np.ndarray] = []
     dense_times: list[float] = []
-    # snapshot frames at k/n_snapshots of the run (the last is t_capture)
+    # snapshot frames at k/n_snapshots of the force window (the last is the
+    # release); without a settle phase that window is the whole run
     n_snap = max(int(sim.n_snapshots), 1)
-    keep = {int(round(k * n_frames / n_snap)) for k in range(1, n_snap + 1)}
-    keep.add(n_frames)
+    keep = {int(round(k * n_force / n_snap)) for k in range(1, n_snap + 1)}
+    keep.add(n_force)
+    keep.add(n_frames)  # the capture is always the last snapshot (loaders rely on it)
+    release_q = release_qd = None
+    t_rest = None
+    drag_factor = float(np.exp(-sim.drag * frame_dt)) if sim.drag > 0.0 else 1.0
+    still = 0
 
     with wp.ScopedDevice(sim.device):
         f_cache: np.ndarray | None = None
@@ -237,6 +279,9 @@ def run_simulation(model, forces: list[ForceParams], sim: SimConfig,
             if f_cache is None or not np.array_equal(f_np, f_cache):
                 session.f_buf.assign(f_np)  # once for a constant force
                 f_cache = f_np
+            if frame > n_force and sim.settle_mode == "quasistatic":
+                # overdamped relaxation: no inertia carried into this frame
+                session.bufs[session.cur].particle_qd.zero_()
             state = session.step_frame()
 
             q = _host(state.particle_q).astype(np.float64)
@@ -255,9 +300,22 @@ def run_simulation(model, forces: list[ForceParams], sim: SimConfig,
                 intermediates.append(q.reshape(ny, nx, 3).astype(np.float32))
                 inter_vels.append(qd.reshape(ny, nx, 3).astype(np.float32))
                 inter_times.append(t)
+            if frame == n_force and settling:
+                release_q = q.reshape(ny, nx, 3).astype(np.float32)
+                release_qd = qd.reshape(ny, nx, 3).astype(np.float32)
             if sim.capture_every > 0 and frame % sim.capture_every == 0:
                 dense.append(q.reshape(ny, nx, 3).astype(np.float32))
                 dense_times.append(t)
+            if frame > n_force:
+                if sim.drag > 0.0 and sim.settle_mode != "quasistatic":
+                    state.particle_qd.assign((qd * drag_factor).astype(np.float32))
+                if sim.rest_vmax > 0.0:
+                    v_crit = (speed.max() if sim.rest_metric == "vmax"
+                              else float(np.sqrt(2.0 * ke_log[-1] / masses.sum())))
+                    still = still + 1 if v_crit < sim.rest_vmax else 0
+                    if still >= max(int(sim.rest_frames), 1):
+                        t_rest = t
+                        break
         wall = time.time() - t0
 
         state = session.bufs[session.cur]
@@ -267,6 +325,16 @@ def run_simulation(model, forces: list[ForceParams], sim: SimConfig,
     return {
         "final_grid": final_q,
         "final_vel": final_qd,
+        # settle bookkeeping (release_* are None without a settle phase)
+        "release_grid": release_q,
+        "release_vel": release_qd,
+        "t_force": t_force,
+        "t_rest": t_rest,  # None = criterion not met before t_capture (or no criterion)
+        "t_end": (len(ke_log) * frame_dt) if nan_hit is None else nan_hit,
+        "settle_mode": sim.settle_mode,
+        "drag": sim.drag,
+        "rest_vmax": sim.rest_vmax,
+        "rest_metric": sim.rest_metric,
         "intermediate_grids": np.stack(intermediates).astype(np.float32),
         "intermediate_vels": np.stack(inter_vels).astype(np.float32),
         "intermediate_times": np.array(inter_times, dtype=np.float64),
@@ -291,5 +359,7 @@ def run_simulation(model, forces: list[ForceParams], sim: SimConfig,
             "edge_indices": _host(model.edge_indices).astype(np.int32),
             "crease_map": hinges.crease_map(nx, ny),
             "yield_angle": hinges.yield_angle,
+            "edge_damage": hinges.damage_array(),
+            "damage_gamma": hinges.gamma,
         },
     }

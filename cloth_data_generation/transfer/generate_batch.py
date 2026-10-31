@@ -34,11 +34,18 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 STRETCH_MAX = {"cloth": 2.0, "paper": 1.5}
 
 
-LOADINGS = ("free", "pusher")
+LOADINGS = ("free", "pusher", "scrunch")
 # log-uniform, N. free: 0.15-1.25 N since 2026-10-29 (constant-force model delivers the full
 # impulse; the 0.3-2.5 N range of ds768_night/ds256_free tore 1/3 of attempts at full impulse,
 # and at the legacy ~53% impulse it was equivalent to 0.16-1.3 N).
-MAG_RANGE = {"free": (np.log(0.15), np.log(1.25)), "pusher": (np.log(0.1), np.log(1.0))}
+# scrunch (rest-capture paper, 2026-10-31): the two patches push toward each other in zero-g,
+# so the sheet is compressed in plane and buckles into creases that survive the settle; with
+# free (uniform-sphere) directions at these magnitudes the paper mostly bends smoothly and
+# relaxes flat (4 of 6 test draws: zero yielded hinges; REPORT.md "Capture at rest").
+# 0.25 N of opposing push already creases (866 yielded hinges at 128), 2.5 N rests at
+# stretch ~1.05, so 0.2-2.0 N.
+MAG_RANGE = {"free": (np.log(0.15), np.log(1.25)), "pusher": (np.log(0.1), np.log(1.0)),
+             "scrunch": (np.log(0.2), np.log(2.0))}
 
 
 def sample_direction(rng: np.random.Generator, loading: str, u: float = 0.5, v: float = 0.5) -> np.ndarray:
@@ -100,7 +107,20 @@ def sample_forces(rng: np.random.Generator, res_scale: float = 1.0,
         pair = [f1, f2]
     if loading == "pusher":
         _pusher_pair(rng, pair[0], pair[1])
+    elif loading == "scrunch":
+        _scrunch_pair(rng, pair[0], pair[1])
     return pair
+
+
+def _scrunch_pair(rng: np.random.Generator, f1: dict, f2: dict) -> None:
+    """Zero-g scrunch: each patch pushes toward the other (+-30 deg heading jitter) with an
+    out-of-plane tilt of +-35 deg of either sign (no table to push against, so the tilt
+    seeds the fold direction). Opposing pushes compress the sheet in plane, which is
+    what makes paper crease (REPORT.md, "Capture at rest")."""
+    for a, b in ((f1, f2), (f2, f1)):
+        th = np.arctan2(b["v"] - a["v"], b["u"] - a["u"]) + np.deg2rad(rng.uniform(-30.0, 30.0))
+        ph = np.deg2rad(rng.uniform(-35.0, 35.0))
+        a["direction"] = [float(np.cos(ph) * np.cos(th)), float(np.cos(ph) * np.sin(th)), float(np.sin(ph))]
 
 
 _CACHE = None  # per-worker SessionCache (created lazily after fork)
@@ -230,8 +250,9 @@ def main() -> None:
     ap.add_argument("--material", choices=sorted(STRETCH_MAX), default="cloth",
                     help="sheet preset forwarded to generate_sample.py (paper = plastic creasing)")
     ap.add_argument("--loading", choices=LOADINGS, default="free",
-                    help="force-direction model: free (uniform sphere, original) or pusher "
-                         "(tangential push tilted into the sheet, what a bench rig applies)")
+                    help="force-direction model: free (uniform sphere, original), pusher "
+                         "(tangential push tilted into the sheet, what a bench rig applies) or "
+                         "scrunch (zero-g opposing pushes with +-35 deg tilt: compresses paper into creases)")
     ap.add_argument("--table", action="store_true",
                     help="bench scenario: gravity + ground plane (forwarded to generate_sample.py)")
     ap.add_argument("--ny", type=int, default=None, help="default: nx")

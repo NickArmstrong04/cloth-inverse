@@ -851,3 +851,36 @@ the `hidden` gap (9.4 -> ?); M19-c's `photo` row is the first end-to-end number 
 protocol with oracle correspondences. If M19-c helps on `photo` but hurts on `oracle`, a mixed
 split (clean + photo-like) is the next row. Each training job needs the transfer venv to have
 scipy (degrade_split, harmonic fill): `python -c "import scipy"` in the venv first.
+
+## Matrix M20: capture at rest, the still-image dataset (2026-10-31, branch photo-render)
+
+Why: a photo cannot show velocity, and the capture-at-release datasets put most of the impulse
+in velocity (M16-a 0.9 cm with it, 3.5 cm without). The crumpling literature measures the sheet
+at rest and reads the load off the permanent deformation (transfer/REPORT.md, "Capture at
+rest"). The generator now settles the sheet after the forces end (quasistatic or air drag, stop
+on the sheet's RMS speed, release state kept as `release_grid`) and the paper preset has
+resolution-consistent bending and optional graded crease damage. The settle parameters are
+fixed by the local sweep (`transfer/rest_sweep.py`, DATASETS.md "Rest capture sweep"); the rows
+below use `PROFILE=rest` of `cluster/paper.sh`, whose defaults are updated from that sweep.
+
+```
+S4=/home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_const_paper_splits
+S5=/home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_paper_rest_splits
+cd /home/naa79/scratch_pi_sz622/naa79/cloth-inverse && git fetch && git checkout photo-render && git pull
+cd cloth_data_generation/transfer
+```
+
+| id | job | status | what | command | result |
+|---|---|---|---|---|---|
+| J-007-devel | | planned | 4 rest-captured paper samples at 256 on gpu_devel: wall per sample (loading + settle), t_rest, QC pass | `PROFILE=rest bash cluster/paper.sh devel` then `PROFILE=rest bash cluster/paper.sh status` | |
+| J-007 | | planned (after devel) | `ds256_paper_rest`: 3000 slots at 256, same seeds as ds256_const / ds256_const_paper (slot-paired) | `PROFILE=rest bash cluster/paper.sh full`; when done `PROFILE=rest bash cluster/paper.sh merge` | |
+| M20-a | | planned (after J-007) | **the number this matrix is for**: M16-a recipe, positions only, on the rest state | `sbatch --job-name=M20a --mem=60G cluster/run.sbatch $S5 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --hybrid --no-vel --out runs/M20a` | |
+| M20-b | | planned | same recipe, positions only, paper at release (isolates the settle from the material; M17-b with velocities is 2.6 / 7.3 / 0.327) | `sbatch --job-name=M20b --mem=60G cluster/run.sbatch $S4 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --hybrid --no-vel --out runs/M20b` | |
+| M20-c | | planned (after J-007) | ceiling of the same files: release state with velocities (`--grid release`) | `sbatch --job-name=M20c --mem=60G cluster/run.sbatch $S5 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --hybrid --grid release --out runs/M20c` | |
+| M20-d | | planned (after J-007) | release state, positions only (same files as M20-a: the price of the settle alone) | `sbatch --job-name=M20d --mem=60G cluster/run.sbatch $S5 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --hybrid --no-vel --grid release --out runs/M20d` | |
+
+Reading guide: M20-a vs M20-d is what the settle costs or buys with positions only; M20-a vs
+M19-a (cloth at release, no-vel) is the material + protocol comparison for the photo track;
+M20-c is the velocity ceiling of the rest dataset. Expect duration to be the weakest field
+at rest (Ren 2018: 12% vs 2-3% for location and magnitude) and report the fraction of test
+samples whose rest state has fewer than 50 yielded hinges (no permanent record).

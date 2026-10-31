@@ -38,6 +38,23 @@ class SheetConfig:
     # Crease softening: a yielded hinge keeps only this fraction of edge_ke, so the
     # fold localizes into a sharp crease instead of a diffuse bend (1 = no softening).
     plastic_soften: float = 1.0
+    # Graded damage (Narain, Pfaff, O'Brien 2013): a hinge accumulates damage
+    # delta += excess / yield_angle each time it yields and keeps edge_ke / (1 + gamma *
+    # delta) of its stiffness, so the weakening grows with the crease rather than
+    # switching on at the first yield. gamma = 0 keeps the step softening above
+    # (datasets up to ds256_const_paper); > 0 supersedes it (paper: 1/2 in Narain 2013).
+    plastic_damage_gamma: float = 0.0
+    # Hinge stiffness consistent across resolutions: VBD's hinge energy is
+    # 0.5 * edge_ke * L * (theta - rest)^2, while a plate of bending modulus B has
+    # 0.5 * B * L / h_mean * (theta - rest)^2 per hinge (discrete shells), so edge_ke
+    # stands for B / h and must scale with 1 / cell. True = scale edge_ke by
+    # (cell at 128x128) / cell, so the 128-tuned presets mean the same sheet at 256
+    # (REPORT.md: without it 256 bends ~2x softer and creases more). False = legacy.
+    bend_scale_resolution: bool = False
+    # Self-contact friction coefficient (Newton model.soft_contact_mu, used by the VBD
+    # self-contact friction; IPC-style smoothed Coulomb). None = Newton default (0.5).
+    # Inter-layer friction is what holds a real crumpled sheet in shape (Habibi 2019).
+    self_contact_mu: float | None = None
     # Bench scenario: sheet resting on a table under gravity (the real-world setting the
     # inverse model is meant for). False = the original free-floating, zero-gravity sheet.
     table: bool = False
@@ -104,6 +121,10 @@ def build_sheet(cfg: SheetConfig, device: str = "cuda:0"):
     nx, ny = cfg.nx, cfg.ny
     cell_x, cell_y = particle_spacing(cfg)
     mass_p = cfg.mass_per_area * cfg.size_x * cfg.size_y / (nx * ny)
+    edge_ke = cfg.edge_ke
+    if cfg.bend_scale_resolution:
+        cell_ref = cfg.size_x / (128 - 1)  # the presets were tuned at 128x128
+        edge_ke = cfg.edge_ke * cell_ref / min(cell_x, cell_y)
 
     with wp.ScopedDevice(device):
         builder = newton.ModelBuilder()
@@ -124,7 +145,7 @@ def build_sheet(cfg: SheetConfig, device: str = "cuda:0"):
             tri_ke=cfg.tri_ke,
             tri_ka=cfg.tri_ka,
             tri_kd=cfg.tri_kd,
-            edge_ke=cfg.edge_ke,
+            edge_ke=edge_ke,
             edge_kd=cfg.edge_kd,
             particle_radius=cfg.particle_radius,
         )
@@ -133,6 +154,9 @@ def build_sheet(cfg: SheetConfig, device: str = "cuda:0"):
         model = builder.finalize()
         if cfg.contact_ke is not None:
             model.soft_contact_ke = cfg.contact_ke
+        if cfg.self_contact_mu is not None:
+            model.soft_contact_mu = cfg.self_contact_mu
+        self_contact_mu = float(model.soft_contact_mu)
         q_flat = model.particle_q.numpy().copy()
         q0 = initial_positions(cfg, q_flat, cfg.jitter_seed)
         if q0 is not q_flat:
@@ -144,6 +168,8 @@ def build_sheet(cfg: SheetConfig, device: str = "cuda:0"):
         "cell_x": cell_x,
         "cell_y": cell_y,
         "mass_per_particle": mass_p,
+        "edge_ke_effective": edge_ke,  # after bend_scale_resolution
+        "self_contact_mu": self_contact_mu,  # resolved (Newton default when None)
         "sheet": asdict(cfg),
         "q_flat": q_flat,  # unjittered rest positions (per-sample jitter: initial_positions)
     }

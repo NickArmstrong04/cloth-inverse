@@ -172,3 +172,84 @@ compaction is 0.77-0.94 with 125-977 sharp (>0.5 rad) crease edges per sample
 at 128. At 256 there are more creased edges (233-1289) because the existing
 pipeline does not scale edge_ke with resolution, so bending is effectively
 softer at higher resolution; this affects cloth equally.
+
+## Capture at rest: the still-image state (2026-10-31)
+
+Why: every `ds256_const*` sample is captured at the instant the force is released, when
+most of the impulse is still velocity. A photo cannot show velocity, and the best model's
+0.9 cm rests on it (3.5 cm without, photos README Phase A). The crumpling literature never
+reads a mid-motion state: Andrejevic & Rycroft (2021) solve the crumpled sheet
+quasistatically (0 = F, implicit DAE) and switch to dynamics only for snap-throughs;
+Ren et al. (2018) / Chen et al. (2019), the closest inverse problem to ours (load location,
+magnitude and duration from the permanent deformation of a beam / shell), run the dynamics
+for 50-100 s after a 10-30 ms impact so the network sees the "final stable deformation".
+What survives at rest is the plastic record: for an elastic sheet it is whatever friction
+locks in, for paper it is the creases (Gottesman et al. 2018: the crease network is a state
+variable set by the deepest compaction, not the history).
+
+What changed (loading phase untouched, so release states stay comparable):
+
+| knob | where | meaning |
+|---|---|---|
+| `--settle T` | existing | now the cap of the settle phase |
+| `--settle-mode dynamic|quasistatic` | `SimConfig.settle_mode` | quasistatic = velocities zeroed before every frame after the last force ends (overdamped relaxation) |
+| `--drag k` | `SimConfig.drag` | isotropic air drag in free flight, v *= exp(-k dt) per frame (Andrejevic's b_iso) |
+| `--rest-vmax v --rest-metric vrms|vmax --rest-frames n` | `SimConfig.rest_*` | stop once the sheet's RMS speed sqrt(2 KE / M) (or the fastest particle) stays below v for n frames; `t_rest` recorded |
+| `release_grid` / `release_vel` | h5 | the state at the end of the force window, stored next to `final_grid` (the rest state) |
+| `--self-mu` | `SheetConfig.self_contact_mu` | self-contact friction; Newton's VBD already applied `model.soft_contact_mu` = 0.5 to self-contact, now recorded in the meta (`self_contact_mu`) |
+| `--bend-scale-res` | `SheetConfig.bend_scale_resolution` | edge_ke x (128-grid cell / cell): VBD's hinge energy is 0.5 k L (theta - rest)^2 while a plate's is 0.5 B L / h_mean (theta - rest)^2 (discrete shells), so k stands for B / h and must scale with 1 / cell; fixes the "256 is softer" caveat above |
+| `--damage-gamma g` | `SheetConfig.plastic_damage_gamma` | Narain et al. 2013 graded weakening ke / (1 + g delta), delta += excess / yield per yield event, instead of the 10% step at first yield |
+| QC | `validate.qc_sample_h5` | stretch gate on max(release, rest): a tear at release relaxes at rest and would pass otherwise |
+
+Snapshots stay at fifths of the force window (the fifth one is the release) and the
+capture is appended, so loaders that take the last snapshot as the capture still work.
+The default path (`--settle 0`) is unchanged and bit-exact run to run (slot 0 of
+`smoke_paper_128` regenerated twice: max |dq| = 0); the stored smoke files differ from a
+regeneration only because they were made with the older preset (edge_ke 50, no softening).
+
+Smoke, slot 0 of `smoke_paper_128` (128, paper preset, settle cap 3 s, 21 s per run vs 3 s
+at release):
+
+| settle | vrms at 3.5 s [m/s] | plane RMS release -> rest [cm] | stretch release -> rest | crease total release -> rest [rad] |
+|---|---|---|---|---|
+| dynamic, no drag | 0.53 (still ringing) | 5.1 -> 1.5 | 1.56 -> 1.02 | 215 -> 298 -> 58 |
+| dynamic, drag 3/s | 0.002 | 5.1 -> 4.0 | 1.56 -> 1.00 | 215 -> 282 -> 150 |
+| quasistatic | 0.010 | 5.1 -> 5.2 | 1.56 -> 1.05 | 215 -> 226 |
+| quasistatic, gamma 0.5 | 0.019 | 4.6 -> 4.2 | 1.52 -> 1.01 | 48 -> 47 |
+| cloth, quasistatic | 0.026 | 4.1 -> 5.0 | 2.33 -> 1.14 | (elastic) |
+
+Readings: (1) **free flight erases the crease memory**: with perfect plasticity and no
+hardening the ringing sheet folds further (215 -> 298 rad) and then yields back as it
+unfolds (-> 58 rad); drag 3/s loses a third, the quasistatic settle keeps everything. A
+settle must be damped, and the capture-at-release choice of the current datasets was the
+right one for an undamped solver. (2) The membrane stretch relaxes to ~1.0 at rest (paper
+is near-inextensible; the 1.1-1.5 at release is VBD under-convergence under load, as the
+VBD paper warns for stiff materials with few iterations), while the out-of-plane
+deformation (plane RMS 4-5 cm) stays: the rest state is the crease pattern, as it should be.
+(3) The quasistatic mode converges only algebraically (vrms 0.16 -> 0.01 m/s over 3 s):
+velocities are zeroed per frame but build again over the 30 substeps, so it is a creeping
+relaxation; drag 3/s reaches vrms 0.003 at 3.3 s. The rest criterion therefore reads vrms
+(energy-weighted; vmax is held up by single contact flickers) and the drag is swept
+(3, 10, 30/s) against quasistatic in `rest_sweep.py`. (4) Graded damage at gamma 0.5 makes
+far fewer and weaker creases than the 10% step (47 vs 226 rad): the step is a much
+stronger weakening; gamma needs its own sweep (2 is in `rest_sweep.py`) before it
+replaces the preset. (5) Elastic cloth under a damped settle does not flatten within 3 s
+either (plane RMS 5 cm): self-contact friction 0.5 and the folds' local minima hold it; the
+sensitivity test decides whether that shape still encodes the force.
+
+`rest_sweep.py` (step 2 of the plan) runs these conditions on real force draws and adds
+the model-free identifiability test: finite differences of the rest grid and the release
+grid to each label of force 1 (magnitude x1.1, direction +5 deg, position +1 cm, duration
+x1.05), ratio rest / release = the fraction of the shape's sensitivity that survives the
+settle. Results: `cloth_results/DATASETS.md`, "Rest capture sweep".
+
+Sweep on real force draws and a magnitude ladder (DATASETS.md, "Rest capture sweep"): with
+the datasets' uniform-sphere directions at 0.15-0.55 N the paper does not crease at all (4 of
+6 draws: zero yielded hinges) and relaxes flat once damped; what creases paper is in-plane
+compression between the two patches, and then 0.25 N is already enough (175-290 sharp
+hinges, 3-5 cm of rest deformation, compaction 0.8). Hence `generate_batch.py --loading
+scrunch` (opposing pushes with +-35 deg tilt, 0.2-2 N) for the rest dataset, drag 10/s
+(rest in 2.2-3.3 s), yield 50 /m with the step softening (graded damage at gamma 2
+localised into a single grid line and let the sheet relax flat), and the QC stretch gate on
+the rest grid (the release stretch of 1.6-2.2 is VBD's elastic over-stretch under load, it
+relaxes to ~1.02; the release grid keeps an explosion guard at twice the limit).

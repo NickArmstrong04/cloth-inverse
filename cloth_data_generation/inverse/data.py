@@ -87,7 +87,7 @@ def delivered_magnitudes(fp: list[dict], final_vel: np.ndarray, sim_config: dict
 
 
 def load_split(root: str, split: str, pool: int = 1, cache: bool = True, snap: int | None = None,
-               label: str = "nominal") -> dict:
+               label: str = "nominal", grid: str = "final") -> dict:
     """Load a packaged split at full resolution (default) or block-averaged by
     ``pool``. The assembled tensors are cached next to the split as
     <split>_pool<k>.pt and reused when the file list is unchanged, so a 768
@@ -98,7 +98,9 @@ def load_split(root: str, split: str, pool: int = 1, cache: bool = True, snap: i
     carry snapshots when packaged with --test-keep-frames.
     ``label="delivered"`` (M16-f): the magnitude label is the one consistent with the delivered
     momentum (delivered_magnitudes, per-force least squares); ``"scaled"``: both nominal magnitudes
-    times the sample's delivered fraction |P| / |J_nominal| (robust single ratio)."""
+    times the sample's delivered fraction |P| / |J_nominal| (robust single ratio).
+    ``grid="release"`` (M20): read ``release_grid`` / ``release_vel`` (the state at the end of the
+    force window) instead of the capture; only rest-captured datasets store it."""
     files = sorted(glob.glob(os.path.join(root, split, "*.h5")))
     assert files, f"no files in {root}/{split}"
     manifest = os.path.join(root, "dataset_manifest.json")
@@ -108,7 +110,8 @@ def load_split(root: str, split: str, pool: int = 1, cache: bool = True, snap: i
         assert want == have, (f"{root}/{split} has {len(have)} files but the manifest lists {len(want)}: "
                               "packaging still in progress or incomplete; wait for package_splits.py to finish")
     names = [os.path.basename(f) for f in files]
-    tag = (f"_snap{snap}" if snap is not None else "") + (f"_{label}" if label != "nominal" else "")
+    tag = ((f"_snap{snap}" if snap is not None else "") + (f"_{label}" if label != "nominal" else "")
+           + (f"_{grid}" if grid != "final" else ""))
     cpath = os.path.join(root, f"{split}_pool{pool}{tag}.pt")
     if cache and os.path.exists(cpath):
         d = torch.load(cpath, weights_only=False, mmap=True)
@@ -127,6 +130,7 @@ def load_split(root: str, split: str, pool: int = 1, cache: bool = True, snap: i
             return d
     with h5py.File(files[0], "r") as h:
         ny, nx = h["final_grid"].shape[:2]
+        assert f"{grid}_grid" in h, f"{files[0]} has no '{grid}_grid' (only rest-captured datasets store the release state)"
         if snap is not None:
             assert "intermediate_vels" in h, (f"{files[0]} has no stored snapshots with velocities: --snap needs a "
                                               "constant-force dataset packaged with --test-keep-frames")
@@ -138,8 +142,8 @@ def load_split(root: str, split: str, pool: int = 1, cache: bool = True, snap: i
     A = torch.empty((len(files), 3, ny2, nx2), dtype=torch.float32)  # dense force-field target
     for i, p in enumerate(files):
         with h5py.File(p, "r") as h:
-            pos = h["final_grid"][()].astype(np.float32)  # (ny, nx, 3)
-            vel = h["final_vel"][()].astype(np.float32)
+            pos = h[f"{grid}_grid"][()].astype(np.float32)  # (ny, nx, 3)
+            vel = h[f"{grid}_vel"][()].astype(np.float32)
             fp = h["force_params"][()]
             fp = json.loads(fp.decode() if isinstance(fp, bytes) else fp)
             if snap is not None:

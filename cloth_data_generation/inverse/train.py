@@ -232,6 +232,9 @@ def main():
                     help="M16-b: two-snapshot input: append (x_final - x_snap)/dt and (v_final - v_snap)/dt (acceleration) "
                          "from the stored snapshot --snap-idx; needs velocities and a split packaged with --test-keep-frames")
     ap.add_argument("--snap-idx", type=int, default=-2, help="--snap: which stored snapshot (-2 = the one before the capture)")
+    ap.add_argument("--grid", choices=["final", "release"], default="final",
+                    help="M20: which stored state is the input: final (the capture; the rest state of a settled "
+                         "dataset) or release (end of the force window, only stored by rest-captured datasets)")
     ap.add_argument("--kabsch", action="store_true",
                     help="M16-d: canonicalise the pose before the network: Kabsch-align the material grid to the flat rest "
                          "grid (indexing gives the correspondence), rotate every input vector field into that frame and the "
@@ -286,6 +289,7 @@ def main():
                        + ("_hyb" if args.hybrid else "") + ("_rel" if args.intrinsic_rel else "") + ("_snap" if args.snap else "")
                        + ("_kabsch" if args.kabsch else "") + (f"_patch{args.patch_head}" if args.patch_head else "")
                        + (f"_{args.label}" if args.label != "nominal" else "")
+                       + (f"_{args.grid}" if args.grid != "final" else "")
                        + (f"_d{args.pt_dim}L{args.pt_layers}n{args.n_points}" if args.model == "pointtf" else "")
                        + ("_novel" if args.no_vel else "") + ("_evalrot" if args.eval_rotated else "") + ("_yaw" if args.yaw_only else "")
                        + ("_noaug" if args.no_aug else "") + ("_norot" if args.no_rot else ""))
@@ -296,7 +300,8 @@ def main():
     if dev.type == "cuda":
         print(f"device: {torch.cuda.get_device_name(0)} {torch.cuda.get_device_properties(0).total_memory / 1e9:.0f} GB", flush=True)
 
-    tr, va, te = (load_split(args.root, s, pool=args.pool, snap=args.snap_idx if args.snap else None, label=args.label)
+    tr, va, te = (load_split(args.root, s, pool=args.pool, snap=args.snap_idx if args.snap else None, label=args.label,
+                             grid=args.grid)
                   for s in ("train", "val", "test"))
     for split, d in (("train", tr), ("val", va), ("test", te)):  # a single non-finite sample makes the split loss NaN
         ok = (torch.isfinite(d["x"]).flatten(1).all(1) & torch.isfinite(d["g"]).all(1) & torch.isfinite(d["y"]).flatten(1).all(1))
