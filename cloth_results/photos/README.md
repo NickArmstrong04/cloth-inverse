@@ -209,3 +209,63 @@ depth; as a refinement on top of VGGT it buys ~10-15% and fixes nothing structur
 change the answer: a stiff (realistic) cloth in the simulator, which also matters for the data; a
 known-size cue or second view for scale; and dense correspondences from a non-repeating printed
 pattern (step 2). Hidden-vertex error stays at ~8 cm, as expected for the unseen half.
+
+## Where the depth error lives, and what fixes it (2026-10-31)
+
+Goal (Nick): improve the input a photo yields, keeping SAM as the gate; a predicted depth is
+acceptable, no depth would be better. Four experiments, all on the 55 lifted views unless stated
+(`inverse/depth_decomp.py`, `calib_template.py`, `lift_multi.py`, `lift_stereo.py`; results in
+`align/*.json` and `stereo/`).
+
+**1. The single-view VGGT error is four numbers per view.** Least-squares corrections of the VGGT
+depth against the oracle (the ceiling of any per-view calibration), median over views:
+
+| correction fitted per view | depth med abs err (cm) | p90 | point RMSE (cm) |
+|---|---|---|---|
+| scale only (today's `scale_to_oracle`) | 4.09 | 11.3 | 6.56 |
+| depth scale + offset (`a*d + b`) | 2.87 | 7.4 | 4.75 |
+| scale + offset + image-plane tilt (`+ c*x + d*y`) | 1.53 | 4.6 | 3.02 |
+| full 12-parameter 3D affine | 1.41 | 4.5 | 2.97 |
+
+So the lift is right up to a depth scale, an offset and a tilt; the non-linear residual is 1.5 cm
+(the oracle sheets deviate 3.5 cm median from their best plane, so the folds are reproduced).
+
+**2. The known template cannot supply those numbers.** `calib_template.py` fits only those 1, 2
+or 4 parameters from the isometry + bending energy on the 64x64 template (oracle correspondences,
+raw VGGT depth, no oracle scale): 1 dof 20 cm, 2 dof 9.3 cm, 4 dof 9.4 cm median visible-vertex
+error, vs 4.9 cm with the oracle scale and 7.3 cm with the closed-form "median edge ratio" scale.
+With the TRUE deformed edge lengths the 4-dof fit still lands at 6.2 cm. Reason: at 1 m, 1% of
+scale is 1 cm of depth, and the tilt perturbs projected edge lengths by more than 1%; on top of it
+the simulated cloth is 8% longer than its rest lengths (photos/README step 1), which alone is an
+8 cm scale bias for any known-size cue. The depth-free route is closed on this data.
+
+**3. Several random views together help a little.** VGGT fed all 3-4 random-SO(3) views of a
+sample: per-view-scaled depth error 3.1 cm (from 4.1), affine residual 2.1 (from 2.9), but the
+views do not share a consistent scale (9% log-std across views of one sample) because they are
+unrelated vantage points of a repetitive texture.
+
+**4. A stereo pair fixes the shape.** `photo.py --stereo DEG` renders a partner view with the
+camera swung by DEG about the sheet centre (a phone moved sideways; baseline 2 d sin(DEG/2),
+recorded per view). `lift_stereo.py` feeds the pair to VGGT and scores the base view (oracle-mask
+pixels, 24 pairs, cloth256 samples):
+
+| | depth med abs err (cm) | point RMSE (cm) |
+|---|---|---|
+| single view, oracle scale | 4.79 | 7.05 |
+| single view, + oracle depth/tilt correction | 1.87 | 3.49 |
+| stereo 10 deg (~20 cm baseline), oracle scale | 2.19 | 3.74 |
+| stereo 20 deg (~40 cm baseline), oracle scale | **1.22** | **3.10** |
+| stereo 20 deg, + oracle depth/tilt correction | 0.55 | 1.57 |
+| stereo 20 deg, scale from VGGT's predicted baseline vs the known one | 11.2 | 3.94 |
+
+The second view removes the tilt ramp (affine residual 0.75 cm) and halves the point RMSE; the
+remaining error is the scale. VGGT's own camera translation is 10% off (median, p90 25%), so a
+known baseline through VGGT is not yet a metric lift; the known sheet size on the stereo shape
+gives 3% at best (true edge lengths) and 8-9% with the flat template (the simulated stretch).
+
+Reading: the photo input should be a stereo pair plus SAM, and the scale must come from a
+measurement the model honours: a metric-capable Meta model that takes the known intrinsics and
+the known camera motion as inputs (MapAnything, `facebook/map-anything`, accepts `intrinsics`,
+`camera_poses` and `is_metric_scale`), or the phone's own pose track. Next: MapAnything on the
+stereo pairs with intrinsics + relative pose; SAM masks on the stereo sets; a stiff cloth in the
+simulator so the known-size cue can be validated at all.

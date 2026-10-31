@@ -273,6 +273,10 @@ def main():
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--limit", type=int, default=0, help="render only the first N files")
     ap.add_argument("--check", action="store_true", help="sanity renders of synthetic sheets")
+    ap.add_argument("--stereo", type=float, default=0.0,
+                    help="degrees: render a partner view for every view, the camera swung by this angle about "
+                         "the sheet centre around its own up axis (baseline 2 d sin(a/2), a phone moved sideways); "
+                         "partner of view k is view k + views, manifest/gt record `partner`")
     ap.add_argument("--gt", action="store_true",
                     help="also write <stem>_v<k>_gt.npz: oracle mask, metric depth, (u, v), visible vertices, "
                          "vertex pixels and the camera, for scoring SAM and packaging model inputs")
@@ -297,9 +301,20 @@ def main():
         grid = torch.from_numpy(grid_np).to(dev)
         c_world = grid_np.reshape(-1, 3).mean(0).astype(np.float32)  # sheet drift from its rest position (train g)
         R, d = sample_cameras(grid.reshape(-1, 3) - grid.reshape(-1, 3).mean(0), args.views)
+        nview = args.views
+        if args.stereo:
+            # partner camera: the scene rotated about the sheet centre (0, 0, -d) by the angle around
+            # the camera's y axis: p2 = Ry(a) (p - c) + c, i.e. R2 = Ry(a) R, same d
+            a = math.radians(args.stereo)
+            Ry = torch.tensor([[math.cos(a), 0, math.sin(a)], [0, 1, 0], [-math.sin(a), 0, math.cos(a)]],
+                              device=dev, dtype=R.dtype)
+            R = torch.cat([R, Ry[None] @ R]); d = torch.cat([d, d])
+            nview = 2 * args.views
         rgb, gt = photograph(grid, R, d, tex, args.size, args.fov, args.splat, args.bg)
         stem = os.path.splitext(os.path.basename(f))[0]
-        for k in range(args.views):
+        for k in range(nview):
+            partner = (k + args.views) % nview if args.stereo else -1
+            baseline = float(2 * d[k] * math.sin(math.radians(args.stereo) / 2)) if args.stereo else 0.0
             name = f"{stem}_v{k}.png"
             to_png(rgb[k], os.path.join(args.out, name))
             if args.gt:
@@ -308,18 +323,19 @@ def main():
                                     uv=gt["uv"][k].cpu().numpy(), vis=gt["vis"][k].cpu().numpy(),
                                     vpix=gt["vpix"][k].cpu().numpy().astype(np.int32),
                                     R=R[k].cpu().numpy(), d=float(d[k]), fov_deg=args.fov, size=args.size,
-                                    force_params=json.dumps(fp), material=material, centroid=c_world)
+                                    force_params=json.dumps(fp), material=material, centroid=c_world,
+                                    partner=partner, baseline=baseline)
             manifest["views"].append({"png": name, "h5": f, "material": material, "view": k,
-                                      "centroid": c_world.tolist(),
+                                      "centroid": c_world.tolist(), "partner": partner, "baseline": baseline,
                                       "R": R[k].tolist(), "d": float(d[k]),
                                       "visible_frac": float(gt["vis"][k].float().mean()),
                                       "mask_frac": float(gt["mask"][k].float().mean()),
                                       "force_params": fp})
-        print(f"{stem}: {args.views} views, visible {[round(v, 3) for v in gt['vis'].float().mean(1).tolist()]}, "
+        print(f"{stem}: {nview} views, visible {[round(v, 3) for v in gt['vis'].float().mean(1).tolist()]}, "
               f"drift |c| {np.linalg.norm(c_world) * 100:.0f} cm")
     with open(os.path.join(args.out, "manifest.json"), "w") as fh:
         json.dump(manifest, fh, indent=1)
-    print(f"{len(files)} samples x {args.views} views in {time.time() - t0:.1f}s -> {args.out}")
+    print(f"{len(files)} samples x {nview} views in {time.time() - t0:.1f}s -> {args.out}")
 
 
 if __name__ == "__main__":

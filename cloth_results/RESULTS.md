@@ -399,3 +399,15 @@ Root causes: the simulated cloth stretches 17% RMS (p95 42%, global) so the inex
 wrong, and the single-view problem is near-affine at this FOV. Verdict: the template refines VGGT by
 10-15%; it does not replace depth. Levers: a stiff cloth in the simulator (realism issue in its own
 right), a scale cue, a second view, and printed non-repeating texture for real correspondences.
+
+## Rung 4b: depth error decomposition and stereo (2026-10-31)
+
+The single-view VGGT error is a per-view depth scale, offset and tilt: fitting those four numbers
+to the oracle takes the median depth error from 4.1 to 1.5 cm, equal to the full affine ceiling
+(photos/README.md). The known template cannot supply them (4-dof template fit 9.4 cm; 6.2 cm even
+with the true edge lengths: 1% of scale is 1 cm at 1 m, and the simulated cloth is 8% stretched).
+A stereo pair with a 20 deg swing (`photo.py --stereo`, `lift_stereo.py`) fed to VGGT removes the
+tilt: 4.8 -> 1.2 cm median depth error at oracle scale, point RMSE 7.1 -> 3.1 cm; the residual is
+scale, and VGGT's predicted baseline is 10% off, so the metric step needs a model that takes the
+known intrinsics and camera motion (MapAnything, next) or the phone's pose. Protocol decision
+implied: two photos per capture, SAM on both.
