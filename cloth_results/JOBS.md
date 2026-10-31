@@ -699,12 +699,19 @@ R3M16f2, R3M16f3, R3M16b, R3M16h, R3M15a, M16g2). Re-sim 50, centred RMSE m, wit
 | M15-a (paper) | 0.0266 | 0.1181 | 0.22 | floor 0.0010 |
 | M16-h | 0.0225 | nan | nan | one chance simulation produced NaN; eval_resim now drops non-finite rows (`n_chance_failed`); pred 0.0225 puts it second |
 | M16-f / f2 | 0.0455 / 0.0435 | 0.1215 | 0.37 / 0.36 | predicted magnitudes are in delivered units (~8% of nominal), applied as nominal: not comparable |
-| M13-e / M16-d / M16-e / M16-f3 | 0.125-0.140 | 0.1304 / 0.1238 | 1.01-1.07 | **still at chance**: the repair was evidently not applied (their chance differs from the rung-1 runs' 0.1260, i.e. the saved "true" directions are still rotated) |
-| M16-g2 | selected pos 1.32 cm, mean-of-8 1.17, oracle 0.67 | | | selection among rotated-frame candidates is random; redo after the repair |
+| **M16-d** (Kabsch, rung 2) | **0.0243** | 0.1259 | **0.19** | after the frame repair (R4, job 31502437): the rung-2 model re-simulates like the rung-1 base (M13-b 0.0228) |
+| M13-e (intrinsic) | 0.0459 | 0.1259 | 0.36 | R4 31502436; first repair attempt refused (tolerance 0.01 deg vs 0.04 observed, 404 duplicated rows): fixed in 9761296 |
+| M16-e | 0.0481 | 0.1259 | 0.38 | R4 31502438 |
+| M16-f3 | 0.0585 | 0.1217 | 0.48 | R4 31502439 (delivered-unit magnitudes, see M16-f) |
+| M16-g2 | selected **0.84 cm / 15.3 deg**; mean-of-8 1.17 / 26.1; oracle-by-position 0.67 / 17.7 | | | R4 31502440, 111 min: **re-sim selection works**: it recovers 60% of the position gap to the oracle and beats the oracle's direction (the oracle is chosen by position only) |
+
+The first R4 submission (31502267-71) ran before the repair and was cancelled. Before the repair the
+same four runs scored 1.01-1.07 (chance 0.1304, the rotated "true" mean), the selection 1.32 cm.
 
 Floor on cloth remains < 1e-4 m for every run (the solver is deterministic to 1e-5 perturbations at
-256), 1e-3 m on paper. Ranking at rung 1 by re-sim agrees with the parameter metrics: hybrid, then
-base ~ patch ~ snapshot, then paper.
+256), 1e-3 m on paper. Ranking by re-sim agrees with the parameter metrics: hybrid (0.018), then
+base ~ Kabsch ~ patch ~ snapshot (0.023-0.025), paper (0.027), then the intrinsic models (0.046-0.059):
+re-sim punishes the intrinsic models' 14 deg direction error harder than the parameter tables do.
 
 Rung 2 redo: run `fix_rotated_preds.py` and check its output (it must print "saved frame = seeded
 rotation" for each run; it refuses and prints the reason otherwise), then re-sim the five:
@@ -740,6 +747,45 @@ sbatch --job-name=R4M16g2 cluster/resim.sbatch $S3 runs/M16g --limit 50 --k 8
 Next (M17, to submit after the round-3 re-sims): kabsch + hybrid (`--kabsch --eval-rotated --hybrid`,
 allowed in train.py since round 3: under Kabsch the model sees canonical directions, smoke-tested at 128), hybrid on
 paper (S4), kabsch + hybrid + flow for selection, and hybrid with delivered labels.
+
+## Matrix M17: the hybrid input everywhere it has not been (2026-10-31)
+
+M16 left one lever (hybrid) and one structural result (Kabsch canonicalisation). M17 combines them and
+carries the hybrid recipe to the paper data and to the flow head. All smoke-tested at 128 (Kabsch +
+hybrid, Kabsch + hybrid + flow with 4 candidates). H = `--hybrid --aux-w 1 --amp --tta 0 --epochs 300`.
+
+| id | job id | status | what | command | result |
+|---|---|---|---|---|---|
+| M17-a | | ready | **rung 2 = Kabsch + hybrid** (M16-d 1.9 / 6.0 / 0.38 -> M16-a's 1.0 / 4.3 / 0.156?) | `RESIM=50 sbatch --job-name=M17a --mem=60G cluster/run.sbatch $S3 --model cnn_reg --no-rot --kabsch --eval-rotated --hybrid --aux-w 1 --amp --tta 0 --epochs 300 --out runs/M17a` | |
+| M17-b | | ready | **hybrid on paper** (M15-a 3.2 / 6.8 / 0.36) | `RESIM=50 sbatch --job-name=M17b --mem=60G cluster/run.sbatch $S4 --model cnn_reg --no-rot --hybrid --aux-w 1 --amp --tta 0 --epochs 300 --out runs/M17b` | |
+| M17-c | | ready | Kabsch + hybrid + flow (8 candidates) for re-sim selection at rung 2 | `sbatch --job-name=M17c --mem=60G cluster/run.sbatch $S3 --model cnn_reg --no-rot --kabsch --eval-rotated --hybrid --flow --flow-k 8 --aux-w 1 --amp --tta 0 --epochs 300 --out runs/M17c` | |
+| M17-c2 | after M17-c | ready | re-sim selection among M17-c's candidates | `sbatch --job-name=M17c2 --dependency=afterok:<M17c id> cluster/resim.sbatch $S3 runs/M17c --limit 50 --k 8` | |
+| M17-d | | ready | hybrid + delivered labels (does the label gain of M16-f add to the hybrid's?) | `RESIM=50 sbatch --job-name=M17d --mem=60G cluster/run.sbatch $S3 --model cnn_reg --no-rot --hybrid --label delivered --aux-w 1 --amp --tta 0 --epochs 300 --out runs/M17d` | |
+| M17-e | | ready | hybrid + flow at rung 1 (selection on the best model; M16-a is the mean-prediction reference) | `sbatch --job-name=M17e --mem=60G cluster/run.sbatch $S3 --model cnn_reg --no-rot --hybrid --flow --flow-k 8 --aux-w 1 --amp --tta 0 --epochs 300 --out runs/M17e` | |
+| M17-e2 | after M17-e | ready | re-sim selection among M17-e's candidates | `sbatch --job-name=M17e2 --dependency=afterok:<M17e id> cluster/resim.sbatch $S3 runs/M17e --limit 50 --k 8` | |
+
+```bash
+cd /home/naa79/scratch_pi_sz622/naa79/cloth-inverse && git pull && cd cloth_data_generation/transfer
+D=/home/naa79/scratch_pi_sz622/naa79/cloth_data; S3=$D/ds256_const_splits; S4=$D/ds256_const_paper_splits
+RESIM=50 sbatch --job-name=M17a --mem=60G cluster/run.sbatch $S3 --model cnn_reg --no-rot --kabsch --eval-rotated --hybrid --aux-w 1 --amp --tta 0 --epochs 300 --out runs/M17a
+RESIM=50 sbatch --job-name=M17b --mem=60G cluster/run.sbatch $S4 --model cnn_reg --no-rot --hybrid --aux-w 1 --amp --tta 0 --epochs 300 --out runs/M17b
+C=$(sbatch --parsable --job-name=M17c --mem=60G cluster/run.sbatch $S3 --model cnn_reg --no-rot --kabsch --eval-rotated --hybrid --flow --flow-k 8 --aux-w 1 --amp --tta 0 --epochs 300 --out runs/M17c)
+sbatch --job-name=M17c2 --dependency=afterok:$C cluster/resim.sbatch $S3 runs/M17c --limit 50 --k 8
+RESIM=50 sbatch --job-name=M17d --mem=60G cluster/run.sbatch $S3 --model cnn_reg --no-rot --hybrid --label delivered --aux-w 1 --amp --tta 0 --epochs 300 --out runs/M17d
+E=$(sbatch --parsable --job-name=M17e --mem=60G cluster/run.sbatch $S3 --model cnn_reg --no-rot --hybrid --flow --flow-k 8 --aux-w 1 --amp --tta 0 --epochs 300 --out runs/M17e)
+sbatch --job-name=M17e2 --dependency=afterok:$E cluster/resim.sbatch $S3 runs/M17e --limit 50 --k 8
+echo "M17c=$C M17e=$E"; squeue -u $USER -o "%.10i %.14j %.8T %.10M %R"
+# when done (~1 h training + resim; the selections ~2 h after their training):
+bash cluster/collect.sh M17
+python3 cluster/summarize_runs.py "M17*" | grep -E "^run|test/"
+for r in M17c M17e; do python3 -c "import json; print('$r', json.load(open('../inverse/runs/$r/resim_select/resim_select.json'))['summary']['selected_metrics'])"; done
+cd ../inverse && ../transfer/.venv/bin/python impulse_report.py runs/M16a runs/M17a runs/M17b runs/M17d
+```
+
+Reading: M17-a at ~1 cm / ~4 deg / ~0.16 closes the ladder's rung 2 with a single model (no invariant
+features, no 1000 epochs). M17-b vs M15-a is whether the hybrid gain carries to the plastic material.
+M17-c2 / M17-e2 vs their mean predictions: how much re-sim selection adds on top of the best model.
+Note `--eval-rotated` with `--kabsch` saves predictions in the file frame since 20faf27, so no repair.
 
 ## Matrix M18: rung 4b on the photo packages (2026-10-30, branch photo-render)
 

@@ -273,23 +273,27 @@ Reading:
 
 Rung 1 = R1 recipe (M13-b: raw positions + velocities, cnn_reg + aux, 300 ep, `--no-rot`); rung 2 =
 unknown pose (`--eval-rotated`), R2 = intrinsic features, 1000 ep. Test mean position / direction,
-median relative force error, MAE in N over const MAE (the label-scale-free column), R2 on linear force.
-All ds256_const (2,300 train). Parameter metrics are final; re-sim scores are being re-run (above).
+median relative force error, MAE in N over const MAE (the label-scale-free column), R2 on linear force,
+and the re-simulation error of the predicted forces (50 test samples, centred RMSE in m; chance 0.126,
+floor < 1e-4). All ds256_const (2,300 train).
 
-| run | rung | change | pos cm | dir deg | force (rel) | MAE/const | R2 lin |
-|---|---|---|---|---|---|---|---|
-| M13-b | 1 | R1 base | 1.7 | 5.1 | 0.327 | 0.81 | 0.11 |
-| M16-a | 1 | + hybrid input | **1.0** | **4.3** | **0.156** | **0.44** | **0.70** |
-| M16-b | 1 | + two-snapshot input (acceleration channels) | 1.6 | 5.2 | 0.359 | 0.88 | -0.03 |
-| M16-c | 1 | + patch-conditioned magnitude head | 1.5 | 5.2 | 0.325 | 0.80 | 0.18 |
-| M16-h | 1 | hybrid + snapshot + patch head | 1.2 | 4.5 | 0.155 | 0.47 | 0.65 |
-| M16-f | 1 | R1, delivered-momentum labels | 1.9 | 4.8 | 0.125 | 0.71 | 0.29 |
-| M16-f2 | 1 | R1, scaled labels | 1.7 | 5.6 | 0.216 | 0.88 | 0.19 |
-| M13-e | 2 | R2 base (intrinsic) | 4.1 | 14.7 | 0.157 | 0.46 | 0.66 |
-| M16-d | 2 | **R1 + Kabsch canonicalisation**, 300 ep | **1.9** | **6.0** | 0.382 | 0.89 | -0.02 |
-| M16-e | 2 | R2 + local-frame relative position | 4.0 | 14.1 | 0.156 | 0.46 | 0.67 |
-| M16-f3 | 2 | R2, scaled labels | 3.8 | 13.9 | 0.129 | 0.50 | 0.48 |
-| M16-g | 2 | R2 + flow head, 8 candidates: mean-of-8 / best-of-8 | 4.0 / **0.65** | 15.9 / 18.5 | 0.25 | | |
+| run | rung | change | pos cm | dir deg | force (rel) | MAE/const | R2 lin | re-sim m |
+|---|---|---|---|---|---|---|---|---|
+| M13-b | 1 | R1 base | 1.7 | 5.1 | 0.327 | 0.81 | 0.11 | 0.023 |
+| M16-a | 1 | + hybrid input | **1.0** | **4.3** | **0.156** | **0.44** | **0.70** | **0.018** |
+| M16-b | 1 | + two-snapshot input (acceleration channels) | 1.6 | 5.2 | 0.359 | 0.88 | -0.03 | 0.025 |
+| M16-c | 1 | + patch-conditioned magnitude head | 1.5 | 5.2 | 0.325 | 0.80 | 0.18 | 0.024 |
+| M16-h | 1 | hybrid + snapshot + patch head | 1.2 | 4.5 | 0.155 | 0.47 | 0.65 | 0.023 |
+| M16-f | 1 | R1, delivered-momentum labels | 1.9 | 4.8 | 0.125 | 0.71 | 0.29 | (0.046) * |
+| M16-f2 | 1 | R1, scaled labels | 1.7 | 5.6 | 0.216 | 0.88 | 0.19 | (0.044) * |
+| M13-e | 2 | R2 base (intrinsic) | 4.1 | 14.7 | 0.157 | 0.46 | 0.66 | 0.046 |
+| M16-d | 2 | **R1 + Kabsch canonicalisation**, 300 ep | **1.9** | **6.0** | 0.382 | 0.89 | -0.02 | **0.024** |
+| M16-e | 2 | R2 + local-frame relative position | 4.0 | 14.1 | 0.156 | 0.46 | 0.67 | 0.048 |
+| M16-f3 | 2 | R2, scaled labels | 3.8 | 13.9 | 0.129 | 0.50 | 0.48 | (0.059) * |
+| M16-g | 2 | R2 + flow head, 8 candidates: mean-of-8 / best-of-8 | 4.0 / **0.65** | 15.9 / 18.5 | 0.25 | | | |
+| M16-g2 | 2 | re-sim selection among the 8 (50 samples): selected / mean-of-8 / oracle | **0.84** / 1.17 / 0.67 | **15.3** / 26.1 / 17.7 | 0.27 | | | |
+
+\* magnitudes in delivered units (~8% of nominal) applied as nominal force: not comparable.
 
 Reading:
 - **One lever did the magnitude work: the hybrid input.** Giving the encoder the raw standardised
@@ -309,10 +313,15 @@ Reading:
   nominal labels reaches 0.44. The scaled variant is worse, and the intrinsic model gains nothing from
   either. The solver's ~8% delivery is a dataset property worth fixing at generation time, not a
   modelling lever.
-- **The flow head's candidate set contains the answer for position** (best of 8: 0.65 cm against
-  4.0 cm for the mean, with the direction spread showing the candidates disagree about direction
-  rather than place). Whether the re-simulation can pick that candidate (M16-g2) is the open question
-  that the two re-sim fixes above make answerable.
+- **Re-simulation selection works.** The flow head's 8 candidates contain a 0.65 cm answer where the
+  mean candidate is 1.17 cm off; picking the candidate whose re-simulation best matches the observed
+  sheet gives 0.84 cm and 15.3 deg, i.e. 60% of the position gap to the oracle and a better direction
+  than the position-oracle itself. This is the first component that uses the simulator at test time,
+  and it pays on the weakest model (intrinsic, 4 cm mean prediction); M17 runs it on the best one.
+- **Re-sim agrees with the parameter metrics and adds one thing:** it ranks the intrinsic models
+  (0.046-0.048 m) well below the raw and Kabsch ones (0.023-0.025) although their force error is
+  better, because a 14 deg direction error moves the sheet more than a 0.2 relative magnitude error.
+  Direction is the field that matters physically; magnitude the least.
 
 ## Rung 4b, step 2: SAM 3 on synthetic photos (2026-10-30, branch photo-render)
 
