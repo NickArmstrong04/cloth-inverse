@@ -756,13 +756,13 @@ hybrid, Kabsch + hybrid + flow with 4 candidates). H = `--hybrid --aux-w 1 --amp
 
 | id | job id | status | what | command | result |
 |---|---|---|---|---|---|
-| M17-a | | ready | **rung 2 = Kabsch + hybrid** (M16-d 1.9 / 6.0 / 0.38 -> M16-a's 1.0 / 4.3 / 0.156?) | `RESIM=50 sbatch --job-name=M17a --mem=60G cluster/run.sbatch $S3 --model cnn_reg --no-rot --kabsch --eval-rotated --hybrid --aux-w 1 --amp --tta 0 --epochs 300 --out runs/M17a` | |
-| M17-b | | ready | **hybrid on paper** (M15-a 3.2 / 6.8 / 0.36) | `RESIM=50 sbatch --job-name=M17b --mem=60G cluster/run.sbatch $S4 --model cnn_reg --no-rot --hybrid --aux-w 1 --amp --tta 0 --epochs 300 --out runs/M17b` | |
-| M17-c | | ready | Kabsch + hybrid + flow (8 candidates) for re-sim selection at rung 2 | `sbatch --job-name=M17c --mem=60G cluster/run.sbatch $S3 --model cnn_reg --no-rot --kabsch --eval-rotated --hybrid --flow --flow-k 8 --aux-w 1 --amp --tta 0 --epochs 300 --out runs/M17c` | |
-| M17-c2 | after M17-c | ready | re-sim selection among M17-c's candidates | `sbatch --job-name=M17c2 --dependency=afterok:<M17c id> cluster/resim.sbatch $S3 runs/M17c --limit 50 --k 8` | |
-| M17-d | | ready | hybrid + delivered labels (does the label gain of M16-f add to the hybrid's?) | `RESIM=50 sbatch --job-name=M17d --mem=60G cluster/run.sbatch $S3 --model cnn_reg --no-rot --hybrid --label delivered --aux-w 1 --amp --tta 0 --epochs 300 --out runs/M17d` | |
-| M17-e | | ready | hybrid + flow at rung 1 (selection on the best model; M16-a is the mean-prediction reference) | `sbatch --job-name=M17e --mem=60G cluster/run.sbatch $S3 --model cnn_reg --no-rot --hybrid --flow --flow-k 8 --aux-w 1 --amp --tta 0 --epochs 300 --out runs/M17e` | |
-| M17-e2 | after M17-e | ready | re-sim selection among M17-e's candidates | `sbatch --job-name=M17e2 --dependency=afterok:<M17e id> cluster/resim.sbatch $S3 runs/M17e --limit 50 --k 8` | |
+| M17-a | 31539933 | queued 2026-10-31 | **rung 2 = Kabsch + hybrid** (M16-d 1.9 / 6.0 / 0.38 -> M16-a's 1.0 / 4.3 / 0.156?) | `RESIM=50 sbatch --job-name=M17a --mem=60G cluster/run.sbatch $S3 --model cnn_reg --no-rot --kabsch --eval-rotated --hybrid --aux-w 1 --amp --tta 0 --epochs 300 --out runs/M17a` | |
+| M17-b | 31539934 | queued 2026-10-31 | **hybrid on paper** (M15-a 3.2 / 6.8 / 0.36) | `RESIM=50 sbatch --job-name=M17b --mem=60G cluster/run.sbatch $S4 --model cnn_reg --no-rot --hybrid --aux-w 1 --amp --tta 0 --epochs 300 --out runs/M17b` | |
+| M17-c | 31539935 | queued 2026-10-31 | Kabsch + hybrid + flow (8 candidates) for re-sim selection at rung 2 | `sbatch --job-name=M17c --mem=60G cluster/run.sbatch $S3 --model cnn_reg --no-rot --kabsch --eval-rotated --hybrid --flow --flow-k 8 --aux-w 1 --amp --tta 0 --epochs 300 --out runs/M17c` | |
+| M17-c2 | 31539936 | queued (afterok M17-c) | re-sim selection among M17-c's candidates | `sbatch --job-name=M17c2 --dependency=afterok:<M17c id> cluster/resim.sbatch $S3 runs/M17c --limit 50 --k 8` | |
+| M17-d | 31539937 | queued 2026-10-31 | hybrid + delivered labels (does the label gain of M16-f add to the hybrid's?) | `RESIM=50 sbatch --job-name=M17d --mem=60G cluster/run.sbatch $S3 --model cnn_reg --no-rot --hybrid --label delivered --aux-w 1 --amp --tta 0 --epochs 300 --out runs/M17d` | |
+| M17-e | 31539938 | queued 2026-10-31 | hybrid + flow at rung 1 (selection on the best model; M16-a is the mean-prediction reference) | `sbatch --job-name=M17e --mem=60G cluster/run.sbatch $S3 --model cnn_reg --no-rot --hybrid --flow --flow-k 8 --aux-w 1 --amp --tta 0 --epochs 300 --out runs/M17e` | |
+| M17-e2 | 31539939 | queued (afterok M17-e) | re-sim selection among M17-e's candidates | `sbatch --job-name=M17e2 --dependency=afterok:<M17e id> cluster/resim.sbatch $S3 runs/M17e --limit 50 --k 8` | |
 
 ```bash
 cd /home/naa79/scratch_pi_sz622/naa79/cloth-inverse && git pull && cd cloth_data_generation/transfer
