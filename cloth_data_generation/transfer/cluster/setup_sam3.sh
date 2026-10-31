@@ -23,6 +23,11 @@ pip install -q pillow matplotlib einops pycocotools opencv-python-headless sciki
 VGGT=${3:-$HOME/vggt}
 [ -d "$VGGT" ] || git clone -q https://github.com/facebookresearch/vggt.git "$VGGT"
 pip install -q -e "$VGGT"
+# MapAnything (Meta, metric multi-view) for inverse/lift_mapanything.py; pulls numpy 2.x, which SAM 3 and
+# VGGT run fine with despite their numpy<2 pins (do not downgrade: scipy 1.18 needs numpy 2)
+MAPA=${4:-$HOME/map-anything}
+[ -d "$MAPA" ] || git clone -q https://github.com/facebookresearch/map-anything.git "$MAPA"
+pip install -q -e "$MAPA"
 python - <<'EOF'
 import torch, numpy, sam3, timm
 print("torch", torch.__version__, "cuda", torch.cuda.is_available(), "numpy", numpy.__version__, "timm", timm.__version__)

@@ -411,3 +411,14 @@ tilt: 4.8 -> 1.2 cm median depth error at oracle scale, point RMSE 7.1 -> 3.1 cm
 scale, and VGGT's predicted baseline is 10% off, so the metric step needs a model that takes the
 known intrinsics and camera motion (MapAnything, next) or the phone's pose. Protocol decision
 implied: two photos per capture, SAM on both.
+
+## Rung 4b: metric depth from two photos + SAM + known camera motion (2026-10-31)
+
+`lift_stereo.py`: VGGT on a 20 deg stereo pair gives the shape (1.2 cm median at oracle scale);
+the scale comes from the known relative camera pose by a 1-D photometric consistency search over
+VGGT's depth pair (window 1.4x around VGGT's own baseline, which is 10% off): scale error 0.6%
+median / 8.6% p90, metric depth error 1.42 cm median, point RMSE 3.19 cm inside the SAM mask with
+no oracle input (photos/README.md). 10 deg pairs: 1.78 cm. MapAnything with true intrinsics and
+pose: 19-24% scale error, shape no better than single-view VGGT; dropped. Capture protocol for
+rung 5: two photos ~20 deg apart with a known camera motion; a non-repeating print removes the
+remaining scale aliases.

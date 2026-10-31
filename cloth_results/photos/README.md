@@ -269,3 +269,48 @@ the known camera motion as inputs (MapAnything, `facebook/map-anything`, accepts
 `camera_poses` and `is_metric_scale`), or the phone's own pose track. Next: MapAnything on the
 stereo pairs with intrinsics + relative pose; SAM masks on the stereo sets; a stiff cloth in the
 simulator so the known-size cue can be validated at all.
+
+## Metric depth from two photos, SAM and the known camera motion (2026-10-31)
+
+Closing the scale gap above. Three things were tried on the 24 stereo pairs of each set, all
+scored on the base view inside the SAM "fabric" mask (SAM 3 on the stereo sets: median IoU
+0.986, 46/48 found per set; `stereo*/sam3/`):
+
+**MapAnything** (`inverse/lift_mapanything.py`, `facebook/map-anything`, installed into the SAM
+venv; numpy went to 2.5 and SAM 3 / VGGT run fine despite their `<2` pins). Shape at oracle scale
+4.0-4.8 cm median, i.e. no better than single-view VGGT and far from VGGT's stereo 1.2 cm; its
+metric scale from images alone is x5 off (a grey background and a 0.5 m sheet carry no scale
+cue), and with the true intrinsics AND the true relative pose as inputs it is still 19-24% off
+(median), worse than VGGT's own pose head. Not the tool for these renders (`stereo/mapanything.json`).
+
+**VGGT's own baseline**: 10% median scale error on 20 deg pairs, 16% on 10 deg (above).
+
+**Known motion against the depth pair** (`lift_stereo.py`, `scale_from_baseline`): VGGT's two
+depth maps are shape-correct up to one common scale, and the relative camera pose is known (a
+phone's pose track or a measured move), so the scale is the one value for which view 0's pixels,
+lifted and moved into camera 1 by the known transform, land on the same grey value in view 1
+(photometric; the depth-only version is degenerate on flat parts of the sheet and failed on a
+quarter of the pairs). A 1-D search within a factor 1.4 of VGGT's own baseline scale, because
+the repeating checker makes the photometric cost periodic in scale (aliases at +-55-65% caught
+19 of 48 pairs with an open search).
+
+| stereo20 (40 cm baseline), base view, SAM mask, 24 pairs | depth med abs err (cm) | p90 | point RMSE (cm) | scale err median / p90 |
+|---|---|---|---|---|
+| single view, oracle scale (reference) | 4.77 | | 7.02 | |
+| stereo, oracle scale (shape ceiling) | 1.21 | | 3.09 | |
+| stereo, VGGT's predicted baseline | 11.2 | | 3.93 | 10.3% / 25% |
+| **stereo, known motion + photometric scale, no oracle** | **1.42** | 8.9 | **3.19** | **0.6% / 8.6%** |
+
+stereo10 (20 cm baseline): 1.78 cm median, scale 0.6% / 14.8%. 20 of 24 pairs (19 of 24 at
+10 deg) land within 5% of the true scale; the misses are two pairs with no mask overlap after
+the transform (fallback to VGGT's baseline, 7-18% off) and one or two texture aliases inside the
+window (-36%, -22%). All inputs are photo-derived: two PNGs, SAM masks, intrinsics and relative
+pose. Packages `stereo*/views/<stem>_pts_stereo.npz` carry `scale_geo` (and `scale_baseline`,
+`scale_to_oracle` for reference).
+
+Reading: the input problem of rung 4b is solved to ~1.4 cm median / 3.2 cm RMSE with a capture
+protocol of two photos ~20 deg apart and a known camera motion. The residual is the stereo shape
+error (1.2 cm) plus scale noise; the aliases vanish with a non-repeating print (step 2 of the
+template work, needed for correspondences anyway). Next: package the stereo lift for
+`eval_views.py` (the models still need the drift feature, M18) and decide the capture protocol
+with Nick: fixed base camera + a second shot, or a phone pose track.
