@@ -824,6 +824,14 @@ photo-like copies of a packaged split (K random fixed-calibrated cameras, visibl
 a stereo-like depth error, hidden ones harmonic-filled, velocity zero); on the 16 test files it
 reproduces the real ladder (visibility only 9.2 / 23, measured noise 14.8 / 37). Train on those.
 
+Decision (Nick, 2026-10-31): velocities are out of the training input from here on, for every
+model on the photo track. They are a derivative of the force the model is asked to predict and a
+photo cannot show them, so M16-a's 0.9 cm rests on a cue the deployment will never have. Every
+M19 row carries `--no-vel` (positions only, g = drift only); the packaged data is unchanged, the
+loader drops the channels. M19-a is the clean-data number under this rule; it replaces M16-a as
+the reference for the photo work. The data generation stays as it is (constant force, capture at
+release): the velocity field exists in the files but is not used.
+
 ```
 S3=/home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_const_splits
 cd /home/naa79/scratch_pi_sz622/naa79/cloth-inverse && git fetch && git checkout photo-render && git pull
