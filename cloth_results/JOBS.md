@@ -814,3 +814,32 @@ top of the perception costs. If the oracle-package number is far from M9i's 8.5 
 photos from `ds256_free` test samples first (`photo.py --h5 <ds256_free splits>/test --gt`, then
 `segment.py`, `lift.py`, `package_views.py`) so the comparison is like for like.
 
+## Matrix M19: the photo-like input as training data (2026-10-31, branch photo-render)
+
+Why: Phase A (photos/README.md) fed the photo chain's grid to M16-a with oracle correspondences and
+priced each barrier on M16-a's own test files: no velocity 3.5 cm / 12 deg (from 0.9 / 4.8),
+hidden side harmonic-filled 9.4 / 25, stereo depth noise 17.5 / 44. The input side is at 2-4 cm
+of geometry; the gaps are what the model has never seen. `inverse/degrade_split.py` makes
+photo-like copies of a packaged split (K random fixed-calibrated cameras, visible vertices with
+a stereo-like depth error, hidden ones harmonic-filled, velocity zero); on the 16 test files it
+reproduces the real ladder (visibility only 9.2 / 23, measured noise 14.8 / 37). Train on those.
+
+```
+S3=/home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_const_splits
+cd /home/naa79/scratch_pi_sz622/naa79/cloth-inverse && git fetch && git checkout photo-render && git pull
+cd cloth_data_generation/transfer
+```
+
+| id | job | status | what | command | result |
+|---|---|---|---|---|---|
+| M19-deg | | planned | photo-like copies of $S3: 2 views per sample, measured stereo noise (`${S3}_photo`) and visibility only (`${S3}_vis`); ~15 min each on a GPU node | `sbatch --job-name=deg cluster/degrade.sbatch $S3 ${S3}_photo --views 2 --noise measured; sbatch --job-name=degv cluster/degrade.sbatch $S3 ${S3}_vis --views 2 --noise none` | |
+| M19-a | | planned | velocity-free baseline on the clean split: M16-a's recipe + `--no-vel` (prices the velocity dependence at training time) | `sbatch --job-name=M19a --mem=60G cluster/run.sbatch $S3 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --hybrid --no-vel --out runs/M19a` | |
+| M19-b | | planned (after M19-deg) | same recipe on the visibility-only copies (hidden side filled, exact visible vertices) | `sbatch --job-name=M19b --mem=60G cluster/run.sbatch ${S3}_vis --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --hybrid --no-vel --out runs/M19b` | |
+| M19-c | | planned (after M19-deg) | same recipe on the photo-like copies (visibility + measured stereo noise): the model that should eat the real photo grid | `sbatch --job-name=M19c --mem=60G cluster/run.sbatch ${S3}_photo --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --hybrid --no-vel --out runs/M19c` | |
+| M19-eval | local | planned | copy `runs/M19{a,b,c}/model.pt` to the workstation (PowerShell scp, as for M16a) and score them like for like on the REAL photo ladder of the same 16 test samples | `eval_grid.py --run runs/M19c --npz ../../cloth_results/photos/stereo20_test/grids` (rows oracle/novel/hidden/stereo/photo; the `photo` row is the number) | |
+
+Reading guide: M19-a's `novel`-row score is the velocity-free ceiling; M19-b should close most of
+the `hidden` gap (9.4 -> ?); M19-c's `photo` row is the first end-to-end number of the photo
+protocol with oracle correspondences. If M19-c helps on `photo` but hurts on `oracle`, a mixed
+split (clean + photo-like) is the next row. Each training job needs the transfer venv to have
+scipy (degrade_split, harmonic fill): `python -c "import scipy"` in the venv first.
