@@ -149,17 +149,23 @@ function ForceArrow({
   impulse,
   color,
   opacity,
+  incoming = false,
 }: {
   at: THREE.Vector3;
   dir: [number, number, number];
   impulse: number;
   color: string;
   opacity: number;
+  /** Head on the anchor, tail back along -dir: a push arriving at the dot. */
+  incoming?: boolean;
 }) {
   const d = useMemo(() => new THREE.Vector3(...dir).normalize(), [dir]);
   const len = Math.max(0.03, 0.34 * impulse);
   const quat = useMemo(() => new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), d), [d]);
-  const pos = useMemo(() => at.clone().addScaledVector(d, 0.004), [at, d]);
+  const pos = useMemo(
+    () => at.clone().addScaledVector(d, incoming ? -(len + 0.009) : 0.004),
+    [at, d, incoming, len],
+  );
   const shaftLen = len * 0.72;
   const headLen = len * 0.28;
   return (
@@ -198,7 +204,7 @@ export function SceneView({
   frames: Float32Array | null;
   frame: number;
   stage: Stage;
-  placed: PlacedForce[];
+  placed: boolean[];
   allForms: PlacedForce[];
   result: { predicted: ForceEx[]; reversal: ForceEx[]; showPred: boolean; showRev: boolean } | null;
   onPlace: (u: number, v: number) => void;
@@ -207,10 +213,21 @@ export function SceneView({
 }) {
   const last = frames ? 29 : 0;
   const markers = useMemo(
-    () => placed.map((f) => anchorOf(frames, 0, f.u, f.v)),
+    () => allForms.map((f, k) => (placed[k] ? { at: anchorOf(frames, 0, f.u, f.v), color: ACCENTS[k % 2] } : null)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [placed, frames === null],
+    [allForms, placed, frames === null],
   );
+  // Before a result: one arrow per placed push arriving at its marker, length
+  // proportional to the impulse (magnitude x duration), so the chosen angle
+  // and strength are visible while the sliders move.
+  const previewArrows = useMemo(() => {
+    if (result) return [];
+    return allForms.map((f, k) =>
+      placed[k]
+        ? { at: anchorOf(null, 0, f.u, f.v), dir: f.direction, impulse: f.magnitude * f.duration, color: ACCENTS[k % 2], opacity: 0.95 }
+        : null,
+    );
+  }, [result, allForms, placed]);
   const arrows = useMemo(() => {
     if (!result) return [];
     const items: { at: THREE.Vector3; dir: [number, number, number]; impulse: number; color: string; opacity: number }[] = [];
@@ -244,9 +261,8 @@ export function SceneView({
       <directionalLight position={[0.6, -0.4, 0.9]} intensity={1.6} />
       <directionalLight position={[-0.5, 0.5, -0.6]} intensity={0.35} />
       <SheetMesh frames={frames} frame={frame} stage={stage} onPlace={onPlace} />
-      {markers.map((m, k) => (
-        <Marker key={k} at={m} color={ACCENTS[k % 2]} />
-      ))}
+      {markers.map((m, k) => m && <Marker key={k} at={m.at} color={m.color} />)}
+      {previewArrows.map((a, k) => a && <ForceArrow key={`v${k}`} {...a} incoming />)}
       {trueArrows.map((a, k) => (
         <ForceArrow key={`t${k}`} {...a} />
       ))}

@@ -184,7 +184,7 @@ export default function App() {
           frames={frames}
           frame={frame}
           stage={stage}
-          placed={forms.filter((_, k) => placed[k])}
+          placed={placed}
           allForms={forms}
           result={result ? { predicted: result.predicted_forces, reversal: result.reversal_forces, showPred, showRev } : null}
           onPlace={onPlace}
