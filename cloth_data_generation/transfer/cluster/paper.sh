@@ -64,10 +64,12 @@ REST_METRIC="${REST_METRIC:-vrms}"
 # rest-captured 256 sample takes ~220 s, so 50 of them need ~3.5 h plus retries. A task that
 # times out is resumed by re-running `full` (only tasks with missing slots are submitted).
 if [ "$PROFILE" = "rest" ]; then
-  TIME="${TIME:-05:00:00}"
-  # Per-task memory: J-007 (2026-10-31) was OOM-killed at cluster.env's 12G in every task, during
-  # the first sample too (2 workers x a 256 rest sample peaks above 12 GB host RAM).
-  MEM="${MEM:-48G}"
+  # ~2 h expected (median attempt 113 s x ~2.6 attempts x 50 slots / 2 workers, J-007 first
+  # pass 2026-10-31); 3 h leaves headroom and backfills sooner than 5 h; timeouts resume.
+  TIME="${TIME:-03:00:00}"
+  # Per-task memory: measured MaxRSS ~1.9 GB (2 workers). J-007's OOM kills at 12G and 48G were
+  # the piercing-QC spatial hash on NaN/exploded grids (fixed in cloth_sim/validate.py), not size.
+  MEM="${MEM:-8G}"
 else
   TIME="${TIME:-$(grep '^TIME=' cluster/cluster.env | cut -d= -f2 | cut -d' ' -f1)}"
 fi

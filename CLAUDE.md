@@ -45,6 +45,10 @@ checkpoints or `runs/`.
 - **Training** is one GPU per config: `sbatch cluster/run.sbatch <splits> <train.py flags>
   --out runs/<id>`; results in `metrics.json`; `cluster/summarize_runs.py`, `cluster/jobs.sh`
   for status. Nick wants several experiments queued in parallel, not one at a time.
+- **Request only what a job needs, especially wall time** (Nick, 2026-10-31): a test or check
+  that should take ~5 min gets `--time=00:05:00`, not a template's 1-2 h default, so it
+  backfills and starts sooner. Size production `TIME`/`MEM` from measured sacct
+  Elapsed/MaxRSS plus modest headroom.
 - **Every cluster job gets a row in `cloth_results/JOBS.md`** (id, Slurm id, status, why,
   command, result), grouped in matrices (M1 ... M20, J-00x for datasets). Update the status
   column from `squeue`/`jobs.sh` output. Findings go to `RESULTS.md` (models) and
