@@ -63,7 +63,11 @@ def perturb_depth(depth_v: np.ndarray, vpix: np.ndarray, size: int, fov: float, 
 def degrade_file(src: str, dst_stem: str, out_dir: str, K: int, size: int, fov: float, p: dict, rng, dev):
     with h5py.File(src, "r") as h:
         pos = h["final_grid"][()].astype(np.float32)
-        extra = {k: h[k][()] for k in h.keys() if k not in ("final_grid", "final_vel")}
+        # labels/config only: groups and the stored snapshots (full train files, 16 MB) are not
+        # needed to train on the photo-like grid, and release_* would be an undegraded leak
+        extra = {k: h[k][()] for k in h.keys()
+                 if k not in ("final_grid", "final_vel") and isinstance(h[k], h5py.Dataset)
+                 and not k.startswith(("intermediate_", "release_"))}
         attrs = dict(h.attrs)
     ny, nx = pos.shape[:2]
     c = pos.reshape(-1, 3).mean(0).astype(np.float32)
