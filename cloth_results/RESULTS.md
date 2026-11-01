@@ -396,6 +396,30 @@ Reading:
   loading, so only indicative). Finishing J-007 adds ~45 samples; a useful M20-a number needs the
   full set or a second batch.
 
+### M20 on the full J-008 set: 912 samples (2026-11-01)
+
+`ds256_paper_rest_splits` repackaged after J-008 (all 2000 slots, 912 pass; 730 / 91 / 91, split
+seed 7, so the test set differs from the 380 read above). Same recipe and flags; 4.5-8 min per run.
+Test means (pos median in brackets), 91 test samples.
+
+| run | input | pos cm | dir deg | mag rel (median) | dur s | impulse rel |
+|---|---|---|---|---|---|---|
+| chance (train mean) | - | 15.4 | 46.4 | 0.58 (0.52) | 0.094 | 0.65 |
+| ridge on hand features | rest state, positions | 6.5 | 16.6 | 0.61 (0.51) | 0.061 | 0.67 |
+| **M20-a2** | **rest state, positions** | **4.2 (3.7)** | **8.1** | 0.61 (0.49) | 0.040 | 0.62 |
+| M20-d2 | release state, positions | 2.6 (2.0) | 7.1 | 0.66 (0.47) | 0.019 | 0.65 |
+| M20-c2 | release state, positions + velocities | 2.3 (2.0) | 6.8 | 0.61 (0.43) | 0.020 | 0.61 |
+
+Reading (380 -> 912 samples):
+- **2.4x the data took the photo-input model from 5.8 cm / 10.8 deg to 4.2 cm / 8.1 deg**, and
+  duration from 0.066 to 0.040 s. Every field except magnitude improved in every run, so the
+  curve is still steep: more rest samples remain the cheapest gain.
+- **The settle still costs ~1.6 cm and ~1 deg** (M20-a2 vs M20-d2), down from 2.4 cm / 2 deg.
+- **Velocities at release are worth ~0.3 cm** (M20-c2 vs M20-d2), small, as before.
+- **Magnitude is still at chance** (means 0.61-0.66 vs 0.58; medians 0.43-0.49 vs 0.52). More
+  data does not fix it; it needs a label or physics change (the VBD velocity clamp delivers ~8%
+  of nominal impulse, CLAUDE.md), not volume.
+
 ## Rung 4b, step 2: SAM 3 on synthetic photos (2026-10-30, branch photo-render)
 
 Synthetic photos of 12 cloth + 2 paper 256-grid samples, 4 random pinhole views each
