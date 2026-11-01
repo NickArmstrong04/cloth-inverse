@@ -879,12 +879,12 @@ cd cloth_data_generation/transfer
 | M20-b | 31618050 | done 2026-11-01 (14m30s, MaxRSS 8.0 GB) | `sbatch --job-name=M20b --mem=60G cluster/run.sbatch $S4 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --hybrid --no-vel --out runs/M20b` | pos 3.3 (2.5) cm / dir 8.2 deg / mag rel 0.55 / dur 0.028 s / impulse rel 0.56 / 0.23 N (M17-b same data with velocities: 2.6 / 7.3 / 0.48) |
 | M20-c | 31618411 | done 2026-11-01 (31619176, 3m39s, MaxRSS 4.3 GB; 31618411 failed: test files had no release_grid, package_splits fixed in 377243f) | `sbatch --job-name=M20c --mem=60G cluster/run.sbatch $S5 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --hybrid --grid release --out runs/M20c` | pos 3.6 (3.2) cm / dir 8.9 deg / mag rel 0.59 / dur 0.030 s / impulse rel 0.58 |
 | M20-d | 31618412 | done 2026-11-01 (31619177, 3m27s, MaxRSS 4.0 GB; 31618412 failed: same) | `sbatch --job-name=M20d --mem=60G cluster/run.sbatch $S5 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --hybrid --no-vel --grid release --out runs/M20d` | pos 3.4 (3.4) cm / dir 8.9 deg / mag rel 0.54 / dur 0.033 s / impulse rel 0.55 |
-| M20-a2 | 31652809 | queued 2026-11-01 (after merge 31652808) | M20-a on the J-008 merge (912 samples, S5 repackaged): `sbatch --dependency=afterok:31652808 --job-name=M20a2 --mem=24G --time=00:30:00 cluster/run.sbatch $S5 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --hybrid --no-vel --out runs/M20a2` | |
-| M20-c2 | 31652810 | queued 2026-11-01 | M20-c on the 912 set, same flags + `--grid release --out runs/M20c2` | |
-| M20-d2 | 31652811 | queued 2026-11-01 | M20-d on the 912 set, `--no-vel --grid release --out runs/M20d2` | |
+| M20-a2 | 31652809 | done 2026-11-01 (4m34s, MaxRSS 10.1 GB; merge 31652808 -> 730/91/91) | M20-a on the J-008 merge (912 samples, S5 repackaged): `sbatch --dependency=afterok:31652808 --job-name=M20a2 --mem=24G --time=00:30:00 cluster/run.sbatch $S5 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --hybrid --no-vel --out runs/M20a2` | pos 4.2 (3.7) cm / dir 8.1 deg / mag rel 0.61 / dur 0.040 s / impulse rel 0.62 (91 test) |
+| M20-c2 | 31652810 | done 2026-11-01 (8m13s, MaxRSS 9.0 GB) | M20-c on the 912 set, same flags + `--grid release --out runs/M20c2` | pos 2.3 (2.0) cm / dir 6.8 deg / mag rel 0.61 / dur 0.020 s / impulse rel 0.61 |
+| M20-d2 | 31652811 | done 2026-11-01 (7m51s, MaxRSS 7.8 GB) | M20-d on the 912 set, `--no-vel --grid release --out runs/M20d2` | pos 2.6 (2.0) cm / dir 7.1 deg / mag rel 0.66 / dur 0.019 s / impulse rel 0.65 |
 
 Chance on the rest set (31619178, `baselines.py`, train mean): 16.7 cm / 50.3 deg / mag 0.53 / dur 0.105 s; ridge 8.3 / 22.0. Results and reading: RESULTS.md "M20".
-Chance on the 912 set: 31652812 (`baselines.py --out runs/M20_baselines2`), pending.
+Chance on the 912 set: 31652812 (`baselines.py --out runs/M20_baselines2`, 15 s): chance 15.4 cm / 46.4 deg / mag 0.58 / dur 0.094 s; ridge 6.5 / 16.6. Reading: RESULTS.md "M20 on the full J-008 set".
 
 Reading guide: M20-a vs M20-d is what the settle costs or buys with positions only; M20-a vs
 M19-a (cloth at release, no-vel) is the material + protocol comparison for the photo track;
