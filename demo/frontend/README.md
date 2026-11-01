@@ -22,5 +22,7 @@ npm run build   # tsc + vite build -> dist/
 
 Deploy (Nick): `vercel` from `demo/frontend/`, or import the repo in the
 Vercel dashboard with root directory `demo/frontend`. Set the
-`VITE_API_URL` environment variable to the Modal https URL from step 3,
+`VITE_API_URL` environment variable to the Modal https URL from step 3
+(production: `https://nicka238340--cloth-demo-web.us-east.modal.run`, set on
+the Vercel project; live site `https://cloth-inverse.vercel.app`),
 then redeploy. `vercel.json` holds the SPA fallback.
