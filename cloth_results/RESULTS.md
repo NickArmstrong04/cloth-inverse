@@ -420,6 +420,28 @@ Reading (380 -> 912 samples):
   data does not fix it; it needs a label or physics change (the VBD velocity clamp delivers ~8%
   of nominal impulse, CLAUDE.md), not volume.
 
+### M20-a2 on photo-like input (2026-11-01)
+
+The 91 test sheets put through `degrade_split.py` (Phase C stand-in for the photo chain: 2 random
+calibrated views per sheet, each scored separately; visible vertices kept, hidden ones harmonically
+filled; visible fraction 0.36 per view). `measured` noise = the depth error of `lift_stereo.py` on
+32 real pairs (2.3 cm on visible vertices). SAM 3 / VGGT themselves are not installed on Bouchet,
+so this is the calibrated proxy, not a re-run of the real chain. `eval_grid.py`, job 31654476.
+
+| input to M20-a2 | n | pos cm (median) | dir deg (median) | mag rel |
+|---|---|---|---|---|
+| clean rest grid (= metrics.json, sanity) | 91 | 4.2 (3.8) | 8.1 (7.1) | 0.62 |
+| one view: visibility + fill, exact depth | 182 | 11.7 (11.0) | 23.5 (18.3) | 0.75 |
+| one view: visibility + fill + measured stereo noise | 182 | 14.4 (13.4) | 38.4 (33.8) | 0.68 |
+| chance (train mean) | 91 | 15.4 | 46.4 | 0.58 |
+
+Reading: **from a photo-like input the clean-grid model is near chance** (14.4 cm vs 15.4,
+38 deg vs 46). Two thirds of the sheet is hidden in one view and the fill alone costs 7.5 cm /
+15 deg; the stereo noise then takes direction most of the way back to chance. The model has
+never seen a filled or noisy grid, so the next step is the M19-c recipe on this set: train on
+photo-like copies of the 730 training sheets (`degrade.sbatch` on the splits, then
+`run.sbatch ..._photo`), and/or fuse the two views into one grid before the fill.
+
 ## Rung 4b, step 2: SAM 3 on synthetic photos (2026-10-30, branch photo-render)
 
 Synthetic photos of 12 cloth + 2 paper 256-grid samples, 4 random pinhole views each
