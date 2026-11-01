@@ -442,6 +442,36 @@ never seen a filled or noisy grid, so the next step is the M19-c recipe on this 
 photo-like copies of the 730 training sheets (`degrade.sbatch` on the splits, then
 `run.sbatch ..._photo`), and/or fuse the two views into one grid before the fill.
 
+### M20-e: trained on photo-like copies (2026-11-01)
+
+M19-c recipe on the rest set: `degrade_split.py` on all of S5 (2 views per sheet, measured stereo
+noise; 1460 / 182 / 182 grids, 6.7 GB, 5.7 min), M20-a2 flags (`--hybrid --no-vel`, 300 epochs,
+16 min, 16 GB). Scored with `eval_grid.py` on the same inputs as M20-a2 above (train and test
+sheets disjoint: copies made per split).
+
+| test input | M20-a2 (clean-trained) | **M20-e (photo-trained)** |
+|---|---|---|
+| clean rest grid | 4.2 cm / 8.1 deg | 6.0 / 10.2 |
+| one view, visibility + fill | 11.7 / 23.5 | 6.6 / 12.2 |
+| **one view, visibility + fill + measured stereo noise** | 14.4 / 38.4 | **5.9 (med 5.5) / 11.0** |
+| M20-e's own photo test split (different camera draws) | | 5.7 / 10.4 |
+
+Magnitude 0.60-0.62 everywhere (chance 0.58); duration 0.059 s on its own test (M20-a2 clean
+0.040, chance 0.094).
+
+Reading:
+- **Training on photo-like grids recovers almost all of the clean accuracy from one simulated
+  photo**: 5.9 cm / 11 deg against 4.2 / 8.1 on the perfect grid, from 14.4 / 38 for the
+  clean-trained model. With a third of the sheet visible the fill is learned, not fatal.
+- The photo-trained model is ~1.8 cm / 2 deg worse on clean grids and does not prefer exact
+  depth (vis-only 6.6 vs noisy 5.9): it is tuned to the input it was trained on. Mixing clean and
+  degraded copies would cover both.
+- This is the calibrated proxy of the chain (renderer visibility + lift_stereo's measured error),
+  not SAM 3 / VGGT on real pixels; the next check of the claim is `eval_grid.py --run runs/M20e`
+  on `grid_from_views.py` output from rendered rest-state photos (WSL, where SAM 3 / VGGT live).
+- Next levers: fuse the two views before the fill (doubles visible area), more rest data (the
+  clean curve was still steep at 912), magnitude still needs a label/physics change.
+
 ## Rung 4b, step 2: SAM 3 on synthetic photos (2026-10-30, branch photo-render)
 
 Synthetic photos of 12 cloth + 2 paper 256-grid samples, 4 random pinhole views each
