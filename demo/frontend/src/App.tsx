@@ -23,9 +23,15 @@ function sep(a: ForceForm, b: ForceForm): number {
 
 const COLOUR = ['red', 'blue'];
 
-function hint(stage: Stage, active: number, placed: boolean[]): string {
+function hint(stage: Stage, active: number, placed: boolean[], locked: boolean[]): string {
   const k = active + 1;
   if (stage === 'running') return 'Simulating the real physics, then running the inverse model. Camera stays free.';
+  if (locked[active]) {
+    const other = active === 0 ? 1 : 0;
+    return locked[other]
+      ? 'Both positions are locked — sheet clicks do nothing. Untick a lock to move a push.'
+      : `Push ${k} is locked — sheet clicks move push ${other + 1} instead.`;
+  }
   if (stage === 'done') {
     return `Solid arrows: your pushes. Faded: predicted. Green: reversal. Push ${k} selected — click the sheet to move it (clears this result).`;
   }
@@ -46,6 +52,9 @@ export default function App() {
   // sheet clicks then keep moving that push instead of advancing to the other.
   const [pinned, setPinned] = useState(false);
   const [placed, setPlaced] = useState([false, false]);
+  // Locked pushes ignore sheet clicks; a click then falls through to the
+  // other push if that one is unlocked.
+  const [locked, setLocked] = useState([false, false]);
   const allPlaced = placed[0] && placed[1];
   const [frames, setFrames] = useState<Float32Array | null>(null);
   const [frame, setFrame] = useState(0);
@@ -71,8 +80,10 @@ export default function App() {
   const onPlace = useCallback(
     (u: number, v: number) => {
       if (stage === 'running') return;
-      const nplaced = [placed[0] || active === 0, placed[1] || active === 1];
-      setForms((fs) => fs.map((f, k) => (k === active ? { ...f, u, v } : f)));
+      const target = !locked[active] ? active : !locked[active === 0 ? 1 : 0] ? (active === 0 ? 1 : 0) : -1;
+      if (target < 0) return;
+      const nplaced = [placed[0] || target === 0, placed[1] || target === 1];
+      setForms((fs) => fs.map((f, k) => (k === target ? { ...f, u, v } : f)));
       setPlaced(nplaced);
       if (nplaced[0] && nplaced[1]) {
         if (stage === 'done') {
@@ -82,15 +93,15 @@ export default function App() {
           setPlaying(false);
         }
         setStage('ready');
-      } else if (pinned) {
-        setStage(active === 0 ? 'place1' : 'place2');
+      } else if (pinned || locked[active]) {
+        setStage(target === 0 ? 'place1' : 'place2');
       } else {
-        const other = active === 0 ? 1 : 0;
+        const other = target === 0 ? 1 : 0;
         setActive(other);
         setStage(other === 0 ? 'place1' : 'place2');
       }
     },
-    [active, stage, placed, pinned],
+    [active, stage, placed, pinned, locked],
   );
 
   // Any interaction with a card (click, slider drag, keyboard focus) selects
@@ -168,6 +179,7 @@ export default function App() {
     setPlaced([false, false]);
     setActive(0);
     setPinned(false);
+    setLocked([false, false]);
     setStage('place1');
     setJob(null);
   };
@@ -191,7 +203,7 @@ export default function App() {
           controlsRef={controlsRef}
           dark={dark}
         />
-        <div className="stage-hint">{hint(stage, active, placed)}</div>
+        <div className="stage-hint">{hint(stage, active, placed, locked)}</div>
       </div>
       <div className="panel">
         <div className="topbar">
@@ -205,8 +217,13 @@ export default function App() {
           <div className={`force-card c${k + 1}${k === active ? ' active' : ''}`} key={k}
             onPointerDownCapture={() => select(k)} onFocusCapture={() => select(k)}
             title={k === active ? 'Selected — sheet clicks move this push' : 'Click or edit to select this push'}>
-            <h3>Push {k + 1}{k === active ? ' (selected)' : ''} — click sheet to {placed[k] ? 'move' : 'place'}</h3>
-            <div className="row"><label>position</label><output>({f.u.toFixed(2)}, {f.v.toFixed(2)})</output></div>
+            <h3>Push {k + 1}{k === active ? ' (selected)' : ''} — {locked[k] ? 'position locked' : `click sheet to ${placed[k] ? 'move' : 'place'}`}</h3>
+            <div className="row"><label>position</label><output>({f.u.toFixed(2)}, {f.v.toFixed(2)})</output>
+              <label title="Locked: sheet clicks never move this push">
+                <input type="checkbox" checked={locked[k]}
+                  onChange={(e) => setLocked((l) => l.map((x, i) => (i === k ? e.target.checked : x)))} /> lock
+              </label>
+            </div>
             <Slider label="azimuth" min={-180} max={180} step={1} value={f.az} unit="°"
               onChange={(v) => update(k, { az: v })} />
             <Slider label="elevation" min={-90} max={90} step={1} value={f.el} unit="°"
