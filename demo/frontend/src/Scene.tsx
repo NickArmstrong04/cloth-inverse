@@ -206,7 +206,7 @@ export function SceneView({
   stage: Stage;
   placed: boolean[];
   allForms: PlacedForce[];
-  result: { predicted: ForceEx[]; reversal: ForceEx[]; showPred: boolean; showRev: boolean } | null;
+  result: { predicted: ForceEx[]; reversal: ForceEx[]; showTrue: boolean; showPred: boolean; showRev: boolean } | null;
   onPlace: (u: number, v: number) => void;
   controlsRef: RefObject<OrbitControlsImpl>;
   dark: boolean;
@@ -244,7 +244,7 @@ export function SceneView({
   }, [result, frames === null]);
 
   const trueArrows = useMemo(() => {
-    if (!result) return [];
+    if (!result || !result.showTrue) return [];
     return allForms.map((f, k) => ({
       at: anchorOf(frames, last, f.u, f.v),
       dir: f.direction,

@@ -67,6 +67,7 @@ export default function App() {
   const [loop, setLoop] = useState(true);
   const [job, setJob] = useState<{ id: string; progress: number; error?: string } | null>(null);
   const [result, setResult] = useState<JobResult | null>(null);
+  const [showTrue, setShowTrue] = useState(true);
   const [showPred, setShowPred] = useState(true);
   const [showRev, setShowRev] = useState(true);
   const [dark, setDark] = useState(true);
@@ -203,7 +204,7 @@ export default function App() {
           stage={stage}
           placed={placed}
           allForms={forms}
-          result={result ? { predicted: result.predicted_forces, reversal: result.reversal_forces, showPred, showRev } : null}
+          result={result ? { predicted: result.predicted_forces, reversal: result.reversal_forces, showTrue, showPred, showRev } : null}
           onPlace={onPlace}
           controlsRef={controlsRef}
           dark={dark}
@@ -262,6 +263,7 @@ export default function App() {
             </div>
             <div className="row">
               <label><input type="checkbox" checked={loop} onChange={(e) => setLoop(e.target.checked)} /> loop</label>
+              <label><input type="checkbox" checked={showTrue} onChange={(e) => setShowTrue(e.target.checked)} /> true</label>
               <label><input type="checkbox" checked={showPred} onChange={(e) => setShowPred(e.target.checked)} /> predicted</label>
               <label><input type="checkbox" checked={showRev} onChange={(e) => setShowRev(e.target.checked)} /> reversal</label>
             </div>
