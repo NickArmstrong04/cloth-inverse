@@ -9,8 +9,8 @@ proposing work; those three files are the project's memory and must stay current
 
 Two homes for the same repo:
 
-- **Bouchet (Yale YCRC, Slurm).** Repo `/home/naa79/scratch_pi_sz622/naa79/cloth-inverse`,
-  datasets `/home/naa79/scratch_pi_sz622/naa79/cloth_data/<name>` (`DATA_DIR` in
+- **Bouchet (Yale YCRC, Slurm).** Repo `/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth-inverse`,
+  datasets `/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/<name>` (`DATA_DIR` in
   `cloth_data_generation/transfer/cluster/cluster.env`), model runs
   `cloth_data_generation/inverse/runs/<id>/` (`model.pt`, `metrics.json`). Simulator venv:
   `cloth_data_generation/transfer/.venv` (`bash cluster/setup_env.sh`; `--with-torch` for
@@ -19,6 +19,12 @@ Two homes for the same repo:
   work that must not be cut off). Node `a1125u05n01` has a bad GPU (excluded in cluster.env).
   `scavenge_gpu` is preemptible but safe: array tasks resume. If you are the session on
   Bouchet you can run `squeue`, `sacct`, `sbatch` and read logs yourself.
+  Layout since 2026-10-31: repo and data both live under `.../naa79/cloth/` (were siblings
+  directly under `/home/naa79/scratch_pi_sz622/naa79/`); archived `gen_*.sbatch` and
+  `submission.json` under `cloth_data/*/slurm/` still show the old paths (history, not
+  read on resume). Slurm logs live in `transfer/logs/<date>/`. Claude sessions run in a
+  container that does not mount `~/.local/share/uv`, so the venv python only works from a
+  normal shell or job on the cluster.
 - **Nick's Windows workstation.** Repo at `C:\Users\nicka\Desktop\projects\meta`; the
   simulator and models run in WSL at `~/cloth` (a copy of `transfer/` with its own `.venv`,
   RTX 4070 Ti SUPER); SAM 3 / VGGT live in `~/sam3env`. That session has no cluster access

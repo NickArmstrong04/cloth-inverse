@@ -32,7 +32,7 @@ Layout:
 Cluster quick start (Bouchet, everything under the PI scratch):
 
 ```bash
-cd /home/naa79/scratch_pi_sz622/naa79
+cd /nfs/roberts/scratch/pi_sz622/naa79/cloth
 git clone https://github.com/NickArmstrong04/cloth-inverse.git
 cd cloth-inverse/cloth_data_generation/transfer
 bash cluster/interactive.sh          # Python runs inside an allocation, not on the login node

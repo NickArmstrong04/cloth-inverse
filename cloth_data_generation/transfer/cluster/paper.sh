@@ -65,6 +65,9 @@ REST_METRIC="${REST_METRIC:-vrms}"
 # times out is resumed by re-running `full` (only tasks with missing slots are submitted).
 if [ "$PROFILE" = "rest" ]; then
   TIME="${TIME:-05:00:00}"
+  # Per-task memory: J-007 (2026-10-31) was OOM-killed at cluster.env's 12G in every task, during
+  # the first sample too (2 workers x a 256 rest sample peaks above 12 GB host RAM).
+  MEM="${MEM:-48G}"
 else
   TIME="${TIME:-$(grep '^TIME=' cluster/cluster.env | cut -d= -f2 | cut -d' ' -f1)}"
 fi
@@ -75,6 +78,7 @@ GAMMA="${GAMMA:-0}"
 BEND_SCALE="${BEND_SCALE:-0}"
 SELF_MU="${SELF_MU:-}"
 MAXC="${MAXC:-30}"
+MEM="${MEM:-$(grep '^MEM=' cluster/cluster.env | cut -d= -f2 | cut -d' ' -f1)}"
 # Pinned in SAMPLE_ARGS (not only in the preset) so submission.json records the physics.
 SAMPLE_ARGS="--yield-curvature $YIELD --edge-ke $EDGE_KE --crease-soften $SOFTEN --settle $SETTLE"
 if [ "$SETTLE_MODE" != "dynamic" ]; then SAMPLE_ARGS="$SAMPLE_ARGS --settle-mode $SETTLE_MODE"; fi
@@ -112,7 +116,7 @@ PYEOF
     ;;
   devel)
     python3 cluster/submit.py --n 4 --nx "$NX" --chunk 2 --material paper \
-      --name "${NAME}_devel" --partition gpu_devel --time 00:40:00 \
+      --name "${NAME}_devel" --partition gpu_devel --time 00:40:00 --mem "$MEM" \
       --sample-args "$SAMPLE_ARGS" --batch-args "$BATCH_ARGS" --no-merge
     echo "watch: python3 cluster/submit.py --status ${NAME}_devel ; then: tail ${DATA_DIR}/${NAME}_devel/slurm/gen_*.out"
     ;;
@@ -120,10 +124,10 @@ PYEOF
     half=$(( (N + 50 - 1) / 50 / 2 ))     # CHUNK=50 in cluster.env
     last=$(( (N + 50 - 1) / 50 - 1 ))
     python3 cluster/submit.py --n "$N" --nx "$NX" --material paper --name "$NAME" \
-      --sample-args "$SAMPLE_ARGS" --batch-args "$BATCH_ARGS" --tasks "0-$((half - 1))" --max-concurrent "$MAXC" --time "$TIME" --no-merge
+      --sample-args "$SAMPLE_ARGS" --batch-args "$BATCH_ARGS" --tasks "0-$((half - 1))" --max-concurrent "$MAXC" --time "$TIME" --mem "$MEM" --no-merge
     python3 cluster/submit.py --n "$N" --nx "$NX" --material paper --name "$NAME" \
       --sample-args "$SAMPLE_ARGS" --batch-args "$BATCH_ARGS" --tasks "${half}-${last}" --partition scavenge_gpu \
-      --max-concurrent "$MAXC" --time "$TIME" --no-merge
+      --max-concurrent "$MAXC" --time "$TIME" --mem "$MEM" --no-merge
     echo "monitor: bash cluster/paper.sh status ; when the arrays are done: bash cluster/paper.sh merge"
     ;;
   status)

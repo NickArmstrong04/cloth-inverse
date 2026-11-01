@@ -4,7 +4,7 @@ One row per submitted job or job matrix. Fill in the Slurm job id at submission,
 `status` when `bash cluster/jobs.sh` is run, and link the result row in RESULTS.md /
 DATASETS.md when done. Status: `queued` `running` `done` `failed` `cancelled` `planned`.
 
-Conventions: `S` = `/home/naa79/scratch_pi_sz622/naa79/cloth_data/ds768_night_splits`;
+Conventions: `S` = `/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds768_night_splits`;
 all `sbatch` commands run from `cloth_data_generation/transfer` on the cluster; single
 training configs use `cluster/run.sbatch` (one GPU per job, `--out runs/<id>` so the
 metrics directory matches the row). Snapshot the queue with `bash cluster/jobs.sh` and
@@ -71,7 +71,7 @@ Runs on scavenge so it never competes with the ladder or ds512.
 | id | job id | status | what | command | result |
 |---|---|---|---|---|---|
 | M4-a | | planned | ds256_paper: 400 slots at 256, paper material, scavenge | `python3 cluster/submit.py --n 400 --nx 256 --chunk 20 --material paper --name ds256_paper --partition scavenge_gpu --time 02:00:00 --max-concurrent 20` | |
-| M4-b | | planned | train rung 1 on ds256_paper once packaged | `sbatch --job-name=M4b cluster/run.sbatch /home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_paper_splits --model cnn_reg --epochs 600 --no-rot --amp --tta 0 --no-vel --out runs/M4b` | |
+| M4-b | | planned | train rung 1 on ds256_paper once packaged | `sbatch --job-name=M4b cluster/run.sbatch /nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_paper_splits --model cnn_reg --epochs 600 --no-rot --amp --tta 0 --no-vel --out runs/M4b` | |
 
 ## Matrix M5: where the unknown-pose cost comes from (after M1-M3, 2026-10-28)
 
@@ -104,14 +104,14 @@ those configs, then production with the winning flags in `SAMPLE_ARGS`.
 
 | id | job id | status | what | command | result |
 |---|---|---|---|---|---|
-| M6-0 | | planned | solver sweep for the bench scenario: 7 settings x 8 configs (cloth), one job per setting | `D=/home/naa79/scratch_pi_sz622/naa79/cloth_data; python3 cluster/stability.py --dataset smoke256_bench --forces-dir $D/smoke256_bench --all-configs --base-flags="--table" --settings "base=;sub60=--substeps 60;sub120=--substeps 120;ke1e4=--contact-ke 1e4;sub60ke1e4=--substeps 60 --contact-ke 1e4;it40=--iterations 40;stiff=--tri-ke 1e4 --substeps 60" --time 02:00:00` then `--report` | |
+| M6-0 | | planned | solver sweep for the bench scenario: 7 settings x 8 configs (cloth), one job per setting | `D=/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data; python3 cluster/stability.py --dataset smoke256_bench --forces-dir $D/smoke256_bench --all-configs --base-flags="--table" --settings "base=;sub60=--substeps 60;sub120=--substeps 120;ke1e4=--contact-ke 1e4;sub60ke1e4=--substeps 60 --contact-ke 1e4;it40=--iterations 40;stiff=--tri-ke 1e4 --substeps 60" --time 02:00:00` then `--report` | |
 | M6-0p | | planned | same sweep on paper configs | as M6-0 with `--dataset smoke256_bench_paper --forces-dir $D/smoke256_bench_paper --material paper --run stability_bench_paper` | |
 | M6-a | | planned | smoke: 4 cloth samples, bench profile, devel GPU (also feeds M6-0) | `python3 cluster/submit.py --n 4 --chunk 2 --name smoke256_bench --time 00:30:00 --partition gpu_devel` | |
 | M6-b | | planned | smoke: 4 paper samples, same seeds | `python3 cluster/submit.py --n 4 --chunk 2 --material paper --name smoke256_bench_paper --time 00:30:00 --partition gpu_devel` | |
 | M6-c | | blocked on M6-0 | production cloth, 3000 slots, any GPU; add the winning sweep flags to SAMPLE_ARGS first | `python3 cluster/submit.py --n 3000 --name ds256_bench --max-concurrent 40` | |
 | M6-d | | blocked on M6-0p | production paper, 3000 slots, paired seeds | `python3 cluster/submit.py --n 3000 --name ds256_bench_paper --material paper --max-concurrent 40` | |
-| M6-e | | planned | ladder on ds256_bench (rungs 0-3) once packaged | `sbatch cluster/ladder.sbatch /home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_bench_splits 300` | |
-| M6-f | | planned | ladder on ds256_bench_paper | `sbatch cluster/ladder.sbatch /home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_bench_paper_splits 300` | |
+| M6-e | | planned | ladder on ds256_bench (rungs 0-3) once packaged | `sbatch cluster/ladder.sbatch /nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_bench_splits 300` | |
+| M6-f | | planned | ladder on ds256_bench_paper | `sbatch cluster/ladder.sbatch /nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_bench_paper_splits 300` | |
 
 Check on the smoke output before production (`python3 cluster/submit.py --status smoke256_bench`
 and the task logs): QC pass rate, per-sample wall time, peak speed (should exceed the 0.38 m/s
@@ -134,7 +134,7 @@ QC pass rate and timing, then fill 6000 slots on gpu + scavenge (expect ~50-60% 
 | M7-d | | planned | package when enough passed | `.venv/bin/python cluster/merge_summaries.py --indir $D/ds256_free && .venv/bin/python package_splits.py --indir $D/ds256_free --outdir $D/ds256_free_splits` | |
 | M7-e | | planned | ladder on it (rungs 0-3, any GPU) | `sbatch cluster/ladder.sbatch $D/ds256_free_splits 300` | |
 
-`D=/home/naa79/scratch_pi_sz622/naa79/cloth_data`. The M7-a run must be submitted first with the
+`D=/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data`. The M7-a run must be submitted first with the
 same name: `submit.py` binds the name to nx/seed0/chunk/args and later calls only fill missing slots.
 
 ## Submitting a whole matrix at once
@@ -150,11 +150,11 @@ Reading: if (1) beats (2) clearly, data volume matters and the refill is worth f
 already beats (3), the cleaner 256 physics is the gain; if all three tie, the model/targets are
 the limit and more data will not help.
 
-`S2=/home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_free_splits`, `S=.../ds768_night_splits`.
+`S2=/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits`, `S=.../ds768_night_splits`.
 
 | id | job id | status | what | command | result |
 |---|---|---|---|---|---|
-| M8-0 | | done 2026-10-29 | package ds256_free (M7-d) | `D=/home/naa79/scratch_pi_sz622/naa79/cloth_data; .venv/bin/python cluster/merge_summaries.py --indir $D/ds256_free && .venv/bin/python package_splits.py --indir $D/ds256_free --outdir $D/ds256_free_splits` | |
+| M8-0 | | done 2026-10-29 | package ds256_free (M7-d) | `D=/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data; .venv/bin/python cluster/merge_summaries.py --indir $D/ds256_free && .venv/bin/python package_splits.py --indir $D/ds256_free --outdir $D/ds256_free_splits` | |
 | M8-a | 31295878 (attempts 31280929 val NaN, 31290287 val split empty) | done 2026-10-29 (~1 h) | rung 1 (positions, known pose), all ~2,500 train samples | `sbatch --job-name=M8a --mem=60G cluster/run.sbatch $S2 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --no-vel --out runs/M8a` | test 6.4 cm / 15.9 deg (val 6.5 / 15.3). New data is harder than the old 768 data pooled to 256 (M8c 5.2): same model, 2.2x the samples, 1.2 cm worse |
 | M8-b | 31295879 (attempts 31280930 val NaN, 31290288 val split empty) | done 2026-10-29 | rung 1, 1,100-sample subset (size control) | `sbatch --job-name=M8b --mem=60G cluster/run.sbatch $S2 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --no-vel --n-train 1100 --out runs/M8b` | test 7.2 cm / 17.2 deg (val 7.3 / 17.3). 1,100 -> 2,453 samples buys 0.8 cm / 1.3 deg (M8a); seed noise is ~0.3 cm (M8f), so still data-limited but with a shallow slope |
 | M8-c | 31280931 | done | rung 1, old data pooled to 256 (resolution control; compare M1e/M2a) | `sbatch --job-name=M8c --mem=60G cluster/run.sbatch $S --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --no-vel --pool 3 --out runs/M8c` | test 5.2 cm / 18.0 deg (train 4.7 / 14.6, val 4.9 / 16.6), 10 min. Pool 3 of the old data costs 0.7 cm vs M1e/M2a (4.5) |
@@ -237,15 +237,15 @@ yield: ~480 attempts, ~360 passing samples (+12%). To grow the set materially, r
 | id | job id | status | what | command | result |
 |---|---|---|---|---|---|
 | M10-a | | cancelled (pending tasks) 2026-10-29 | refill ds256_free: 12 tasks, 4 at a time, 2.5 h each; submitted then cancelled to keep GPUs on the M8/M9 model runs (+360 samples is not decisive; regenerate overnight at 40 concurrent if M8 says data helps) | `python3 cluster/submit.py --n 6000 --name ds256_free --chunk 40 --time 02:30:00 --max-concurrent 4 --max-tasks 12 --no-merge` | |
-| M10-b | | after M10-a | re-merge and re-package (new splits; M8/M9 runs used the 2026-10-29 package) | `D=/home/naa79/scratch_pi_sz622/naa79/cloth_data; .venv/bin/python cluster/merge_summaries.py --indir $D/ds256_free && .venv/bin/python package_splits.py --indir $D/ds256_free --outdir $D/ds256_free_splits` | |
+| M10-b | | after M10-a | re-merge and re-package (new splits; M8/M9 runs used the 2026-10-29 package) | `D=/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data; .venv/bin/python cluster/merge_summaries.py --indir $D/ds256_free && .venv/bin/python package_splits.py --indir $D/ds256_free --outdir $D/ds256_free_splits` | |
 
 Note: M10-b replaces the splits directory (and their tensor caches); submit it only after the
 M8/M9 training jobs have finished loading, and record the new sample count in DATASETS.md.
 
 ```bash
 bash cluster/interactive.sh      # CPU allocation
-cd /home/naa79/scratch_pi_sz622/naa79/cloth-inverse && git pull && cd cloth_data_generation/transfer
-S=/home/naa79/scratch_pi_sz622/naa79/cloth_data/ds768_night_splits
+cd /nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth-inverse && git pull && cd cloth_data_generation/transfer
+S=/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds768_night_splits
 # paste the sbatch lines of the matrix, then:
 squeue -u $USER -o "%.10i %.14j %.8T %.10M %R"
 ```
@@ -303,8 +303,8 @@ Submit (CPU allocation, from `cloth_data_generation/transfer`, after `git pull`)
 
 ```bash
 bash cluster/interactive.sh
-cd /home/naa79/scratch_pi_sz622/naa79/cloth-inverse && git pull && cd cloth_data_generation/transfer
-S2=/home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_free_splits
+cd /nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth-inverse && git pull && cd cloth_data_generation/transfer
+S2=/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits
 # M11-a..h: paste the sbatch lines above
 # Sonata (once, on the login node, needs internet; then M11-j/k):
 bash cluster/setup_sonata.sh
@@ -350,8 +350,8 @@ dependency and the Sonata rows after the install.
 Submit (from `cloth_data_generation/transfer`):
 
 ```bash
-cd /home/naa79/scratch_pi_sz622/naa79/cloth-inverse && git pull && cd cloth_data_generation/transfer
-S2=/home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_free_splits
+cd /nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth-inverse && git pull && cd cloth_data_generation/transfer
+S2=/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits
 grep -c n_glob ../inverse/models.py     # non-zero = the drift-channel commit is in
 # M12-a..e, M12-f2: paste the sbatch lines above; M12-c2 once M12-c has an id
 bash cluster/setup_sonata.sh && sbatch ... M12j
@@ -373,7 +373,7 @@ shape is a taut band or early fold rather than a settled fold, so the baseline e
 whether the new model is easier or harder to invert. `--frames post` is useless here (every
 snapshot is at or before t_end); `--frames all` would use them but is not in this matrix.
 
-S3=/home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_const_splits
+S3=/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_const_splits
 
 | id | job id | status | what | command | result |
 |---|---|---|---|---|---|
@@ -389,8 +389,8 @@ S3=/home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_const_splits
 Submit (CPU allocation, from `cloth_data_generation/transfer`, after the merge + package of J-005):
 
 ```bash
-cd /home/naa79/scratch_pi_sz622/naa79/cloth-inverse && git pull && cd cloth_data_generation/transfer
-S3=/home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_const_splits
+cd /nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth-inverse && git pull && cd cloth_data_generation/transfer
+S3=/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_const_splits
 ls $S3/train/*.h5 | wc -l; ls $S3/test/*.h5 | wc -l      # ~2300 / ~290 expected
 # M13-a..g: paste the sbatch lines above; M13-g2 once M13-g has an id
 squeue -u $USER -o "%.10i %.14j %.8T %.10M %R"
@@ -417,7 +417,7 @@ spread without which 1-2 point gains are unreadable. `inverse/identifiability.py
 data's own floor: oracle magnitude error from peak strain at the true patch and from the logged
 momentum, plus the delivered-momentum fraction and its spread.
 
-S3=/home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_const_splits
+S3=/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_const_splits
 
 | id | job id | status | what | command | result |
 |---|---|---|---|---|---|
@@ -434,8 +434,8 @@ S3=/home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_const_splits
 Submit (from `cloth_data_generation/transfer`):
 
 ```bash
-cd /home/naa79/scratch_pi_sz622/naa79/cloth-inverse && git pull
-S3=/home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_const_splits
+cd /nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth-inverse && git pull
+S3=/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_const_splits
 cd cloth_data_generation/inverse && ../transfer/.venv/bin/python identifiability.py $S3/test; cd ../transfer
 # M14-a..g: paste the sbatch lines above
 squeue -u $USER -o "%.10i %.14j %.8T %.10M"
@@ -455,7 +455,7 @@ comparison: same force draws, creasing paper sheet instead of cloth. Depends on 
 generated and merged (`bash cluster/paper.sh full`, then `merge`); the splits dir must exist
 before submitting.
 
-S4=/home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_const_paper_splits
+S4=/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_const_paper_splits
 
 | id | job id | status | what | command | result |
 |---|---|---|---|---|---|
@@ -465,9 +465,9 @@ S4=/home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_const_paper_splits
 Submit (from `cloth_data_generation/transfer`; J-006 merged 2026-10-30 with 1356/169/169):
 
 ```bash
-cd /home/naa79/scratch_pi_sz622/naa79/cloth-inverse && git pull && cd cloth_data_generation/transfer
-S3=/home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_const_splits
-S4=/home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_const_paper_splits
+cd /nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth-inverse && git pull && cd cloth_data_generation/transfer
+S3=/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_const_splits
+S4=/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_const_paper_splits
 sbatch --job-name=M15a --mem=60G cluster/run.sbatch $S4 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --out runs/M15a
 sbatch --job-name=M15b --mem=60G cluster/run.sbatch $S3 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --n-train 1356 --out runs/M15b
 squeue -u $USER -o "%.10i %.14j %.8T %.10M"
@@ -506,9 +506,9 @@ Also fixed: with `--no-rot`, test_predictions.json held every test sample twice 
 Submit (from `cloth_data_generation/transfer`; M15-r1/r2 now, r3/r4 when M15-a/b have finished):
 
 ```bash
-cd /home/naa79/scratch_pi_sz622/naa79/cloth-inverse && git pull && cd cloth_data_generation/transfer
-S3=/home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_const_splits
-S4=/home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_const_paper_splits
+cd /nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth-inverse && git pull && cd cloth_data_generation/transfer
+S3=/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_const_splits
+S4=/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_const_paper_splits
 sbatch --job-name=M15r1 cluster/resim_eval.sbatch $S3 runs/M13b --limit 100
 sbatch --job-name=M15r2 cluster/resim_eval.sbatch $S3 runs/M13e --limit 100
 # after M15-a / M15-b complete:
@@ -563,8 +563,8 @@ S3 = ds256_const_splits; S3F = the same split re-packaged with snapshots in the 
 Submit (from `cloth_data_generation/transfer`):
 
 ```bash
-cd /home/naa79/scratch_pi_sz622/naa79/cloth-inverse && git pull && cd cloth_data_generation/transfer
-D=/home/naa79/scratch_pi_sz622/naa79/cloth_data
+cd /nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth-inverse && git pull && cd cloth_data_generation/transfer
+D=/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data
 S3=$D/ds256_const_splits; S3F=$D/ds256_const_splits_fr
 (cd ../inverse && ../transfer/.venv/bin/python identifiability.py $S3/test)                       # M16-0
 .venv/bin/python package_splits.py --indir $D/ds256_const --outdir $S3F --test-keep-frames          # M16-p (~minutes)
@@ -600,7 +600,7 @@ Before resubmitting, free scratch: the per-variant input caches are the likely c
 `--label` / `--snap` variant writes its own `train_pool1_*.pt`, 2.5 GB each, plus the S3F copy).
 
 ```bash
-cd /home/naa79/scratch_pi_sz622/naa79 && df -h . && du -sh cloth_data/* 2>/dev/null | sort -h | tail -n 12
+cd /nfs/roberts/scratch/pi_sz622/naa79/cloth && df -h . && du -sh cloth_data/* 2>/dev/null | sort -h | tail -n 12
 ls -la cloth_data/*_splits/*.pt | sort -k5 -n | tail -n 20
 # safe to delete: caches of datasets not in the current matrices (rebuilt on demand), frame caches, old resim leftovers
 rm -f cloth_data/ds768_night_splits/*.pt cloth_data/ds256_free_splits/*.pt cloth_data/*_splits/*frames*.pt
@@ -620,8 +620,8 @@ df -h .
 | M15-r1, r2, r3, r4 | 31422385-31422388 | done (39-43 min) | re-sim of M13-b, M13-e, M15-a, M15-b (floor now meaningful) | same commands, `--limit 50` is enough | M13-b pred 0.0299 score 0.25; M13-e **NaN / beats chance 42% (INVALID, rotated frame)**; M15-a (paper) pred 0.0312, **floor 0.0010**, chance 0.1106, score 0.28; M15-b pred 0.0308, score 0.26. All provisional (footprint) |
 
 ```bash
-cd /home/naa79/scratch_pi_sz622/naa79/cloth-inverse && git pull && cd cloth_data_generation/transfer
-D=/home/naa79/scratch_pi_sz622/naa79/cloth_data; S3=$D/ds256_const_splits; S3F=$D/ds256_const_splits_fr; S4=$D/ds256_const_paper_splits
+cd /nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth-inverse && git pull && cd cloth_data_generation/transfer
+D=/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data; S3=$D/ds256_const_splits; S3F=$D/ds256_const_splits_fr; S4=$D/ds256_const_paper_splits
 sbatch --job-name=M16r cluster/resim_eval.sbatch $S3 runs/M16a --limit 50
 RESIM=50 sbatch --job-name=M16c --mem=60G cluster/run.sbatch $S3 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --patch-head 5 --out runs/M16c
 RESIM=50 sbatch --job-name=M16d --mem=60G cluster/run.sbatch $S3 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --kabsch --eval-rotated --out runs/M16d
@@ -668,8 +668,8 @@ are final (table above). The re-simulation numbers are not, for two reasons foun
 Every re-sim therefore has to be re-run (13 x ~40 min, in parallel), M16-g2 after the repair:
 
 ```bash
-cd /home/naa79/scratch_pi_sz622/naa79/cloth-inverse && git pull && cd cloth_data_generation/inverse
-D=/home/naa79/scratch_pi_sz622/naa79/cloth_data; S3=$D/ds256_const_splits; S3F=$D/ds256_const_splits_fr; S4=$D/ds256_const_paper_splits
+cd /nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth-inverse && git pull && cd cloth_data_generation/inverse
+D=/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data; S3=$D/ds256_const_splits; S3F=$D/ds256_const_splits_fr; S4=$D/ds256_const_paper_splits
 for r in M16d M16e M16f3 M16g M13e; do ../transfer/.venv/bin/python fix_rotated_preds.py --run runs/$r --root $S3; done
 cd ../transfer
 for r in M13b M13e M15b M16a M16c M16d M16e M16f M16f2 M16f3; do sbatch --job-name=R3$r cluster/resim_eval.sbatch $S3 runs/$r --limit 50; done
@@ -717,8 +717,8 @@ Rung 2 redo: run `fix_rotated_preds.py` and check its output (it must print "sav
 rotation" for each run; it refuses and prints the reason otherwise), then re-sim the five:
 
 ```bash
-cd /home/naa79/scratch_pi_sz622/naa79/cloth-inverse && git pull && cd cloth_data_generation/inverse
-S3=/home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_const_splits
+cd /nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth-inverse && git pull && cd cloth_data_generation/inverse
+S3=/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_const_splits
 ls runs/M16d runs/M16g          # a .rotframe file means the repair already ran
 for r in M16d M16e M16f3 M16g M13e; do ../transfer/.venv/bin/python fix_rotated_preds.py --run runs/$r --root $S3; done
 cd ../transfer
@@ -765,8 +765,8 @@ hybrid, Kabsch + hybrid + flow with 4 candidates). H = `--hybrid --aux-w 1 --amp
 | M17-e2 | 31539939 | done (42 min) | re-sim selection among M17-e's candidates | `sbatch --job-name=M17e2 --dependency=afterok:<M17e id> cluster/resim.sbatch $S3 runs/M17e --limit 50 --k 8` | **selected 0.82 cm / 4.35 deg / mag 0.24** vs mean-of-8 1.18 / 5.9, oracle 0.55 / 5.3, deterministic head 1.05 / 4.5: **new best**, the selection beats the model's own point prediction on position and direction |
 
 ```bash
-cd /home/naa79/scratch_pi_sz622/naa79/cloth-inverse && git pull && cd cloth_data_generation/transfer
-D=/home/naa79/scratch_pi_sz622/naa79/cloth_data; S3=$D/ds256_const_splits; S4=$D/ds256_const_paper_splits
+cd /nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth-inverse && git pull && cd cloth_data_generation/transfer
+D=/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data; S3=$D/ds256_const_splits; S4=$D/ds256_const_paper_splits
 RESIM=50 sbatch --job-name=M17a --mem=60G cluster/run.sbatch $S3 --model cnn_reg --no-rot --kabsch --eval-rotated --hybrid --aux-w 1 --amp --tta 0 --epochs 300 --out runs/M17a
 RESIM=50 sbatch --job-name=M17b --mem=60G cluster/run.sbatch $S4 --model cnn_reg --no-rot --hybrid --aux-w 1 --amp --tta 0 --epochs 300 --out runs/M17b
 C=$(sbatch --parsable --job-name=M17c --mem=60G cluster/run.sbatch $S3 --model cnn_reg --no-rot --kabsch --eval-rotated --hybrid --flow --flow-k 8 --aux-w 1 --amp --tta 0 --epochs 300 --out runs/M17c)
@@ -833,8 +833,8 @@ the reference for the photo work. The data generation stays as it is (constant f
 release): the velocity field exists in the files but is not used.
 
 ```
-S3=/home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_const_splits
-cd /home/naa79/scratch_pi_sz622/naa79/cloth-inverse && git fetch && git checkout photo-render && git pull
+S3=/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_const_splits
+cd /nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth-inverse && git fetch && git checkout photo-render && git pull
 cd cloth_data_generation/transfer
 ```
 
@@ -864,9 +864,9 @@ fixed by the local sweep (`transfer/rest_sweep.py`, DATASETS.md "Rest capture sw
 below use `PROFILE=rest` of `cluster/paper.sh`, whose defaults are updated from that sweep.
 
 ```
-S4=/home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_const_paper_splits
-S5=/home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_paper_rest_splits
-cd /home/naa79/scratch_pi_sz622/naa79/cloth-inverse && git fetch && git checkout photo-render && git pull
+S4=/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_const_paper_splits
+S5=/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_paper_rest_splits
+cd /nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth-inverse && git fetch && git checkout photo-render && git pull
 cd cloth_data_generation/transfer
 ```
 
