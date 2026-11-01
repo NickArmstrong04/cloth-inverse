@@ -279,21 +279,30 @@ export default function App() {
               <span><span className="swatch" style={{ background: ACCENTS[1] }} />true 2</span>
               <span><span className="swatch" style={{ background: REVERSAL }} />reversal</span>
             </div>
+            <p className="notice">How far off is the model's guess of each push? Lower is better.</p>
             <table className="metrics">
-              <thead><tr><th /><th>pos cm</th><th>dir °</th><th>imp rel</th></tr></thead>
+              <thead><tr>
+                <th />
+                <th title="Distance on the sheet between where you pushed and where the model thinks you pushed, in centimetres (sheet is 50 cm wide).">
+                  location off<br /><small>cm</small></th>
+                <th title="Angle between your push direction and the predicted direction, in degrees (0 = same direction, 90 = perpendicular).">
+                  angle off<br /><small>degrees</small></th>
+                <th title="How much the predicted push strength (force x duration) differs from yours, as a percentage of yours.">
+                  strength off<br /><small>% of yours</small></th>
+              </tr></thead>
               <tbody>
                 {result.metrics.per_force.map((m, k) => (
-                  <tr key={k} title="Position error in cm on the sheet; direction error in degrees; impulse relative error. Two-force assignment as in metrics.py.">
-                    <td>push {k + 1}</td><td>{m.pos_cm.toFixed(2)}</td><td>{m.dir_deg.toFixed(1)}</td><td>{m.impulse_rel.toFixed(3)}</td>
+                  <tr key={k} title="Each predicted push is matched to the closest true push (the assignment in metrics.py).">
+                    <td>push {k + 1}</td><td>{m.pos_cm.toFixed(1)}</td><td>{m.dir_deg.toFixed(0)}</td><td>{(100 * m.impulse_rel).toFixed(0)}%</td>
                   </tr>
                 ))}
-                <tr title="Mean over the two pushes.">
-                  <td>mean</td><td>{result.metrics.mean.pos_cm.toFixed(2)}</td>
-                  <td>{result.metrics.mean.dir_deg.toFixed(1)}</td><td>{result.metrics.mean.impulse_rel.toFixed(3)}</td>
+                <tr title="Average of the two pushes.">
+                  <td>average</td><td>{result.metrics.mean.pos_cm.toFixed(1)}</td>
+                  <td>{result.metrics.mean.dir_deg.toFixed(0)}</td><td>{(100 * result.metrics.mean.impulse_rel).toFixed(0)}%</td>
                 </tr>
-                <tr title="M16-a test-set means for reference.">
-                  <td>ref (M16-a)</td><td>{result.metrics.reference.pos_cm.toFixed(1)}</td>
-                  <td>{result.metrics.reference.dir_deg.toFixed(1)}</td><td>{result.metrics.reference.impulse_rel.toFixed(3)}</td>
+                <tr title="What the model (M16-a) scores on average over its held-out test set. Your numbers near these are normal.">
+                  <td>typical (test set)</td><td>{result.metrics.reference.pos_cm.toFixed(1)}</td>
+                  <td>{result.metrics.reference.dir_deg.toFixed(0)}</td><td>{(100 * result.metrics.reference.impulse_rel).toFixed(0)}%</td>
                 </tr>
               </tbody>
             </table>
