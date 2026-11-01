@@ -17,3 +17,8 @@ cloth_data_generation/transfer/bench/
 *.err
 cloth_data_generation/transfer/logs/
 *.npz
+# demo model checkpoints (copied from the cluster, never committed)
+demo/backend/checkpoints/
+# demo frontend build output and deps
+demo/frontend/node_modules/
+demo/frontend/dist/
