@@ -27,7 +27,7 @@ curl -s -X POST localhost:8000/simulate -H 'Content-Type: application/json' \
 curl -s localhost:8000/jobs/<job_id>   # poll every 500 ms to "done"
 ```
 
-## Modal deploy (one A10G, warm container)
+## Modal deploy (one A10G, scales to zero when idle)
 
 ```bash
 modal setup                                          # first time only

@@ -56,7 +56,10 @@ app = modal.App("cloth-demo")
 vol = modal.Volume.from_name("cloth-demo-checkpoints", create_if_missing=True)
 
 
-@app.function(image=image, gpu="A10G", min_containers=1, scaledown_window=300,
+# Scale to zero when idle (no warm container): the first request after idle
+# pays the cold start (container + Warp + checkpoint, ~1-2 min). Credits over
+# latency for now.
+@app.function(image=image, gpu="A10G", min_containers=0, scaledown_window=120,
               timeout=600, volumes={"/vol": vol})
 @modal.asgi_app()
 def web():

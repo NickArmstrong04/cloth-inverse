@@ -22,10 +22,15 @@ function sep(a: ForceForm, b: ForceForm): number {
 }
 
 const COLOUR = ['red', 'blue'];
+// Job polling interval. 3 s (was 500 ms) to keep requests to the backend
+// low; the backend scales to zero when idle, so a job takes ~30-120 s anyway.
+const POLL_MS = 3000;
 
 function hint(stage: Stage, active: number, placed: boolean[], locked: boolean[]): string {
   const k = active + 1;
-  if (stage === 'running') return 'Simulating the real physics, then running the inverse model. Camera stays free.';
+  if (stage === 'running') {
+    return 'Simulating the real physics, then running the inverse model. The GPU backend wakes on demand, so the first push after a pause can take a minute or two. Camera stays free.';
+  }
   if (locked[active]) {
     const other = active === 0 ? 1 : 0;
     return locked[other]
@@ -154,7 +159,7 @@ export default function App() {
         setJob({ id: job.id, progress: 1, error: String(e) });
         setStage('ready');
       }
-    }, 500);
+    }, POLL_MS);
     return () => clearInterval(t);
   }, [job, stage]);
 
@@ -239,7 +244,7 @@ export default function App() {
         {tooClose && <div className="warn">Patches are closer than 0.2 in (u, v) — move one.</div>}
 
         <button onClick={push} disabled={stage !== 'ready' || tooClose || !allPlaced}>
-          {stage === 'running' ? `Working… ${(100 * (job?.progress ?? 0)).toFixed(0)}%` : 'Push'}
+          {stage === 'running' ? 'Working…' : 'Push'}
         </button>
         {job?.error && <div className="err">{job.error}</div>}
         {(stage === 'running' || stage === 'done') && (
