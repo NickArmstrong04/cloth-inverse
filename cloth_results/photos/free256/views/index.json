@@ -1,0 +1,517 @@
+{
+ "prompt": null,
+ "records": [
+  {
+   "stem": "sample_slot0007_seed150008_v0",
+   "source": "oracle",
+   "N": 45225,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0007_seed150008_v0_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0007_seed150008_v1",
+   "source": "oracle",
+   "N": 46889,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0007_seed150008_v1_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0007_seed150008_v2",
+   "source": "oracle",
+   "N": 21095,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0007_seed150008_v2_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0007_seed150008_v3",
+   "source": "oracle",
+   "N": 35159,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0007_seed150008_v3_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0032_seed100032_v0",
+   "source": "oracle",
+   "N": 30744,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0032_seed100032_v0_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0032_seed100032_v1",
+   "source": "oracle",
+   "N": 29665,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0032_seed100032_v1_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0032_seed100032_v2",
+   "source": "oracle",
+   "N": 23592,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0032_seed100032_v2_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0032_seed100032_v3",
+   "source": "oracle",
+   "N": 25230,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0032_seed100032_v3_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0050_seed100050_v0",
+   "source": "oracle",
+   "N": 36263,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0050_seed100050_v0_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0050_seed100050_v1",
+   "source": "oracle",
+   "N": 18098,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0050_seed100050_v1_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0050_seed100050_v2",
+   "source": "oracle",
+   "N": 17266,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0050_seed100050_v2_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0050_seed100050_v3",
+   "source": "oracle",
+   "N": 63073,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0050_seed100050_v3_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0052_seed100052_v0",
+   "source": "oracle",
+   "N": 38998,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0052_seed100052_v0_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0052_seed100052_v1",
+   "source": "oracle",
+   "N": 43270,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0052_seed100052_v1_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0052_seed100052_v2",
+   "source": "oracle",
+   "N": 30727,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0052_seed100052_v2_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0052_seed100052_v3",
+   "source": "oracle",
+   "N": 56932,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0052_seed100052_v3_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0053_seed100053_v0",
+   "source": "oracle",
+   "N": 31269,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0053_seed100053_v0_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0053_seed100053_v1",
+   "source": "oracle",
+   "N": 45412,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0053_seed100053_v1_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0053_seed100053_v2",
+   "source": "oracle",
+   "N": 52059,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0053_seed100053_v2_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0053_seed100053_v3",
+   "source": "oracle",
+   "N": 50051,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0053_seed100053_v3_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0068_seed100068_v0",
+   "source": "oracle",
+   "N": 53083,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0068_seed100068_v0_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0068_seed100068_v1",
+   "source": "oracle",
+   "N": 62116,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0068_seed100068_v1_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0068_seed100068_v2",
+   "source": "oracle",
+   "N": 112177,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0068_seed100068_v2_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0068_seed100068_v3",
+   "source": "oracle",
+   "N": 121270,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0068_seed100068_v3_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0073_seed100073_v0",
+   "source": "oracle",
+   "N": 40204,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0073_seed100073_v0_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0073_seed100073_v1",
+   "source": "oracle",
+   "N": 43112,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0073_seed100073_v1_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0073_seed100073_v2",
+   "source": "oracle",
+   "N": 35649,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0073_seed100073_v2_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0073_seed100073_v3",
+   "source": "oracle",
+   "N": 43170,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0073_seed100073_v3_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0085_seed100085_v0",
+   "source": "oracle",
+   "N": 20919,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0085_seed100085_v0_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0085_seed100085_v1",
+   "source": "oracle",
+   "N": 26542,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0085_seed100085_v1_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0085_seed100085_v2",
+   "source": "oracle",
+   "N": 37338,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0085_seed100085_v2_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0085_seed100085_v3",
+   "source": "oracle",
+   "N": 23466,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0085_seed100085_v3_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0104_seed150105_v0",
+   "source": "oracle",
+   "N": 79448,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0104_seed150105_v0_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0104_seed150105_v1",
+   "source": "oracle",
+   "N": 32305,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0104_seed150105_v1_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0104_seed150105_v2",
+   "source": "oracle",
+   "N": 37156,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0104_seed150105_v2_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0104_seed150105_v3",
+   "source": "oracle",
+   "N": 25867,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0104_seed150105_v3_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0153_seed100153_v0",
+   "source": "oracle",
+   "N": 31550,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0153_seed100153_v0_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0153_seed100153_v1",
+   "source": "oracle",
+   "N": 23578,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0153_seed100153_v1_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0153_seed100153_v2",
+   "source": "oracle",
+   "N": 65563,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0153_seed100153_v2_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0153_seed100153_v3",
+   "source": "oracle",
+   "N": 10125,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0153_seed100153_v3_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0162_seed100162_v0",
+   "source": "oracle",
+   "N": 33524,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0162_seed100162_v0_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0162_seed100162_v1",
+   "source": "oracle",
+   "N": 29882,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0162_seed100162_v1_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0162_seed100162_v2",
+   "source": "oracle",
+   "N": 24838,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0162_seed100162_v2_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0162_seed100162_v3",
+   "source": "oracle",
+   "N": 35603,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0162_seed100162_v3_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0165_seed100165_v0",
+   "source": "oracle",
+   "N": 23106,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0165_seed100165_v0_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0165_seed100165_v1",
+   "source": "oracle",
+   "N": 40204,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0165_seed100165_v1_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0165_seed100165_v2",
+   "source": "oracle",
+   "N": 32207,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0165_seed100165_v2_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0165_seed100165_v3",
+   "source": "oracle",
+   "N": 29126,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0165_seed100165_v3_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0175_seed100175_v0",
+   "source": "oracle",
+   "N": 25324,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0175_seed100175_v0_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0175_seed100175_v1",
+   "source": "oracle",
+   "N": 11883,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0175_seed100175_v1_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0175_seed100175_v2",
+   "source": "oracle",
+   "N": 39713,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0175_seed100175_v2_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0175_seed100175_v3",
+   "source": "oracle",
+   "N": 42448,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0175_seed100175_v3_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0183_seed150184_v0",
+   "source": "oracle",
+   "N": 37811,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0183_seed150184_v0_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0183_seed150184_v1",
+   "source": "oracle",
+   "N": 20873,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0183_seed150184_v1_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0183_seed150184_v2",
+   "source": "oracle",
+   "N": 15913,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0183_seed150184_v2_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0183_seed150184_v3",
+   "source": "oracle",
+   "N": 43585,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0183_seed150184_v3_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0229_seed100229_v0",
+   "source": "oracle",
+   "N": 17067,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0229_seed100229_v0_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0229_seed100229_v1",
+   "source": "oracle",
+   "N": 31625,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0229_seed100229_v1_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0229_seed100229_v2",
+   "source": "oracle",
+   "N": 21492,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0229_seed100229_v2_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0229_seed100229_v3",
+   "source": "oracle",
+   "N": 63248,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0229_seed100229_v3_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0238_seed100238_v0",
+   "source": "oracle",
+   "N": 26853,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0238_seed100238_v0_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0238_seed100238_v1",
+   "source": "oracle",
+   "N": 27263,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0238_seed100238_v1_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0238_seed100238_v2",
+   "source": "oracle",
+   "N": 31317,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0238_seed100238_v2_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0238_seed100238_v3",
+   "source": "oracle",
+   "N": 16078,
+   "path": "../../cloth_results/photos/free256/views/sample_slot0238_seed100238_v3_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  }
+ ]
+}

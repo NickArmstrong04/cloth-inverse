@@ -363,6 +363,39 @@ Reading:
   distribution, not the recovery of a conserved quantity, which is consistent with it not transferring
   to a different material. Delivered-momentum labels (M17-d) do not help the hybrid model either.
 
+## M20: capture at rest, first read on a partial dataset (2026-11-01)
+
+`ds256_paper_rest_splits` = 380 of J-007's 1000 slots (304 / 38 / 38; the A40 tasks timed out),
+paper, opposing scrunch pushes 0.2-2 N, settled with air drag until RMS speed < 0.01 m/s; the same
+files hold the release state (`--grid release`). M16-a recipe (hybrid, aux, 300 epochs), ~3.5 min per
+run. Test means (pos median in brackets); 38 test samples, so differences under ~0.5 cm are noise.
+
+| run | data | input | pos cm | dir deg | mag rel | dur s | impulse rel |
+|---|---|---|---|---|---|---|---|
+| chance (train mean) | rest set | - | 16.7 | 50.3 | 0.53 | 0.105 | 0.56 |
+| ridge on hand features | rest set, rest state | positions | 8.3 | 22.0 | 0.67 | 0.064 | 0.70 |
+| **M20-a** | rest set, **rest state** | **positions (the photo input)** | **5.8 (5.2)** | **10.8** | 0.49 | 0.066 | 0.54 |
+| M20-d | rest set, release state | positions | 3.4 (3.4) | 8.9 | 0.54 | 0.033 | 0.55 |
+| M20-c | rest set, release state | positions + velocities | 3.6 (3.2) | 8.9 | 0.59 | 0.030 | 0.58 |
+| M20-b | ds256_const_paper (free loading, 1,356 train), release | positions | 3.3 (2.5) | 8.2 | 0.55 | 0.028 | 0.56 |
+
+Chance direction is 50 deg here (94-103 on the free-direction sets): opposing scrunch pushes make
+the mean direction informative.
+
+Reading:
+- **The rest state keeps most of the location and direction.** M20-a recovers position to 5.8 cm
+  (chance 16.7, ridge 8.3) and direction to 10.8 deg (chance 50) from a still sheet.
+- **Settling costs ~2.4 cm, ~2 deg and half the duration accuracy** (M20-a vs M20-d: same files,
+  same 304 training samples, only the capture instant differs). Duration goes 0.033 -> 0.066 s, i.e.
+  from well resolved to about a third of the way back to chance.
+- **Velocities add nothing at release on this set** (M20-c 3.6 vs M20-d 3.4, within noise).
+  On ds256_const_paper they were worth 0.7 cm (M17-b 2.6 vs M20-b 3.3).
+- **Magnitude is at chance in every paper run** (0.49-0.59 vs 0.53), rest or release, as on the
+  release-capture paper set (M17 reading above). The rest state does not change that.
+- Data size is the obvious next lever: M20-d on 304 samples matches M20-b on 1,356 (different
+  loading, so only indicative). Finishing J-007 adds ~45 samples; a useful M20-a number needs the
+  full set or a second batch.
+
 ## Rung 4b, step 2: SAM 3 on synthetic photos (2026-10-30, branch photo-render)
 
 Synthetic photos of 12 cloth + 2 paper 256-grid samples, 4 random pinhole views each
