@@ -19,14 +19,14 @@ function azElFromDir(d: [number, number, number]): { az: number; el: number } {
 // The model menu (mirrors the backend's MODELS; /models adds availability). Default M16-a.
 // No multi-guess refinement models (M22) by decision 2026-11-03.
 const MODEL_MENU: ModelInfo[] = [
-  { name: 'M16a', label: 'M16-a: cloth at release, positions + velocities', physics: 'cloth', available: true,
-    blurb: 'The clean model: sees the full mesh with velocities at the instant the pushes end.',
+  { name: 'M16a', label: 'Positions + final velocities', physics: 'cloth', available: true,
+    blurb: 'M16-a: the full mesh with its velocities at the instant the pushes end (cloth, zero gravity).',
     reference: { pos_cm: 1.0, dir_deg: 4.3, impulse_rel: 0.156 } },
-  { name: 'M20a3', label: 'M20-a3: paper at rest, positions only', physics: 'paper', available: false,
-    blurb: 'A creased paper sheet settled to rest, no velocities: the still-image setting on exact geometry. ~2 min per push.',
+  { name: 'M20a3', label: 'Positions only', physics: 'paper', available: false,
+    blurb: 'M20-a3: a creased paper sheet settled to rest, exact geometry, no velocities (~2 min per push).',
     reference: { pos_cm: 2.8, dir_deg: 6.6, impulse_rel: null } },
-  { name: 'M21c', label: 'M21-c: paper at rest, trained on camera grids', physics: 'paper', available: false,
-    blurb: 'Same setting, fine-tuned on grids rebuilt from photos; the camera path\'s model. ~2 min per push.',
+  { name: 'M21c', label: 'Pseudo camera', physics: 'paper', available: false,
+    blurb: 'M21-c: same paper setting, trained on grids rebuilt from photos, the camera path\'s model (~2 min per push).',
     reference: { pos_cm: 3.4, dir_deg: 7.3, impulse_rel: null } },
 ];
 
@@ -388,7 +388,7 @@ export default function App() {
                   <td>{result.metrics.mean.dir_deg.toFixed(0)}</td><td>{(100 * result.metrics.mean.impulse_rel).toFixed(0)}%</td>
                 </tr>
                 <tr title="What this model scores on average over its held-out test set. Your numbers near these are normal.">
-                  <td>typical ({result.model ?? 'M16a'} test set)</td><td>{result.metrics.reference.pos_cm.toFixed(1)}</td>
+                  <td>typical ({menu.find((m) => m.name === result.model)?.label ?? result.model ?? 'M16-a'}, test set)</td><td>{result.metrics.reference.pos_cm.toFixed(1)}</td>
                   <td>{result.metrics.reference.dir_deg.toFixed(0)}</td>
                   <td>{result.metrics.reference.impulse_rel == null ? '–' : `${(100 * result.metrics.reference.impulse_rel).toFixed(0)}%`}</td>
                 </tr>

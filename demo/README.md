@@ -37,6 +37,9 @@ polls every 2 s. The metrics table gets a "from the camera" row.
 
 ## Model menu (2026-11-03)
 
+Menu labels (Nick, 2026-11-03): "Positions + final velocities" (M16-a), "Positions only" (M20-a3),
+"Pseudo camera" (M21-c).
+
 Decision (Nick): the demo's model is the clean model with velocities, M16-a (cloth at release,
 1.0 cm / 4.3 deg); a dropdown next to Push offers the two rest-state paper models, M20-a3 (clean
 grids, positions only; 2.8 / 6.6 clean) and M21-c (trained on camera-chain grids; 3.4 / 7.3 clean).
