@@ -19,14 +19,12 @@ materials bend, stretch and break. Three-dimensional mechanics has decades of si
 inverse-analysis tooling behind it. Thin sheets are a different problem. A sheet bends far more
 easily than it stretches (bending stiffness scales with thickness cubed, stretching stiffness
 with thickness), so instead of deforming smoothly it crumples: strain collapses into sharp ridges
-and cone-like points (Witten, *Rev. Mod. Phys.* 79, 643, 2007; Lobkovsky et al., *Science* 270,
-1482, 1995).
+and cone-like points [[1](#references), [2](#references)].
 
 That one behaviour governs crushed car panels, folding solar arrays, airbags, stent grafts,
 packaging, paper and fabric. And a crumple is a record. Crash reconstruction already reads impact
-energy off crush depth (Campbell, SAE 740565, 1974); origami engineering designs sheets that fold
-on purpose, from Miura-ori arrays (Miura, ISAS Report 618, 1985) to stent grafts (Kuribayashi et
-al., *Mater. Sci. Eng. A* 419, 131, 2006). If a model can read the record, it can say where a
+energy off crush depth [[3](#references)]; origami engineering designs sheets that fold on
+purpose, from Miura-ori solar arrays [[4](#references)] to stent grafts [[5](#references)]. If a model can read the record, it can say where a
 crash hit, why a package failed, how a garment was grasped, or which push would undo the fold.
 
 This project starts with the simplest version of that question: one sheet, one crumple, two
@@ -301,3 +299,11 @@ Re-simulating M16-a's predicted pushes reproduces the sheet to 0.018 m centred R
 identical inputs replay bit-exactly below 1e-4). SAM 3.1 finds the sheet in 64 of 64 rendered
 views at median IoU 0.990; the VGGT stereo lift reaches 1.42 cm median depth error with no
 ground-truth scale.
+
+## References
+
+1. T. A. Witten, "Stress focusing in elastic sheets", *Reviews of Modern Physics* 79, 643 (2007).
+2. A. Lobkovsky, S. Gentges, H. Li, D. Morse, T. A. Witten, "Scaling properties of stretching ridges in a crumpled elastic sheet", *Science* 270, 1482 (1995).
+3. K. L. Campbell, "Energy basis for collision severity", SAE Technical Paper 740565 (1974).
+4. K. Miura, "Method of packaging and deployment of large membranes in space", Institute of Space and Astronautical Science Report 618 (1985).
+5. K. Kuribayashi, K. Tsuchiya, Z. You, D. Tomus, M. Umemoto, T. Ito, M. Sasaki, "Self-deployable origami stent grafts as a biomedical application of Ni-rich TiNi shape memory alloy foil", *Materials Science and Engineering: A* 419, 131 (2006).
