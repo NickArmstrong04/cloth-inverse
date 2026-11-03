@@ -271,6 +271,8 @@ def main():
                            drift_err_dec_cm=float(np.linalg.norm(dec["X_dec"].reshape(-1, 3).mean(0) - c) * 100))
             recs.append(rec)
             save = {"y": y, "vis": vis, "pvis": pvis, "stem": stem}
+            if dec is not None:
+                save["dvis"] = dec["dvis"]  # decoded-visible vertices (demo step strip)
             for k, (x, g) in variants.items():
                 save[f"X_{k}"], save[f"G_{k}"] = x, g
             np.savez_compressed(os.path.join(out, f"{stem}_grids.npz"), **save)

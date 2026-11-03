@@ -36,6 +36,7 @@ def main():
     ap.add_argument("--ref", default=None)
     ap.add_argument("--write-ref", action="store_true")
     ap.add_argument("--seed", type=int, default=7)
+    ap.add_argument("--no-narrate", action="store_true", help="skip the Muse Spark verdict")
     a = ap.parse_args()
     if a.write_ref:
         write_ref(a.ref)
@@ -49,9 +50,24 @@ def main():
     forces = [{"u": 0.3, "v": 0.6, "direction": [0.9, -0.3, 0.3], "magnitude": 0.8, "duration": 0.5},
               {"u": 0.7, "v": 0.4, "direction": [0.0, 0.3, -0.95], "magnitude": 0.5, "duration": 0.4}]
     t = time.time()
-    out = camera.run_live(model, sim, forces, ref["sim_config"], ref["force_footprint"], work, a.seed,
-                          on_stage=lambda s, p: print(f"  [{time.time() - t:6.1f} s] {s}", flush=True))
+    seen: list[str] = []
+
+    def on_stage(s, p, **artifacts):
+        for name, art in artifacts.items():
+            seen.append(name)
+            desc = {k: (f"{len(v) * 3 // 4 // 1024} kB" if isinstance(v, str) and len(v) > 200 else v)
+                    for k, v in art.items() if k != "forces"}
+            print(f"  [{time.time() - t:6.1f} s] finished {name}: {desc}", flush=True)
+        print(f"  [{time.time() - t:6.1f} s] -> {s} ({p:.2f})", flush=True)
+
+    out = camera.run_live(model, sim, forces, ref["sim_config"], ref["force_footprint"], work, a.seed, on_stage=on_stage)
+    expect = ["simulating", "render", "sam", "vggt", "decode", "grid"]
+    assert seen == expect, f"stages reported {seen}, expected {expect}"
     print(f"total {time.time() - t:.1f} s; timings", json.dumps({k: round(v, 1) for k, v in out["timings"].items()}))
+    if not a.no_narrate:
+        import narrate
+        n = narrate.verdict(out)
+        print("narration:", json.dumps({k: v for k, v in n.items() if k != "checks"}))
     print("adjustments:", out["adjustments"])
     print("mask:", out["mask_source"], "| coverage", out["coverage"])
     for k in ("camera", "mesh"):

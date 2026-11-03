@@ -6,8 +6,11 @@ Runs unchanged under plain ``uvicorn`` (local, Baseten later) and behind
 Endpoints:
     POST /simulate        {"forces": [{u,v,direction,magnitude,duration} x2]}
                           -> {"job_id"}. 422 on out-of-range forces.
-    GET  /jobs/{job_id}   {"status", "progress", "result" | "error"}.
-                          Polling every 500 ms is fine.
+    GET  /jobs/{job_id}   {"status", "progress", "result" | "error", "stages"?}.
+                          Polling every 500 ms is fine. Camera jobs carry ``stages``: one entry
+                          per finished step (simulating, render, sam, vggt, decode, grid,
+                          predict, narrate) with that step's images (base64 JPEG) and numbers;
+                          ``status`` names the step now running.
     GET  /healthz          {"status", "warm"}.
     POST /camera          {"forces": [...] x2} -> {"job_id"}: the live camera path
                           (camera.py): the pushes on rest-state paper (dataset physics,
@@ -64,6 +67,7 @@ _svc: SimService | None = None
 _ckpt = None
 _entries: list = []
 CAMERA_TIMEOUT_S = float(os.environ.get("CAMERA_TIMEOUT_S", "600"))
+NARRATE_TIMEOUT_S = float(os.environ.get("NARRATE_TIMEOUT_S", "45"))
 _cam: dict = {}  # model, sim, ref: warmed on the first /camera job
 
 
@@ -201,6 +205,7 @@ def create_app() -> FastAPI:
             if j is None:
                 raise HTTPException(404, "unknown job_id")
             return {"status": j["status"], "progress": j["progress"],
+                    **({"stages": j["stages"]} if "stages" in j else {}),
                     **({"result": j["result"]} if "result" in j else {}),
                     **({"error": j["error"]} if "error" in j else {})}
 
@@ -230,13 +235,29 @@ def _run_camera(job_id: str, forces: list[dict]):
         _set(job_id, status="simulating", progress=0.02)
         _warm_camera()
         work = os.path.join(_cam["work"], job_id)
-        stage = lambda s, p: _set(job_id, status=s, progress=p)
+        def stage(s, p, **artifacts):
+            with _lock:
+                st = dict(_jobs[job_id].get("stages", {}))
+                st.update(artifacts)
+                _jobs[job_id].update(status=s, progress=p, stages=st)
         fut = _sim_pool.submit(cam.run_live, _cam["model"], _cam["sim"], forces, _cam["ref"]["sim_config"],
                                _cam["ref"]["force_footprint"], work, random.randrange(10 ** 6), stage)
         out = fut.result(timeout=CAMERA_TIMEOUT_S)
         out["timings"]["total_s"] = time.time() - t0
-        _set(job_id, status="done", progress=1.0, result=out)
         shutil.rmtree(work, ignore_errors=True)
+        # The prediction shows while Muse Spark writes the verdict (narrate.py; skipped without a key).
+        stage("narrate", 0.95, predict={"elapsed_s": out["timings"]["predict_s"]})
+        _set(job_id, result=out)
+        t1 = time.time()
+        try:
+            import narrate
+            n = narrate.verdict(out, timeout=NARRATE_TIMEOUT_S)
+        except Exception as e:
+            n = {"text": None, "ok": False, "error": f"{type(e).__name__}: {str(e)[-200:]}"}
+        n["elapsed_s"] = time.time() - t1
+        out["narration"] = n
+        stage("done", 1.0, narrate=n)
+        _set(job_id, result=out)
     except Exception as e:
         _set(job_id, status="failed", error=f"camera path: {type(e).__name__}: {str(e)[-400:]}")
 

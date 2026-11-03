@@ -22,8 +22,47 @@
 html, body, #root { height: 100%; margin: 0; }
 body { background: var(--bg); color: var(--ink); font-family: var(--font); }
 .app { display: flex; height: 100%; }
-.stage-wrap { position: relative; flex: 1; min-width: 0; }
+.stage-wrap { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.scene { position: relative; flex: 1; min-height: 0; }
 .stage-wrap canvas { display: block; }
+
+/* under the hood: the camera path, one tile per step */
+.under-hood { flex: none; border-top: 1px solid var(--line); background: var(--panel); padding: 8px 12px 10px; }
+.uh-head { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; font-size: 12.5px; margin-bottom: 6px; }
+.uh-tiles { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+.tile {
+  flex: 0 0 150px; min-height: 150px; border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 6px 8px; font-size: 11.5px; position: relative; background: var(--bg);
+}
+.tile.narrate { flex-basis: 300px; }
+.tile.running { border-color: #2563eb; box-shadow: 0 0 0 1px #2563eb inset; }
+.tile.done { border-color: color-mix(in srgb, var(--reversal) 60%, var(--line)); }
+.tile.failed { border-color: var(--accent1); }
+.tile.pending { opacity: 0.55; }
+.tile-n { position: absolute; top: 5px; right: 7px; color: var(--muted); font-family: var(--mono); font-size: 10.5px; }
+.tile-title { font-weight: 600; font-size: 12px; padding-right: 14px; }
+.tile-model { color: #7cb3ff; font-size: 11px; margin-bottom: 5px; }
+[data-theme="light"] .tile-model { color: #1d4ed8; }
+.thumb { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 5px; display: block; cursor: zoom-in; image-rendering: auto; }
+canvas.thumb { image-rendering: pixelated; cursor: default; }
+.tile-cap { color: var(--muted); margin-top: 4px; line-height: 1.3; }
+.tile-cap.warn { color: #e0a100; }
+.tile-text { line-height: 1.35; }
+.tile-text small { color: var(--muted); }
+.tile-wait { color: var(--muted); margin-top: 28px; text-align: center; }
+.tile.running .tile-wait { color: var(--ink); }
+.tile-fail { color: var(--accent1); margin-top: 8px; line-height: 1.3; word-break: break-word; }
+.lightbox {
+  position: fixed; inset: 0; background: rgba(0, 0, 0, 0.78); z-index: 20;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; cursor: zoom-out;
+}
+.lightbox img { max-width: min(90vw, 768px); max-height: 80vh; border-radius: var(--radius); image-rendering: auto; }
+.lightbox-cap { color: #fff; font-size: 13px; }
+@media (max-width: 760px) {
+  .app { flex-direction: column; }
+  .panel { width: auto; border-left: 0; border-top: 1px solid var(--line); }
+  .scene { min-height: 46vh; }
+}
 .stage-hint {
   position: absolute; top: 12px; left: 12px; max-width: 46ch;
   background: color-mix(in srgb, var(--panel) 88%, transparent);

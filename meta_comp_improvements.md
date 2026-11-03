@@ -32,9 +32,9 @@ Muse Spark takes image input and returns text through the same endpoint.
 
 | # | item | effort | rubric gain | status |
 |---|---|---|---|---|
-| 1 | Live camera path in the demo | 1-2 days | tooling 4 -> ~7; removes the Stage One question | todo |
+| 1 | Live camera path in the demo | 1-2 days | tooling 4 -> ~7; removes the Stage One question | done 2026-11-03 as the "under the hood" step strip (`demo/frontend/src/StepStrip.tsx`, stages from `camera.py`); first version (gallery + mesh comparison, 58588d3) was removed as unclear |
 | 2 | Muse Spark as the SAM re-prompting agent | 0.5 day | "beyond a basic integration"; $5K agentic bonus | todo |
-| 3 | Muse Spark narration of the result | 2 h | visible use of the best-known Meta model | todo |
+| 3 | Muse Spark narration of the result | 2 h | visible use of the best-known Meta model | done 2026-11-03 (`demo/backend/narrate.py`, last tile of the strip; numbers checked as in T3) |
 | 4 | One real photo through the chain | 1 day | the "models meet the real world" frame for the video | todo |
 | 5 | SAM 3D Objects on Bouchet | 1 cluster job | breadth: four Meta models measured, not two | stretch |
 | 6 | README "Meta models used" table | 1 h | judges find the tooling before RESULTS.md | todo |

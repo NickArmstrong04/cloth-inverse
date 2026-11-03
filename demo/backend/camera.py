@@ -133,6 +133,48 @@ def mask_overlay(photo: np.ndarray, mask: np.ndarray) -> np.ndarray:
     return out.clip(0, 255).astype(np.uint8)
 
 
+def _rgb(png: str) -> np.ndarray:
+    from PIL import Image
+    return np.asarray(Image.open(png).convert("RGB"))
+
+
+def _mask(png: str) -> np.ndarray:
+    from PIL import Image
+    return np.asarray(Image.open(png).convert("L")) > 127
+
+
+def depth_image(depth: np.ndarray) -> np.ndarray:
+    """Metric depth (0 = no point) -> colour image: near = yellow, far = deep blue, background black."""
+    m = depth > 0
+    out = np.zeros(depth.shape + (3,), np.uint8)
+    if m.any():
+        lo, hi = np.percentile(depth[m], [2, 98])
+        t = np.clip((depth[m] - lo) / max(hi - lo, 1e-6), 0, 1)[:, None]
+        stops = np.array([[253, 231, 37], [53, 183, 121], [49, 104, 142], [68, 1, 84]], np.float32)  # viridis, reversed
+        x = t * (len(stops) - 1)
+        i = np.minimum(x.astype(int), len(stops) - 2)
+        w = x - i
+        out[m] = (stops[i[:, 0]] * (1 - w) + stops[i[:, 0] + 1] * w).astype(np.uint8)
+    return out
+
+
+def decode_overlay(photo: np.ndarray, vpix_est: np.ndarray, has_est: np.ndarray, every: int = 4) -> np.ndarray:
+    """Decoded vertex lattice on the photo (camera-only: no truth): one dot per decoded vertex of the
+    print, every ``every``-th grid line, coloured by material (u, v) so the mapping is visible."""
+    n = int(np.sqrt(len(has_est)))
+    est, has = vpix_est.reshape(n, n, 2), has_est.reshape(n, n)
+    out = (photo.astype(np.float32) * 0.45).astype(np.uint8)
+    H, W = out.shape[:2]
+    for j in range(0, n, every):
+        for i in range(0, n, every):
+            if not has[j, i]:
+                continue
+            x, y = int(round(est[j, i, 0])), int(round(est[j, i, 1]))
+            if 1 <= x < W - 1 and 1 <= y < H - 1:
+                out[y - 1:y + 2, x - 1:x + 2] = (int(255 * i / (n - 1)), int(255 * j / (n - 1)), 160)
+    return out
+
+
 def package(model: Model, grids_npz: str, photo_png: str, mask_png: str | None, true_fp: list[dict],
             record: dict | None = None, mask_source: str = "SAM 3.1 (Meta Model API)") -> dict:
     """One camera-path result: images, the camera's grid and the true mesh, both predictions, metrics."""
@@ -234,35 +276,93 @@ def masks(P: str, log: str) -> tuple[str, list[str]]:
     return src, missed
 
 
-def chain(P: str, h5: str, seed: int, log: str) -> dict:
-    """Steps 1-5 on one sample h5; returns paths and timings."""
+def _stage_sam(P: str, stem: str, pstem: str, src: str, missed: list[str]) -> dict:
+    lp = os.path.join(P, "sam3", "sam31_api_log.json")
+    log = json.load(open(lp)) if os.path.exists(lp) else {}
+    e = log.get(stem, {})
+    out = {"prompt": e.get("prompt"), "k": e.get("k"), "latency_s": e.get("s"),
+           "fallback": stem in missed, "source": src}
+    for key, st in (("overlay_v0", stem), ("overlay_v1", pstem)):
+        mp = os.path.join(P, "sam3", f"{st}__fabric.png")
+        out[key] = jpeg_b64(mask_overlay(_rgb(os.path.join(P, f"{st}.png")), _mask(mp)), 80) if os.path.exists(mp) else None
+    return out
+
+
+def _stage_vggt(P: str, stem: str) -> dict:
+    from grid_from_views import stereo_depth_map
+    gt = np.load(os.path.join(P, f"{stem}_gt.npz"))
+    depth, s_geo = stereo_depth_map(P, stem, gt)
+    z = np.load(os.path.join(P, "views", f"{stem}_pts_stereo.npz"))
+    has = depth is not None and bool((depth > 0).any())
+    return {"depth_v0": jpeg_b64(depth_image(depth), 80) if depth is not None else None,
+            "scale_geo": s_geo, "scale_baseline": float(z["scale_baseline"]) if "scale_baseline" in z else None,
+            "n_pts": int(len(z["pts"])),
+            "depth_range_cm": [float(depth[depth > 0].min() * 100), float(depth[depth > 0].max() * 100)] if has else None}
+
+
+def _stage_decode(P: str, stem: str) -> dict:
+    cz = np.load(os.path.join(P, "decode", f"{stem}_corr.npz"))
+    sc = json.load(open(os.path.join(P, "decode", "scores.json")))
+    recs = sc.get("records", []) if isinstance(sc, dict) else sc
+    rec = next((r for r in recs if r.get("stem") == stem), {})
+    cells = int(cz["cells_n"])
+    return {"lattice_v0": jpeg_b64(decode_overlay(_rgb(os.path.join(P, f"{stem}.png")), cz["vpix_est"], cz["has_est"]), 80),
+            "cells_found": int(rec.get("n_decoded", len(cz["cells"]))), "cells_total": cells * cells,
+            "vertices_decoded": int(np.asarray(cz["has_est"]).sum()), "vertices_total": int(len(cz["has_est"]))}
+
+
+def _stage_grid(npz: str, record: dict | None) -> dict:
+    z = np.load(npz)
+    m = z["dvis"] if "dvis" in z else z["pvis"]
+    n = m.shape[0]
+    f = n // 64
+    vis64 = (m.reshape(64, f, 64, f).mean(axis=(1, 3)) > 0.5).astype(np.uint8)
+    r = record or {}
+    return {"lifted": grid64_b64(z["X_photo_dec"]), "vis": base64.b64encode(vis64.tobytes()).decode(),
+            "visible_frac": float(m.mean()), "scale_fix": r.get("scale_fix_dec"),
+            "lift_err_visible_cm": r.get("err_vis_dec_cm")}
+
+
+def chain(P: str, h5: str, seed: int, log: str, on_stage=lambda s, p, **a: None) -> dict:
+    """Steps 1-5 on one sample h5; returns paths and timings. ``on_stage(next_step, progress,
+    **artifacts)`` is called as each step finishes, with that step's images and numbers keyed by
+    the step's name (the demo's step strip)."""
     t, T = time.time(), {}
     _sh([SIM_PY, "photo.py", "--h5", h5, "--views", "1", "--stereo", "20", "--texture", "coded", "--gt",
          "--seed", str(seed), "--out", P], log)
     T["render_s"] = time.time() - t; t = time.time()
-    src, missed = masks(P, log)
-    T["sam_s"] = time.time() - t; t = time.time()
-    _sh([SAM_PY, "lift_stereo.py", P, "--stereo-only", "--sam"], log)
-    T["vggt_s"] = time.time() - t; t = time.time()
-    _sh([SIM_PY, "decode_print.py", "--photos", P, "--base-only"], log)
-    T["decode_s"] = time.time() - t; t = time.time()
-    G = os.path.join(P, "grids")
-    _sh([SIM_PY, "grid_from_views.py", "--photos", P, "--corr", "decoded", "--scale-fix", SCALE_FIX, "--out", G], log)
-    T["grid_s"] = time.time() - t
     man = json.load(open(os.path.join(P, "manifest.json")))
     base = [v for v in man["views"] if v["partner"] > v["view"]][0]
     stem = os.path.splitext(base["png"])[0]
+    pstem = os.path.splitext(man["views"][base["partner"]]["png"])[0]
+    on_stage("sam", 0.3, render={"v0": jpeg_b64(_rgb(os.path.join(P, f"{stem}.png")), 80),
+                                 "v1": jpeg_b64(_rgb(os.path.join(P, f"{pstem}.png")), 80),
+                                 "elapsed_s": T["render_s"]})
+    src, missed = masks(P, log)
+    T["sam_s"] = time.time() - t; t = time.time()
+    on_stage("vggt", 0.45, sam={**_stage_sam(P, stem, pstem, src, missed), "elapsed_s": T["sam_s"]})
+    _sh([SAM_PY, "lift_stereo.py", P, "--stereo-only", "--sam"], log)
+    T["vggt_s"] = time.time() - t; t = time.time()
+    on_stage("decode", 0.6, vggt={**_stage_vggt(P, stem), "elapsed_s": T["vggt_s"]})
+    _sh([SIM_PY, "decode_print.py", "--photos", P, "--base-only"], log)
+    T["decode_s"] = time.time() - t; t = time.time()
+    on_stage("grid", 0.75, decode={**_stage_decode(P, stem), "elapsed_s": T["decode_s"]})
+    G = os.path.join(P, "grids")
+    _sh([SIM_PY, "grid_from_views.py", "--photos", P, "--corr", "decoded", "--scale-fix", SCALE_FIX, "--out", G], log)
+    T["grid_s"] = time.time() - t
     npz = os.path.join(G, f"{stem}_grids.npz")
     if not os.path.exists(npz):
         raise RuntimeError("the chain produced no grid for this view (decode found too few print cells)")
     recs = {r["stem"]: r for r in json.load(open(os.path.join(G, "grids.json")))["records"]}
+    on_stage("predict", 0.85, grid={**_stage_grid(npz, recs.get(stem)), "elapsed_s": T["grid_s"]})
     return {"npz": npz, "photo": os.path.join(P, base["png"]), "mask": os.path.join(P, "sam3", f"{stem}__fabric.png"),
             "record": recs.get(stem), "mask_source": src, "mask_fallback": missed, "timings": T}
 
 
 def run_live(model: Model, sim, forces: list[dict], ref_cfg: dict, ref_fp: list[dict], workdir: str,
-             seed: int, on_stage=lambda s, p: None) -> dict:
-    """Simulate the user's pushes on rest-state paper (dataset physics), then the camera chain."""
+             seed: int, on_stage=lambda s, p, **a: None) -> dict:
+    """Simulate the user's pushes on rest-state paper (dataset physics), then the camera chain.
+    ``on_stage(next_step, progress, **artifacts)`` carries the artifacts of the step just finished."""
     fs, notes = scrunch_forces(forces, ref_fp)
     os.makedirs(workdir, exist_ok=True)
     log = os.path.join(workdir, "chain.log")
@@ -272,13 +372,14 @@ def run_live(model: Model, sim, forces: list[dict], ref_cfg: dict, ref_fp: list[
     t = time.time()
     sim.run(fs, max(f["duration"] for f in fs) + settle, seed=seed, keep=h5)
     sim_s = time.time() - t
-    on_stage("camera", 0.6)
+    on_stage("render", 0.15, simulating={"adjustments": notes, "forces": fs, "elapsed_s": sim_s})
     P = os.path.join(workdir, "photos")
-    c = chain(P, h5, seed, log)
-    on_stage("predicting", 0.95)
+    c = chain(P, h5, seed, log, on_stage)
+    t = time.time()
     out = package(model, c["npz"], c["photo"], c["mask"], fs, c["record"], c["mask_source"])
     out["timings"] = {"sim_s": sim_s, **c["timings"]}
     out["adjustments"] = notes
     out["mask_fallback"] = c["mask_fallback"]
     out["live"] = True
+    out["timings"]["predict_s"] = time.time() - t
     return out

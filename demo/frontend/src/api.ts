@@ -39,7 +39,93 @@ export interface JobStatus {
   error?: string;
 }
 
+/** Camera path (backend camera.py): paper sim -> photos -> SAM 3.1 -> VGGT -> decoded grid -> M21-c -> Muse Spark. */
+export type CamStatus =
+  | 'queued' | 'simulating' | 'render' | 'sam' | 'vggt' | 'decode' | 'grid' | 'predict' | 'narrate' | 'done' | 'failed';
+
+export interface Narration {
+  text: string | null;
+  ok: boolean;
+  model?: string;
+  latency_s?: number;
+  elapsed_s?: number;
+  error?: string;
+}
+
+/** One entry per finished step; every image is a base64 JPEG. */
+export interface CameraStages {
+  simulating?: { adjustments: string[]; forces: ForceEx[]; elapsed_s: number };
+  render?: { v0: string; v1: string; elapsed_s: number };
+  sam?: {
+    overlay_v0: string | null; overlay_v1: string | null; prompt: string | null; k: number | null;
+    latency_s: number | null; fallback: boolean; source: string; elapsed_s: number;
+  };
+  vggt?: {
+    depth_v0: string | null; scale_geo: number; scale_baseline: number | null; n_pts: number;
+    depth_range_cm: [number, number] | null; elapsed_s: number;
+  };
+  decode?: {
+    lattice_v0: string; cells_found: number; cells_total: number; vertices_decoded: number;
+    vertices_total: number; elapsed_s: number;
+  };
+  grid?: {
+    lifted: string; vis: string; visible_frac: number; scale_fix: number | null;
+    lift_err_visible_cm: number | null; elapsed_s: number;
+  };
+  predict?: { elapsed_s: number };
+  narrate?: Narration;
+}
+
+export interface CameraPrediction {
+  predicted_forces: ForceEx[];
+  metrics: { per_force: Metric[]; mean: Metric };
+}
+
+export interface CameraResult {
+  stem: string;
+  live: boolean;
+  true_forces: ForceEx[];
+  images: { photo: string; mask: string | null };
+  mask_source: string;
+  mask_fallback: string[];
+  grids: { camera: string; true: string; shape: number[] };
+  camera: CameraPrediction;
+  mesh: CameraPrediction;
+  coverage: { camera_sees: number | null; decoded: number | null; scale_fix: number | null; lift_err_visible_cm: number | null };
+  reference: { camera: { pos_cm: number; dir_deg: number; pos_cm_median: number }; mesh: { pos_cm: number; dir_deg: number } };
+  timings: Record<string, number>;
+  adjustments: string[];
+  narration?: Narration;
+}
+
+export interface CameraJob {
+  status: CamStatus;
+  progress: number;
+  stages?: CameraStages;
+  result?: CameraResult;
+  error?: string;
+}
+
 const API = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:8000';
+
+export async function postCamera(forces: ForceInput[]): Promise<string> {
+  const r = await fetch(`${API}/camera`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ forces }),
+  });
+  if (!r.ok) {
+    const detail = await r.json().catch(() => ({}));
+    throw new Error((detail as { detail?: string }).detail ?? `POST /camera: ${r.status}`);
+  }
+  return ((await r.json()) as { job_id: string }).job_id;
+}
+
+export async function getCameraJob(jobId: string): Promise<CameraJob> {
+  const r = await fetch(`${API}/jobs/${jobId}`);
+  if (!r.ok) throw new Error(`GET /jobs: ${r.status}`);
+  return (await r.json()) as CameraJob;
+}
 
 export async function postSimulate(forces: ForceInput[]): Promise<string> {
   const r = await fetch(`${API}/simulate`, {

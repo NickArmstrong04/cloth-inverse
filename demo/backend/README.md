@@ -27,6 +27,12 @@ curl -s -X POST localhost:8000/simulate -H 'Content-Type: application/json' \
 curl -s localhost:8000/jobs/<job_id>   # poll every 500 ms to "done"
 ```
 
+`POST /camera` (same body) runs the camera path: the pushes re-simulated on paper, two photos,
+SAM 3.1 (hosted, `META_API_KEY`), VGGT (`SAM_PY` = the sam3env python), print decode, grid,
+M21-c, then Muse Spark (`narrate.py`). Its `GET /jobs/{id}` carries `stages` (one entry per
+finished step with base64 JPEGs and numbers) while `status` names the running step. Smoke test
+outside the service: `SIM_PY=... SAM_PY=... python test_live.py [--no-narrate]`.
+
 ## Modal deploy (one A10G, scales to zero when idle)
 
 ```bash

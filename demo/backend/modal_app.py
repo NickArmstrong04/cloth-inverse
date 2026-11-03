@@ -77,8 +77,9 @@ vol = modal.Volume.from_name("cloth-demo-checkpoints", create_if_missing=True)
 
 # Scale to zero when idle (no warm container): the first request after idle
 # pays the cold start (container + Warp + checkpoint, ~1-2 min). Credits over
-# latency for now.
-@app.function(image=image, gpu="A10G", min_containers=0, scaledown_window=120,
+# latency for now. scaledown_window 600 (was 120, 2026-11-03): the camera path
+# runs after every Push and its warm sim + VGGT should survive a pause between pushes.
+@app.function(image=image, gpu="A10G", min_containers=0, scaledown_window=600,
               timeout=600, volumes={"/vol": vol},
               secrets=[modal.Secret.from_name("meta-api")])
 @modal.asgi_app()

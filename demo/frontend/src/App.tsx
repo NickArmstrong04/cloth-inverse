@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { ACCENTS, REVERSAL, SceneView, type PlacedForce, type Stage } from './Scene';
-import { b64ToFrames, dirFromAzEl, getJob, postSimulate, type JobResult } from './api';
+import { b64ToFrames, dirFromAzEl, getCameraJob, getJob, postCamera, postSimulate, type JobResult } from './api';
+import { StepStrip, type CamState } from './StepStrip';
 
 interface ForceForm extends PlacedForce {
   az: number;
@@ -67,6 +68,8 @@ export default function App() {
   const [loop, setLoop] = useState(true);
   const [job, setJob] = useState<{ id: string; progress: number; error?: string } | null>(null);
   const [result, setResult] = useState<JobResult | null>(null);
+  // The camera path (step strip under the canvas): started when the mesh result lands.
+  const [cam, setCam] = useState<CamState | null>(null);
   const [showTrue, setShowTrue] = useState(true);
   const [showPred, setShowPred] = useState(true);
   const [showRev, setShowRev] = useState(true);
@@ -128,6 +131,7 @@ export default function App() {
       setJob({ id, progress: 0 });
       setStage('running');
       setResult(null);
+      setCam(null);
     } catch (e) {
       setJob({ id: '', progress: 0, error: String(e) });
     }
@@ -148,6 +152,11 @@ export default function App() {
           setStage('done');
           setPlaying(false);
           setJob(null);
+          // Same pushes through the camera path, shown step by step under the canvas.
+          const fs = forms.map((f) => ({ u: f.u, v: f.v, direction: f.direction, magnitude: f.magnitude, duration: f.duration }));
+          postCamera(fs)
+            .then((cid) => setCam({ id: cid, job: null, startedAt: Date.now() }))
+            .catch((e) => setCam({ id: '', job: { status: 'failed', progress: 0 }, startedAt: Date.now(), error: String(e) }));
         } else if (s.status === 'failed') {
           clearInterval(t);
           setJob({ id: job.id, progress: 1, error: s.error ?? 'job failed' });
@@ -162,7 +171,26 @@ export default function App() {
       }
     }, POLL_MS);
     return () => clearInterval(t);
-  }, [job, stage]);
+  }, [job, stage, forms]);
+
+  // Camera-path job: poll until done/failed; the strip re-renders as stages arrive.
+  useEffect(() => {
+    if (!cam || !cam.id) return;
+    const st = cam.job?.status;
+    if (st === 'done' || st === 'failed') return;
+    const id = cam.id;
+    const t = setInterval(async () => {
+      try {
+        const j = await getCameraJob(id);
+        setCam((c) => (c && c.id === id ? { ...c, job: j } : c));
+        if (j.status === 'done' || j.status === 'failed') clearInterval(t);
+      } catch (e) {
+        clearInterval(t);
+        setCam((c) => (c && c.id === id ? { ...c, job: { status: 'failed', progress: 1 }, error: String(e) } : c));
+      }
+    }, 2000);
+    return () => clearInterval(t);
+  }, [cam?.id, cam?.job?.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!playing || !frames) return;
@@ -188,6 +216,7 @@ export default function App() {
     setLocked([false, false]);
     setStage('place1');
     setJob(null);
+    setCam(null);
   };
 
   const update = (k: number, patch: Partial<ForceForm>) => {
@@ -198,20 +227,23 @@ export default function App() {
   return (
     <div className="app">
       <div className="stage-wrap">
-        <SceneView
-          frames={frames}
-          frame={frame}
-          stage={stage}
-          placed={placed}
-          allForms={forms}
-          result={result ? { predicted: result.predicted_forces, reversal: result.reversal_forces, showTrue, showPred, showRev } : null}
-          onPlace={onPlace}
-          controlsRef={controlsRef}
-          dark={dark}
-        />
-        <div className="stage-hint">
-          {hint(stage, active, placed, locked)}
+        <div className="scene">
+          <SceneView
+            frames={frames}
+            frame={frame}
+            stage={stage}
+            placed={placed}
+            allForms={forms}
+            result={result ? { predicted: result.predicted_forces, reversal: result.reversal_forces, showTrue, showPred, showRev } : null}
+            onPlace={onPlace}
+            controlsRef={controlsRef}
+            dark={dark}
+          />
+          <div className="stage-hint">
+            {hint(stage, active, placed, locked)}
+          </div>
         </div>
+        <StepStrip cam={cam} mesh={result} />
       </div>
       <div className="panel">
         <div className="topbar">
@@ -306,6 +338,13 @@ export default function App() {
                   <td>typical (test set)</td><td>{result.metrics.reference.pos_cm.toFixed(1)}</td>
                   <td>{result.metrics.reference.dir_deg.toFixed(0)}</td><td>{(100 * result.metrics.reference.impulse_rel).toFixed(0)}%</td>
                 </tr>
+                {cam?.job?.result && (
+                  <tr title="The camera path under the canvas: the same pushes re-simulated on paper, photographed, and read back with SAM 3.1, VGGT and the print decoder before M21-c guesses. Typical: 7.4 cm / 17°.">
+                    <td>from the camera</td><td>{cam.job.result.camera.metrics.mean.pos_cm.toFixed(1)}</td>
+                    <td>{cam.job.result.camera.metrics.mean.dir_deg.toFixed(0)}</td>
+                    <td>{(100 * cam.job.result.camera.metrics.mean.impulse_rel).toFixed(0)}%</td>
+                  </tr>
+                )}
               </tbody>
             </table>
             <div className="notice">
@@ -322,13 +361,15 @@ export default function App() {
           <p>3. The inverse model (M16-a: CNN, hybrid strain/curvature input) recovers both pushes.</p>
           <p>4. Predicted pushes appear faded next to yours.</p>
           <p>5. Reversal: the predicted pushes negated — what would undo the deformation.</p>
+          <p>6. Under the canvas, the same pushes go through a camera: paper sheet, two photos, SAM 3.1 finds the sheet,
+            VGGT gives depth, the printed code gives correspondences, M21-c guesses from that grid, Muse Spark writes the verdict.</p>
           <p>Who benefits: robots handling garments can infer the grasp that crumpled them.
             Sheet-goods lines can plan pushes or undo unwanted deformations.
             The method recovers unseen loads from observed shape alone.</p>
         </details>
 
         <footer className="stack">
-          PyTorch · Newton/Warp VBD sim · M16-a cnn_reg+hybrid (1.0 cm / 4.3° / 0.156) · React + three.js
+          PyTorch · Newton/Warp VBD sim · M16-a cnn_reg+hybrid (1.0 cm / 4.3° / 0.156) · camera path: SAM 3.1 + VGGT + M21-c + Muse Spark · React + three.js
         </footer>
       </div>
     </div>
