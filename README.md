@@ -12,65 +12,45 @@ from photographs with Meta's SAM 3.1, VGGT and Muse Spark.
 | **Meta models** | In the pipeline: Meta Model API `sam-3.1`, `muse-spark-1.3`; open weights SAM 3 (`facebook/sam3`), VGGT (`facebook/VGGT-1B`), DINOv2 (ablation). In the build: Muse Spark for planning, Muse Code for the first demo scaffold. Details in [Use of Meta AI tooling](#use-of-meta-ai-tooling). |
 | **Built** | 2026-10-27 to 2026-11-04 for the Meta AI Developer Hackathon. First commit 2026-10-27 22:49 ET; all code, data and results in this repository date from inside the building period. |
 
-![The live demo: a pushed sheet, the user's two pushes (solid), the model's guesses (faded) and the reversal (green)](docs/img/demo_result.png)
-
-## Summary
-
-A thin sheet (cloth or paper) remembers how it was loaded: creases, folds and stretch are the
-integral of the forces that acted on it. This project asks the inverse question. Given only the
-deformed geometry, **where** was the sheet pushed, in **which direction**, **how hard** and for
-**how long**, and which pushes would undo the deformation?
-
-The work runs in three stages, all in this repository:
-
-1. **Virtual.** A GPU simulator (NVIDIA Newton / Warp, VBD solver with self-contact) crumples a
-   0.5 m sheet with two Gaussian force patches. Thousands of such samples, generated as Slurm
-   job arrays, train a convolutional inverse model that recovers both pushes from the final
-   mesh. Predictions are checked by re-simulating them and comparing the resulting shape.
-2. **Through a camera.** The same sheet is rendered as two photographs 20 degrees apart.
-   SAM 3.1 finds the sheet, VGGT lifts it to a metric point cloud, a printed code gives
-   per-vertex correspondences, hidden vertices are filled in, and a model trained on exactly
-   these camera-derived grids recovers the pushes. Muse Spark writes the verdict.
-3. **Live demo.** A judge pushes the sheet in the browser, watches it crumple, and sees the
-   model's guess, the reversal, and every camera-path step with the Meta model that ran it.
-
-At a glance (test-set means; position error in cm, direction error in degrees):
-
-| setting | model | position | direction | source |
-|---|---|---|---|---|
-| Exact mesh with velocities (cloth, captured at release) | M16-a | **1.0 cm** | **4.3°** | `RESULTS.md` "M15 / M16-a" |
-| Exact mesh, positions only (paper settled to rest) | M20-a3 | 2.8 cm | 6.6° | `RESULTS.md` "M21" |
-| Camera chain: two rendered photos, SAM 3.1, VGGT, decoded print | M21-c | 7.4 cm | 17.0° | `RESULTS.md` "M21" |
-| Same M21-c model on the exact grid | M21-c | 3.4 cm | 7.3° | `RESULTS.md` "M21" |
-| Chance (random pushes) | | 14 cm | 94° | `RESULTS.md` "M16" |
-
-Re-simulating M16-a's predicted pushes reproduces the sheet to 0.018 m centred RMSE (chance 0.126,
-identical inputs replay bit-exactly below 1e-4). SAM 3.1 finds the sheet in 64 of 64 rendered
-views at median IoU 0.990; the VGGT stereo lift reaches 1.42 cm median depth error with no
-ground-truth scale.
-
 ## Impact
 
-**Who benefits.** Anything that handles sheet-like material and needs to reason about loads it
-did not observe:
+Everything around us, from car doors to clothing to the skin on a hand, is shaped by how
+materials bend, stretch and break. Three-dimensional mechanics has decades of simulation and
+inverse-analysis tooling behind it. Thin sheets are a different problem. A sheet bends far more
+easily than it stretches (bending stiffness scales with thickness cubed, stretching stiffness
+with thickness), so instead of deforming smoothly it crumples: strain collapses into sharp ridges
+and cone-like points (Witten, *Rev. Mod. Phys.* 79, 643, 2007; Lobkovsky et al., *Science* 270,
+1482, 1995).
 
-- Robots handling garments can infer the grasp or push that crumpled an item and plan the
-  motion that undoes it, instead of treating every crumpled state as new.
-- Sheet-goods lines (paper, film, textiles) can plan pushes, or detect and reverse unwanted
+That one behaviour governs crushed car panels, folding solar arrays, airbags, stent grafts,
+packaging, paper and fabric. And a crumple is a record. Crash reconstruction already reads impact
+energy off crush depth (Campbell, SAE 740565, 1974); origami engineering designs sheets that fold
+on purpose, from Miura-ori arrays (Miura, ISAS Report 618, 1985) to stent grafts (Kuribayashi et
+al., *Mater. Sci. Eng. A* 419, 131, 2006). If a model can read the record, it can say where a
+crash hit, why a package failed, how a garment was grasped, or which push would undo the fold.
+
+This project starts with the simplest version of that question: one sheet, one crumple, two
+pushes. Given only the deformed shape, which forces made it, and which would undo it? Solving the
+fundamental case is what makes the harder ones reachable:
+
+- **Robots handling garments** can infer the grasp or push that crumpled an item and plan the
+  motion that reverses it, instead of treating every crumpled state as new.
+- **Sheet-goods lines** (paper, film, textiles) can plan pushes, or detect and reverse unwanted
   deformation, from a camera view of the sheet.
-- More generally, the method recovers unseen loads from observed shape alone. The same
-  pattern (simulate, quality-gate, build a dataset, train the inverse model, verify by
-  re-simulation) carries to any system whose loading history must be read off its deformed
-  geometry; the third stage on the [roadmap](ROADMAP.md) is FEM meshes and contact-impulse
-  labels, for example crash reconstruction.
+- **Forensics and design** share the inverse question: the loading history of a panel, a
+  package or a fold-on-purpose structure, read from its final geometry.
+- **The method is material-agnostic.** The pattern here (simulate, quality-gate, build a
+  dataset, train the inverse model, verify by re-simulation) carries to any system whose loads
+  must be read from its deformed shape; the third stage on the [roadmap](ROADMAP.md) is FEM
+  meshes with contact-impulse labels, metal and tissue included.
 
-**What is proven here, and what is not.** The inverse model works on simulated cloth and paper
-to about one centimetre with the exact mesh, and to about seven centimetres through a
-photograph-based pipeline on rendered photos with a printed code. No real phone photo has been
-through the chain yet; the renders have a known camera motion, no clutter and no sensor noise.
-Force magnitude is learned as a regularity of this solver rather than a conserved quantity
-(see [Technical depth](#technical-depth--execution)). Those are the next steps, not
-hidden assumptions.
+**What is proven here, and what is not.** The inverse model recovers the pushes on simulated
+cloth and paper to about one centimetre from the exact mesh, and to about seven centimetres
+through a photograph-based pipeline on rendered photos with a printed code. No real phone photo
+has been through the chain yet; the renders have a known camera motion, no clutter and no sensor
+noise. Force magnitude is learned as a regularity of this solver rather than a conserved quantity
+(see [Technical depth](#technical-depth--execution)). Those are the next steps, not hidden
+assumptions.
 
 ## Use of Meta AI tooling
 
@@ -286,3 +266,38 @@ checkpoint in `demo/backend/checkpoints/M16a/` and `META_API_KEY` for the camera
 
 Built by Nick Armstrong, Alex Venezie, and Josh Elieson for the Meta AI Developer Hackathon,
 2026-10-27 to 2026-11-04.
+
+## Summary
+
+A thin sheet (cloth or paper) remembers how it was loaded: creases, folds and stretch are the
+integral of the forces that acted on it. This project asks the inverse question. Given only the
+deformed geometry, **where** was the sheet pushed, in **which direction**, **how hard** and for
+**how long**, and which pushes would undo the deformation?
+
+The work runs in three stages, all in this repository:
+
+1. **Virtual.** A GPU simulator (NVIDIA Newton / Warp, VBD solver with self-contact) crumples a
+   0.5 m sheet with two Gaussian force patches. Thousands of such samples, generated as Slurm
+   job arrays, train a convolutional inverse model that recovers both pushes from the final
+   mesh. Predictions are checked by re-simulating them and comparing the resulting shape.
+2. **Through a camera.** The same sheet is rendered as two photographs 20 degrees apart.
+   SAM 3.1 finds the sheet, VGGT lifts it to a metric point cloud, a printed code gives
+   per-vertex correspondences, hidden vertices are filled in, and a model trained on exactly
+   these camera-derived grids recovers the pushes. Muse Spark writes the verdict.
+3. **Live demo.** A judge pushes the sheet in the browser, watches it crumple, and sees the
+   model's guess, the reversal, and every camera-path step with the Meta model that ran it.
+
+At a glance (test-set means; position error in cm, direction error in degrees):
+
+| setting | model | position | direction | source |
+|---|---|---|---|---|
+| Exact mesh with velocities (cloth, captured at release) | M16-a | **1.0 cm** | **4.3°** | `RESULTS.md` "M15 / M16-a" |
+| Exact mesh, positions only (paper settled to rest) | M20-a3 | 2.8 cm | 6.6° | `RESULTS.md` "M21" |
+| Camera chain: two rendered photos, SAM 3.1, VGGT, decoded print | M21-c | 7.4 cm | 17.0° | `RESULTS.md` "M21" |
+| Same M21-c model on the exact grid | M21-c | 3.4 cm | 7.3° | `RESULTS.md` "M21" |
+| Chance (random pushes) | | 14 cm | 94° | `RESULTS.md` "M16" |
+
+Re-simulating M16-a's predicted pushes reproduces the sheet to 0.018 m centred RMSE (chance 0.126,
+identical inputs replay bit-exactly below 1e-4). SAM 3.1 finds the sheet in 64 of 64 rendered
+views at median IoU 0.990; the VGGT stereo lift reaches 1.42 cm median depth error with no
+ground-truth scale.
