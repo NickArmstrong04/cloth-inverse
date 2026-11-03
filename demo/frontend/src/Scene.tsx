@@ -218,6 +218,7 @@ export function SceneView({
   controlsRef,
   dark,
   flyIn,
+  previewAsTrue,
 }: {
   frames: Float32Array | null;
   frame: number;
@@ -231,6 +232,8 @@ export function SceneView({
   dark: boolean;
   /** presentation mode: 0..1 progress of the preview arrows flying in (default 1 = in place) */
   flyIn?: number;
+  /** draw the preview arrows like the true arrows (tail on the dot, pointing along the push) */
+  previewAsTrue?: boolean;
 }) {
   const last = frames ? Math.max(0, Math.round(frames.length / (GRID * GRID * 3)) - 1) : 0;
   // markers and preview arrows sit on the sheet as it is shown now (the deformed sheet when a
@@ -290,7 +293,7 @@ export function SceneView({
       <directionalLight position={[-0.5, 0.5, -0.6]} intensity={0.35} />
       <SheetMesh frames={frames} frame={frame} stage={stage} onPlace={onPlace} />
       {markers.map((m, k) => m && <Marker key={k} at={m.at} color={m.color} />)}
-      {previewArrows.map((a, k) => a && <ForceArrow key={`v${k}`} {...a} incoming flyIn={flyIn} />)}
+      {previewArrows.map((a, k) => a && <ForceArrow key={`v${k}`} {...a} incoming={!previewAsTrue} flyIn={flyIn} />)}
       {trueArrows.map((a, k) => (
         <ForceArrow key={`t${k}`} {...a} />
       ))}

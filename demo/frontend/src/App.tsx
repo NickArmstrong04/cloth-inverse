@@ -389,6 +389,7 @@ export default function App() {
             controlsRef={controlsRef}
             dark={dark}
             flyIn={flyIn}
+            previewAsTrue={PRESENT}
           />
           {!PRESENT && (
             <div className="stage-hint">
