@@ -38,3 +38,5 @@ cloth_results/photos/eval_views_smoke*.json
 # local force-set sweep outputs (large JSON with images); results.jsonl is summarised in demo/README.md
 demo/backend/sweep/**/*.json
 demo/backend/sweep/*.json
+.vercel
+.env*
