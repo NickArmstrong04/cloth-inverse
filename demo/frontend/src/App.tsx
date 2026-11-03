@@ -22,13 +22,13 @@ function azElFromDir(d: [number, number, number]): { az: number; el: number } {
 // No multi-guess refinement models (M22) by decision 2026-11-03.
 const MODEL_MENU: ModelInfo[] = [
   { name: 'M16a', label: 'Positions + final velocities', physics: 'cloth', available: true,
-    blurb: 'M16-a: the full mesh with its velocities at the instant the pushes end (cloth, zero gravity).',
+    blurb: 'M16-a: the full mesh with its velocities at the instant the pushes end (cloth, zero gravity; ~20 s per push, plus 1-2 min when the server is cold).',
     reference: { pos_cm: 1.0, dir_deg: 4.3, impulse_rel: 0.156 } },
   { name: 'M20a3', label: 'Positions only', physics: 'paper', available: false,
-    blurb: 'M20-a3: a creased paper sheet settled to rest, exact geometry, no velocities (~2 min per push).',
+    blurb: 'M20-a3: a creased paper sheet settled to rest, exact geometry, no velocities (~2 min per push, plus 1-2 min when the server is cold).',
     reference: { pos_cm: 2.8, dir_deg: 6.6, impulse_rel: null } },
   { name: 'M21c', label: 'Pseudo camera', physics: 'paper', available: false,
-    blurb: 'M21-c: same paper setting, trained on grids rebuilt from photos, the camera path\'s model (~2 min per push).',
+    blurb: 'M21-c: same paper setting, trained on grids rebuilt from photos, the camera path\'s model (~2 min per push, plus 1-2 min when the server is cold).',
     reference: { pos_cm: 3.4, dir_deg: 7.3, impulse_rel: null } },
 ];
 
@@ -93,7 +93,8 @@ export default function App() {
   const [flyIn, setFlyIn] = useState(1);
   const [playing, setPlaying] = useState(false);
   const [loop, setLoop] = useState(true);
-  const [job, setJob] = useState<{ id: string; progress: number; error?: string } | null>(null);
+  const [job, setJob] = useState<{ id: string; progress: number; error?: string; startedAt?: number } | null>(null);
+  const [now, setNow] = useState(Date.now());
   const [result, setResult] = useState<JobResult | null>(null);
   // The camera path (step strip under the canvas): started when the mesh result lands.
   const [cam, setCam] = useState<CamState | null>(null);
@@ -177,7 +178,7 @@ export default function App() {
         forms.map((f) => ({ u: f.u, v: f.v, direction: f.direction, magnitude: f.magnitude, duration: f.duration })),
         model,
       );
-      setJob({ id, progress: 0 });
+      setJob({ id, progress: 0, startedAt: Date.now() });
       setStage('running');
       setResult(null);
       setCam(null);
@@ -185,6 +186,12 @@ export default function App() {
       setJob({ id: '', progress: 0, error: String(e) });
     }
   }, [forms, model]);
+
+  useEffect(() => {
+    if (stage !== 'running') return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [stage]);
 
   useEffect(() => {
     if (PRESENT || !job || job.error || stage !== 'running') return;
@@ -219,7 +226,7 @@ export default function App() {
           setJob({ id: job.id, progress: 1, error: s.error ?? 'job failed' });
           setStage('ready');
         } else {
-          setJob({ id: job.id, progress: s.progress });
+          setJob({ id: job.id, progress: s.progress, startedAt: job.startedAt });
         }
       } catch (e) {
         clearInterval(t);
@@ -450,6 +457,12 @@ export default function App() {
         <button onClick={push} disabled={stage !== 'ready' || tooClose || !allPlaced}>
           {stage === 'running' ? 'Working…' : 'Push'}
         </button>
+        {stage === 'running' && job?.startedAt && !job.error && (
+          <div className="notice">
+            {Math.max(0, Math.round((now - job.startedAt) / 1000))} s elapsed · typically ~{MODEL_MENU.find((m) => m.name === model)?.physics === 'paper' ? '2 min' : '20 s'} per push,
+            1-2 min more if the server is starting up.
+          </div>
+        )}
         {job?.error && <div className="err">{job.error}</div>}
         {(stage === 'running' || stage === 'done') && (
           <button className="ghost" onClick={reset}>Start over</button>

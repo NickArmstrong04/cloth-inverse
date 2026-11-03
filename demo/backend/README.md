@@ -43,6 +43,11 @@ modal volume put cloth-demo-checkpoints demo/backend/checkpoints/M16a/metrics.js
 cd <repo> && modal deploy demo/backend/modal_app.py  # prints the https URL
 ```
 
+Jobs are kept in the container's memory (`_jobs`), so the function is pinned to
+`max_containers=1` with `@modal.concurrent(max_inputs=32)` (2026-11-03). Before that a
+busy container made Modal start a second one, which knew no jobs and answered the
+frontend's polling with `GET /jobs: 404`. Redeploy to apply.
+
 Then `CORS_ORIGINS=https://<vercel-app>.vercel.app,http://localhost:5173`
 via `modal deploy` env (or `modal secret`), redeploy to apply.
 

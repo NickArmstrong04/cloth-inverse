@@ -63,13 +63,13 @@ CKPT_DIR = os.environ.get("CKPT_DIR", os.path.join(CKPT_ROOT, "M16a"))
 # paper models were not scored on impulse there (None -> shown as a dash).
 MODELS = {
     "M16a": {"label": "Positions + final velocities", "physics": "cloth",
-             "blurb": "M16-a: the full mesh with its velocities at the instant the pushes end (cloth, zero gravity).",
+             "blurb": "M16-a: the full mesh with its velocities at the instant the pushes end (cloth, zero gravity; ~20 s per push, plus 1-2 min when the server is cold).",
              "reference": {"pos_cm": 1.0, "dir_deg": 4.3, "impulse_rel": 0.156}},
     "M20a3": {"label": "Positions only", "physics": "paper",
-              "blurb": "M20-a3: a creased paper sheet settled to rest, exact geometry, no velocities (~2 min per push).",
+              "blurb": "M20-a3: a creased paper sheet settled to rest, exact geometry, no velocities (~2 min per push, plus 1-2 min when the server is cold).",
               "reference": {"pos_cm": 2.8, "dir_deg": 6.6, "impulse_rel": None}},
     "M21c": {"label": "Pseudo camera", "physics": "paper",
-             "blurb": "M21-c: same paper setting, trained on grids rebuilt from photos, the camera path's model (~2 min per push).",
+             "blurb": "M21-c: same paper setting, trained on grids rebuilt from photos, the camera path's model (~2 min per push, plus 1-2 min when the server is cold).",
              "reference": {"pos_cm": 3.4, "dir_deg": 7.3, "impulse_rel": None}},
 }
 

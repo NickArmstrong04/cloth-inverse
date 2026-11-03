@@ -83,9 +83,14 @@ vol = modal.Volume.from_name("cloth-demo-checkpoints", create_if_missing=True)
 # pays the cold start (container + Warp + checkpoint, ~1-2 min). Credits over
 # latency for now. scaledown_window 600 (was 120, 2026-11-03): the camera path
 # runs after every Push and its warm sim + VGGT should survive a pause between pushes.
-@app.function(image=image, gpu="A10G", min_containers=0, scaledown_window=600,
-              timeout=600, volumes={"/vol": vol},
+# Exactly one container, many concurrent requests (2026-11-03): jobs live in app.py's
+# in-memory ``_jobs``. Without ``@modal.concurrent`` a container took one request at a
+# time, so the frontend's polling of two jobs made the autoscaler start a second
+# container, which knew no jobs and answered ``GET /jobs/<id>`` with 404.
+@app.function(image=image, gpu="A10G", min_containers=0, max_containers=1,
+              scaledown_window=600, timeout=600, volumes={"/vol": vol},
               secrets=[modal.Secret.from_name("meta-api")])
+@modal.concurrent(max_inputs=32)
 @modal.asgi_app()
 def web():
     import sys  # noqa: E402
