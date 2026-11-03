@@ -64,7 +64,7 @@ function hint(stage: Stage, active: number, placed: boolean[], locked: boolean[]
       : `Push ${k} is locked — sheet clicks move push ${other + 1} instead.`;
   }
   if (stage === 'done') {
-    return `Solid arrows: your pushes. Faded: predicted. Green: reversal. Push ${k} selected — click the sheet to move it (clears this result).`;
+    return 'Solid arrows: your pushes. Faded: predicted. Green: reversal. The pushes and the sheet are locked with this result — press "Run another simulation" to reset the sheet.';
   }
   if (!placed[active]) {
     return `Push ${k} selected — click the sheet to place it (${COLOUR[active]} marker). Drag to orbit, wheel to zoom, right-drag to pan.`;
@@ -132,19 +132,13 @@ export default function App() {
   // orbit-drag never clicks.
   const onPlace = useCallback(
     (u: number, v: number) => {
-      if (stage === 'running') return;
+      if (stage === 'running' || stage === 'done') return;  // locked with a result (2026-11-03)
       const target = !locked[active] ? active : !locked[active === 0 ? 1 : 0] ? (active === 0 ? 1 : 0) : -1;
       if (target < 0) return;
       const nplaced = [placed[0] || target === 0, placed[1] || target === 1];
       setForms((fs) => fs.map((f, k) => (k === target ? { ...f, u, v } : f)));
       setPlaced(nplaced);
       if (nplaced[0] && nplaced[1]) {
-        if (stage === 'done') {
-          setResult(null);
-          setFrames(null);
-          setFrame(0);
-          setPlaying(false);
-        }
         setStage('ready');
       } else if (pinned || locked[active]) {
         setStage(target === 0 ? 'place1' : 'place2');
@@ -374,6 +368,19 @@ export default function App() {
   });
 
   const tooClose = sep(forms[0], forms[1]) < 0.2;
+  // After Push the pushes and the sheet are locked with the result (2026-11-03): editing a
+  // card or clicking the sheet used to clear the result by accident. "Run another simulation"
+  // resets the sheet and unlocks the cards, keeping the pushes as they are.
+  const frozen = stage === 'running' || stage === 'done';
+  const another = () => {
+    setResult(null);
+    setFrames(null);
+    setFrame(0);
+    setPlaying(false);
+    setStage('ready');
+    setJob(null);
+    setCam(null);
+  };
   const reset = () => {
     setResult(null);
     setFrames(null);
@@ -389,6 +396,7 @@ export default function App() {
   };
 
   const update = (k: number, patch: Partial<ForceForm>) => {
+    if (frozen) return;
     select(k);
     setForms((fs) => fs.map((f, i) => (i === k ? withDir({ ...f, ...patch }) : f)));
   };
@@ -430,22 +438,22 @@ export default function App() {
           <div className={`force-card c${k + 1}${k === active ? ' active' : ''}`} key={k}
             onPointerDownCapture={() => select(k)} onFocusCapture={() => select(k)}
             title={k === active ? 'Selected — sheet clicks move this push' : 'Click or edit to select this push'}>
-            <h3>Push {k + 1}{k === active ? ' (selected)' : ''} — {locked[k] ? 'position locked' : `click sheet to ${placed[k] ? 'move' : 'place'}`}</h3>
+            <h3>Push {k + 1}{k === active ? ' (selected)' : ''} — {frozen ? 'locked with the result' : locked[k] ? 'position locked' : `click sheet to ${placed[k] ? 'move' : 'place'}`}</h3>
             <div className="row"><label>position</label><output>({f.u.toFixed(2)}, {f.v.toFixed(2)})</output>
               <label title="Locked: sheet clicks never move this push">
-                <input type="checkbox" checked={locked[k]}
+                <input type="checkbox" checked={locked[k]} disabled={frozen}
                   onChange={(e) => setLocked((l) => l.map((x, i) => (i === k ? e.target.checked : x)))} /> lock
               </label>
             </div>
-            <Slider label="azimuth" min={-180} max={180} step={1} value={f.az} unit="°"
+            <Slider disabled={frozen} label="azimuth" min={-180} max={180} step={1} value={f.az} unit="°"
               onChange={(v) => update(k, { az: v })} />
-            <Slider label="elevation" min={-90} max={90} step={1} value={f.el} unit="°"
+            <Slider disabled={frozen} label="elevation" min={-90} max={90} step={1} value={f.el} unit="°"
               onChange={(v) => update(k, { el: v })} />
             <div className="row"><label>direction</label>
               <output>[{f.direction.map((x) => x.toFixed(2)).join(', ')}]</output></div>
-            <Slider label="magnitude" min={0.15} max={1.25} step={0.01} value={f.magnitude} unit=" N"
+            <Slider disabled={frozen} label="magnitude" min={0.15} max={1.25} step={0.01} value={f.magnitude} unit=" N"
               onChange={(v) => update(k, { magnitude: v })} />
-            <Slider label="duration" min={0.3} max={0.7} step={0.01} value={f.duration} unit=" s"
+            <Slider disabled={frozen} label="duration" min={0.3} max={0.7} step={0.01} value={f.duration} unit=" s"
               onChange={(v) => update(k, { duration: v })} />
           </div>
         ))}
@@ -453,8 +461,8 @@ export default function App() {
 
         <div className="row" title={menu.find((m) => m.name === model)?.blurb}>
           <label htmlFor="model">model</label>
-          <select id="model" value={model} disabled={stage === 'running'}
-            onChange={(e) => { setModel(e.target.value); if (stage === 'done') { setResult(null); setCam(null); setStage('ready'); } }}>
+          <select id="model" value={model} disabled={frozen}
+            onChange={(e) => setModel(e.target.value)}>
             {menu.map((m) => (
               <option key={m.name} value={m.name} disabled={!m.available}>
                 {m.label}{m.available ? '' : ' (checkpoint not deployed)'}
@@ -474,6 +482,9 @@ export default function App() {
           </div>
         )}
         {job?.error && <div className="err">{job.error}</div>}
+        {stage === 'done' && (
+          <button onClick={another}>Run another simulation</button>
+        )}
         {(stage === 'running' || stage === 'done') && (
           <button className="ghost" onClick={reset}>Start over</button>
         )}
@@ -582,14 +593,14 @@ export default function App() {
   );
 }
 
-function Slider({ label, min, max, step, value, unit, onChange }: {
+function Slider({ label, min, max, step, value, unit, onChange, disabled }: {
   label: string; min: number; max: number; step: number; value: number; unit: string;
-  onChange: (v: number) => void;
+  onChange: (v: number) => void; disabled?: boolean;
 }) {
   return (
     <div className="row">
       <label>{label}</label>
-      <input type="range" min={min} max={max} step={step} value={value}
+      <input type="range" min={min} max={max} step={step} value={value} disabled={disabled}
         onChange={(e) => onChange(Number(e.target.value))} />
       <output>{value.toFixed(step < 1 ? 2 : 0)}{unit}</output>
     </div>
