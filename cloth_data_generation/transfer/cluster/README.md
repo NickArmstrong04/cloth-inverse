@@ -15,10 +15,10 @@ Everything lives under `$BASE_DIR`:
 
 ```bash
 cd $BASE_DIR
-git clone https://github.com/NickArmstrong04/cloth-inverse.git
-cd cloth-inverse/cloth_data_generation/transfer        # this is CODE_DIR
+git clone https://github.com/NickArmstrong04/uncrumple.git
+cd uncrumple/cloth_data_generation/transfer        # this is CODE_DIR
 # later updates
-cd $BASE_DIR/cloth-inverse && git pull
+cd $BASE_DIR/uncrumple && git pull
 ```
 
 Datasets go to `$BASE_DIR/cloth_data/<name>/`
@@ -45,7 +45,7 @@ bash cluster/interactive.sh gpu      # 1 GPU on gpu_devel, to try generate_sampl
 Then:
 
 ```bash
-cd $BASE_DIR/cloth-inverse/cloth_data_generation/transfer
+cd $BASE_DIR/uncrumple/cloth_data_generation/transfer
 bash cluster/setup_env.sh
 ```
 

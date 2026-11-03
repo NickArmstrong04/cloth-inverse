@@ -401,7 +401,7 @@ export default function App() {
       </div>
       <div className="panel">
         <div className="topbar">
-          <h2>Cloth inverse demo</h2>
+          <h2>Uncrumple</h2>
           <div className="spacer" />
           <button className="ghost" onClick={() => setDark((d) => !d)}>{dark ? 'Light' : 'Dark'}</button>
           <button className="ghost" onClick={() => controlsRef.current?.reset()}>Reset view</button>

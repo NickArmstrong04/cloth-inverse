@@ -244,7 +244,7 @@ M8/M9 training jobs have finished loading, and record the new sample count in DA
 
 ```bash
 bash cluster/interactive.sh      # CPU allocation
-cd $BASE_DIR/cloth-inverse && git pull && cd cloth_data_generation/transfer
+cd $BASE_DIR/uncrumple && git pull && cd cloth_data_generation/transfer
 S=$BASE_DIR/cloth_data/ds768_night_splits
 # paste the sbatch lines of the matrix, then:
 squeue -u $USER -o "%.10i %.14j %.8T %.10M %R"
@@ -303,7 +303,7 @@ Submit (CPU allocation, from `cloth_data_generation/transfer`, after `git pull`)
 
 ```bash
 bash cluster/interactive.sh
-cd $BASE_DIR/cloth-inverse && git pull && cd cloth_data_generation/transfer
+cd $BASE_DIR/uncrumple && git pull && cd cloth_data_generation/transfer
 S2=$BASE_DIR/cloth_data/ds256_free_splits
 # M11-a..h: paste the sbatch lines above
 # Sonata (once, on the login node, needs internet; then M11-j/k):
@@ -350,7 +350,7 @@ dependency and the Sonata rows after the install.
 Submit (from `cloth_data_generation/transfer`):
 
 ```bash
-cd $BASE_DIR/cloth-inverse && git pull && cd cloth_data_generation/transfer
+cd $BASE_DIR/uncrumple && git pull && cd cloth_data_generation/transfer
 S2=$BASE_DIR/cloth_data/ds256_free_splits
 grep -c n_glob ../inverse/models.py     # non-zero = the drift-channel commit is in
 # M12-a..e, M12-f2: paste the sbatch lines above; M12-c2 once M12-c has an id
@@ -389,7 +389,7 @@ S3=$BASE_DIR/cloth_data/ds256_const_splits
 Submit (CPU allocation, from `cloth_data_generation/transfer`, after the merge + package of J-005):
 
 ```bash
-cd $BASE_DIR/cloth-inverse && git pull && cd cloth_data_generation/transfer
+cd $BASE_DIR/uncrumple && git pull && cd cloth_data_generation/transfer
 S3=$BASE_DIR/cloth_data/ds256_const_splits
 ls $S3/train/*.h5 | wc -l; ls $S3/test/*.h5 | wc -l      # ~2300 / ~290 expected
 # M13-a..g: paste the sbatch lines above; M13-g2 once M13-g has an id
@@ -434,7 +434,7 @@ S3=$BASE_DIR/cloth_data/ds256_const_splits
 Submit (from `cloth_data_generation/transfer`):
 
 ```bash
-cd $BASE_DIR/cloth-inverse && git pull
+cd $BASE_DIR/uncrumple && git pull
 S3=$BASE_DIR/cloth_data/ds256_const_splits
 cd cloth_data_generation/inverse && ../transfer/.venv/bin/python identifiability.py $S3/test; cd ../transfer
 # M14-a..g: paste the sbatch lines above
@@ -465,7 +465,7 @@ S4=$BASE_DIR/cloth_data/ds256_const_paper_splits
 Submit (from `cloth_data_generation/transfer`; J-006 merged 2026-10-30 with 1356/169/169):
 
 ```bash
-cd $BASE_DIR/cloth-inverse && git pull && cd cloth_data_generation/transfer
+cd $BASE_DIR/uncrumple && git pull && cd cloth_data_generation/transfer
 S3=$BASE_DIR/cloth_data/ds256_const_splits
 S4=$BASE_DIR/cloth_data/ds256_const_paper_splits
 sbatch --job-name=M15a --mem=60G cluster/run.sbatch $S4 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --out runs/M15a
@@ -506,7 +506,7 @@ Also fixed: with `--no-rot`, test_predictions.json held every test sample twice 
 Submit (from `cloth_data_generation/transfer`; M15-r1/r2 now, r3/r4 when M15-a/b have finished):
 
 ```bash
-cd $BASE_DIR/cloth-inverse && git pull && cd cloth_data_generation/transfer
+cd $BASE_DIR/uncrumple && git pull && cd cloth_data_generation/transfer
 S3=$BASE_DIR/cloth_data/ds256_const_splits
 S4=$BASE_DIR/cloth_data/ds256_const_paper_splits
 sbatch --job-name=M15r1 cluster/resim_eval.sbatch $S3 runs/M13b --limit 100
@@ -563,7 +563,7 @@ S3 = ds256_const_splits; S3F = the same split re-packaged with snapshots in the 
 Submit (from `cloth_data_generation/transfer`):
 
 ```bash
-cd $BASE_DIR/cloth-inverse && git pull && cd cloth_data_generation/transfer
+cd $BASE_DIR/uncrumple && git pull && cd cloth_data_generation/transfer
 D=$BASE_DIR/cloth_data
 S3=$D/ds256_const_splits; S3F=$D/ds256_const_splits_fr
 (cd ../inverse && ../transfer/.venv/bin/python identifiability.py $S3/test)                       # M16-0
@@ -604,7 +604,7 @@ cd $BASE_DIR && df -h . && du -sh cloth_data/* 2>/dev/null | sort -h | tail -n 1
 ls -la cloth_data/*_splits/*.pt | sort -k5 -n | tail -n 20
 # safe to delete: caches of datasets not in the current matrices (rebuilt on demand), frame caches, old resim leftovers
 rm -f cloth_data/ds768_night_splits/*.pt cloth_data/ds256_free_splits/*.pt cloth_data/*_splits/*frames*.pt
-find cloth-inverse/cloth_data_generation/inverse/runs -name "_tmp_*.h5" -delete
+find uncrumple/cloth_data_generation/inverse/runs -name "_tmp_*.h5" -delete
 df -h .
 ```
 
@@ -620,7 +620,7 @@ df -h .
 | M15-r1, r2, r3, r4 | 31422385-31422388 | done (39-43 min) | re-sim of M13-b, M13-e, M15-a, M15-b (floor now meaningful) | same commands, `--limit 50` is enough | M13-b pred 0.0299 score 0.25; M13-e **NaN / beats chance 42% (INVALID, rotated frame)**; M15-a (paper) pred 0.0312, **floor 0.0010**, chance 0.1106, score 0.28; M15-b pred 0.0308, score 0.26. All provisional (footprint) |
 
 ```bash
-cd $BASE_DIR/cloth-inverse && git pull && cd cloth_data_generation/transfer
+cd $BASE_DIR/uncrumple && git pull && cd cloth_data_generation/transfer
 D=$BASE_DIR/cloth_data; S3=$D/ds256_const_splits; S3F=$D/ds256_const_splits_fr; S4=$D/ds256_const_paper_splits
 sbatch --job-name=M16r cluster/resim_eval.sbatch $S3 runs/M16a --limit 50
 RESIM=50 sbatch --job-name=M16c --mem=60G cluster/run.sbatch $S3 --model cnn_reg --epochs 300 --no-rot --amp --tta 0 --aux-w 1 --patch-head 5 --out runs/M16c
@@ -668,7 +668,7 @@ are final (table above). The re-simulation numbers are not, for two reasons foun
 Every re-sim therefore has to be re-run (13 x ~40 min, in parallel), M16-g2 after the repair:
 
 ```bash
-cd $BASE_DIR/cloth-inverse && git pull && cd cloth_data_generation/inverse
+cd $BASE_DIR/uncrumple && git pull && cd cloth_data_generation/inverse
 D=$BASE_DIR/cloth_data; S3=$D/ds256_const_splits; S3F=$D/ds256_const_splits_fr; S4=$D/ds256_const_paper_splits
 for r in M16d M16e M16f3 M16g M13e; do ../transfer/.venv/bin/python fix_rotated_preds.py --run runs/$r --root $S3; done
 cd ../transfer
@@ -717,7 +717,7 @@ Rung 2 redo: run `fix_rotated_preds.py` and check its output (it must print "sav
 rotation" for each run; it refuses and prints the reason otherwise), then re-sim the five:
 
 ```bash
-cd $BASE_DIR/cloth-inverse && git pull && cd cloth_data_generation/inverse
+cd $BASE_DIR/uncrumple && git pull && cd cloth_data_generation/inverse
 S3=$BASE_DIR/cloth_data/ds256_const_splits
 ls runs/M16d runs/M16g          # a .rotframe file means the repair already ran
 for r in M16d M16e M16f3 M16g M13e; do ../transfer/.venv/bin/python fix_rotated_preds.py --run runs/$r --root $S3; done
@@ -765,7 +765,7 @@ hybrid, Kabsch + hybrid + flow with 4 candidates). H = `--hybrid --aux-w 1 --amp
 | M17-e2 | 31539939 | done (42 min) | re-sim selection among M17-e's candidates | `sbatch --job-name=M17e2 --dependency=afterok:<M17e id> cluster/resim.sbatch $S3 runs/M17e --limit 50 --k 8` | **selected 0.82 cm / 4.35 deg / mag 0.24** vs mean-of-8 1.18 / 5.9, oracle 0.55 / 5.3, deterministic head 1.05 / 4.5: **new best**, the selection beats the model's own point prediction on position and direction |
 
 ```bash
-cd $BASE_DIR/cloth-inverse && git pull && cd cloth_data_generation/transfer
+cd $BASE_DIR/uncrumple && git pull && cd cloth_data_generation/transfer
 D=$BASE_DIR/cloth_data; S3=$D/ds256_const_splits; S4=$D/ds256_const_paper_splits
 RESIM=50 sbatch --job-name=M17a --mem=60G cluster/run.sbatch $S3 --model cnn_reg --no-rot --kabsch --eval-rotated --hybrid --aux-w 1 --amp --tta 0 --epochs 300 --out runs/M17a
 RESIM=50 sbatch --job-name=M17b --mem=60G cluster/run.sbatch $S4 --model cnn_reg --no-rot --hybrid --aux-w 1 --amp --tta 0 --epochs 300 --out runs/M17b
@@ -834,7 +834,7 @@ release): the velocity field exists in the files but is not used.
 
 ```
 S3=$BASE_DIR/cloth_data/ds256_const_splits
-cd $BASE_DIR/cloth-inverse && git fetch && git checkout photo-render && git pull
+cd $BASE_DIR/uncrumple && git fetch && git checkout photo-render && git pull
 cd cloth_data_generation/transfer
 ```
 
@@ -866,7 +866,7 @@ below use `PROFILE=rest` of `cluster/paper.sh`, whose defaults are updated from 
 ```
 S4=$BASE_DIR/cloth_data/ds256_const_paper_splits
 S5=$BASE_DIR/cloth_data/ds256_paper_rest_splits
-cd $BASE_DIR/cloth-inverse && git fetch && git checkout photo-render && git pull
+cd $BASE_DIR/uncrumple && git fetch && git checkout photo-render && git pull
 cd cloth_data_generation/transfer
 ```
 

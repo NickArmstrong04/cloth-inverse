@@ -1,8 +1,9 @@
-# cloth-inverse
+# Uncrumple
 
-**From a crumpled sheet back to the pushes that crumpled it.** Simulate a sheet, learn the inverse
-map from deformed shape to applied forces, verify by re-simulation, then run the same question
-from photographs with Meta's SAM 3.1, VGGT and Muse Spark.
+**Every crumple is a record of the forces that made it. Uncrumple reads it backwards:** from a
+crumpled sheet to the pushes that crumpled it. Simulate a sheet, learn the inverse map from
+deformed shape to applied forces, verify by re-simulation, then run the same question from
+photographs with Meta's SAM 3.1, VGGT and Muse Spark.
 
 | | |
 |---|---|
