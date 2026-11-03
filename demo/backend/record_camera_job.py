@@ -38,13 +38,22 @@ def main():
     ap.add_argument("--api", default=API)
     ap.add_argument("--out", default=os.path.join(_REPO, "demo", "frontend", "public", "present", "camera.json"))
     ap.add_argument("--max-s", type=float, default=900)
+    ap.add_argument("--seed", type=int, default=None, help="fix the re-sim + camera views (needs the 2026-11-03 backend)")
+    ap.add_argument("--forces-json", default=None, help="a sweep camera_*.json or any {'forces': [...]} file instead of a cache entry")
     a = ap.parse_args()
-    hit = json.load(open(os.path.join(_HERE, "cache", f"entry_{a.entry:02d}.json")))
-    forces = [{k: f[k] for k in ("u", "v", "direction", "magnitude", "duration")} for f in hit["true_forces"]]
+    if a.forces_json:
+        src = json.load(open(a.forces_json))
+        forces = [{k: f[k] for k in ("u", "v", "direction", "magnitude", "duration")} for f in src["forces"]]
+        if a.seed is None and src.get("seed") is not None:
+            a.seed = int(src["seed"])
+    else:
+        hit = json.load(open(os.path.join(_HERE, "cache", f"entry_{a.entry:02d}.json")))
+        forces = [{k: f[k] for k in ("u", "v", "direction", "magnitude", "duration")} for f in hit["true_forces"]]
     t0 = time.time()
     print("warming /models ...", flush=True)
     print(req(f"{a.api}/models", timeout=600)["default"], f"({time.time()-t0:.0f} s)", flush=True)
-    jid = req(f"{a.api}/camera", {"forces": forces}, timeout=600)["job_id"]
+    body = {"forces": forces, **({"seed": a.seed} if a.seed is not None else {})}
+    jid = req(f"{a.api}/camera", body, timeout=600)["job_id"]
     print("job", jid, flush=True)
     t1 = time.time()
     timeline, last = [], None
@@ -59,7 +68,7 @@ def main():
             break
         time.sleep(2)
     os.makedirs(os.path.dirname(a.out), exist_ok=True)
-    json.dump({"job": j, "timeline": timeline, "forces": forces, "entry": a.entry}, open(a.out, "w"))
+    json.dump({"job": j, "timeline": timeline, "forces": forces, "entry": a.entry, "seed": a.seed}, open(a.out, "w"))
     print(f"wrote {a.out} ({os.path.getsize(a.out)/1e6:.2f} MB), status {j['status']}")
     if j["status"] != "done":
         print("FAILED:", j.get("error")); sys.exit(1)

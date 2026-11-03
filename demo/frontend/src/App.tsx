@@ -109,6 +109,7 @@ export default function App() {
   const [panelIn, setPanelIn] = useState(!PRESENT);
   const presentData = useRef<PresentData | null>(null);
   const [cursor, setCursor] = useState<{ x: number; y: number; down: boolean }>({ x: -100, y: -100, down: false });
+  const [cursorOn, setCursorOn] = useState(false); // presentation mode: the fake cursor only when the capture asks for it
   const [marksOff, setMarksOff] = useState(PRESENT);
   const [flat, setFlat] = useState(false);
   const [showPred, setShowPred] = useState(true);
@@ -301,6 +302,7 @@ export default function App() {
       marks: (on) => setMarksOff(!on),
       flat: (on) => setFlat(on),
       panel: (on) => setPanelIn(on),
+      cursor: (on) => setCursorOn(on),
       flyArrows: (ms = 900) => new Promise((resolve) => {
         setMarksOff(false);
         setFlyIn(0);
@@ -545,7 +547,7 @@ export default function App() {
         </footer>
       </div>
       {PRESENT && (
-        <div className={`fake-cursor${cursor.down ? ' down' : ''}`} style={{ left: cursor.x, top: cursor.y }}>
+        <div className={`fake-cursor${cursor.down ? ' down' : ''}`} style={{ left: cursor.x, top: cursor.y, display: cursorOn ? undefined : 'none' }}>
           <svg width="22" height="30" viewBox="0 0 22 30"><path d="M1 1 L1 23 L6.5 18 L10 27 L14 25.5 L10.5 17 L18 17 Z" fill="#fff" stroke="#000" strokeWidth="1.4" strokeLinejoin="round" /></svg>
         </div>
       )}

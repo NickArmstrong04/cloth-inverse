@@ -957,3 +957,8 @@ Why (Nick, 2026-11-02): run the demo with the best camera version on the live we
 | gallery | 31752220 | done 2026-11-02 (CPU, <1 min) | 20-sheet gallery from the hosted SAM 3.1 run (first 20 sheets in name order with a v0 camera grid, no selection), M21-c on camera and true-mesh grids | `python demo/backend/make_gallery.py --photos $DATA/photos/rest_test100_sam --run runs/M21c --n 20 --out demo/frontend/public/gallery` | gallery mean camera 7.3 cm / 15.7 deg (median 5.8), mesh 3.4 / 7.7; full 175-view run 7.4 / 17.0 and 3.4 / 7.3: representative. 2.7 MB of JSON |
 | camlive | 31752659 | done 2026-11-02 (gpu_devel, RTX PRO 6000) | `demo/backend/test_live.py`: `camera.run_live` end to end on fresh pushes (rest-paper sim with the dataset physics from `rest_reference.json`, then render -> masks -> VGGT -> decode -> grid -> M21-c) | `SIM_PY=.venv SAM_PY=sam3env python test_live.py --write-ref --ref <test h5>` | 122 s total: sim 87, render 6, VGGT 24, decode 2, grid 2. Camera 6.2 cm / 7 deg, mesh 3.3 / 8. No key in the job: renderer masks (hosted SAM 3.1 validated on 400 views, T1-sam31) |
 | febuild | (day partition, `module load nodejs/22.23.4`) | done 2026-11-02 | frontend `npm ci && npm run build` (tsc + vite) | | type-check and build pass |
+
+
+## Video force-set sweep (local WSL, 2026-11-03)
+
+`demo/backend/sweep_live.py` rounds 1-2 (see demo/README.md "Force set and seed for the video"): 49 candidates, both paths each; decision cache entry 12 seed 2.

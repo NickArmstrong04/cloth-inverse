@@ -62,6 +62,8 @@ export interface PresentApi {
   setFrame: (k: number) => void;
   /** show the markers and slide the preview arrows in along their push directions */
   flyArrows: (ms?: number) => Promise<void>;
+  /** show the fake cursor (hidden by default so a stray real mouse never shows in a take) */
+  cursor: (on: boolean) => void;
   /** Index of the last frame (29 for a 30-frame run; some cached runs have fewer). */
   last: () => number;
   play: (once?: boolean) => void;

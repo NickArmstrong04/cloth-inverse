@@ -17,7 +17,7 @@ Endpoints:
                           predict, narrate) with that step's images (base64 JPEG) and numbers;
                           ``status`` names the step now running.
     GET  /healthz          {"status", "warm"}.
-    POST /camera          {"forces": [...] x2} -> {"job_id"}: the live camera path
+    POST /camera          {"forces": [...] x2, "seed"?: int} -> {"job_id"}: the live camera path
                           (camera.py): the pushes on rest-state paper (dataset physics,
                           ~2 min), then photo -> SAM 3.1 -> VGGT -> decoded grid -> M21-c.
                           Same /jobs polling; result is a camera.package payload.
@@ -309,7 +309,10 @@ def create_app() -> FastAPI:
         job_id = uuid.uuid4().hex[:12]
         with _lock:
             _jobs[job_id] = {"status": "queued", "progress": 0.0}
-        _executor.submit(_run_camera, job_id, body["forces"])
+        seed = body.get("seed")
+        if seed is not None and not isinstance(seed, int):
+            raise HTTPException(422, "'seed' must be an integer")
+        _executor.submit(_run_camera, job_id, body["forces"], seed)
         return {"job_id": job_id}
 
     @app.get("/jobs/{job_id}")
@@ -341,7 +344,9 @@ def _warm_camera():
         _cam.update(c)
 
 
-def _run_camera(job_id: str, forces: list[dict]):
+def _run_camera(job_id: str, forces: list[dict], seed: int | None = None):
+    """``seed`` (optional, 2026-11-03) fixes the paper re-sim and the camera views so a recorded
+    run reproduces (sweep_live.py picks it); random when absent."""
     import random
     import shutil
     t0 = time.time()
@@ -355,7 +360,8 @@ def _run_camera(job_id: str, forces: list[dict]):
                 st.update(artifacts)
                 _jobs[job_id].update(status=s, progress=p, stages=st)
         fut = _sim_pool.submit(cam.run_live, _cam["model"], _cam["sim"], forces, _cam["ref"]["sim_config"],
-                               _cam["ref"]["force_footprint"], work, random.randrange(10 ** 6), stage)
+                               _cam["ref"]["force_footprint"], work,
+                               seed if seed is not None else random.randrange(10 ** 6), stage)
         out = fut.result(timeout=CAMERA_TIMEOUT_S)
         out["timings"]["total_s"] = time.time() - t0
         shutil.rmtree(work, ignore_errors=True)
