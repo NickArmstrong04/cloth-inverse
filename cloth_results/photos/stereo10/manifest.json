@@ -1,8 +1,8 @@
 {
  "args": {
   "h5": [
-   "/home/narmstrong/cloth/smoke_const/b256",
-   "/home/narmstrong/cloth/smoke_const/batch8"
+   "~/cloth/smoke_const/b256",
+   "~/cloth/smoke_const/batch8"
   ],
   "out": "../../cloth_results/photos/stereo10",
   "views": 2,
@@ -23,7 +23,7 @@
  "views": [
   {
    "png": "sample_slot0000_seed100000_v0.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/b256/sample_slot0000_seed100000.h5",
+   "h5": "~/cloth/smoke_const/b256/sample_slot0000_seed100000.h5",
    "material": "cloth",
    "view": 0,
    "centroid": [
@@ -84,7 +84,7 @@
   },
   {
    "png": "sample_slot0000_seed100000_v1.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/b256/sample_slot0000_seed100000.h5",
+   "h5": "~/cloth/smoke_const/b256/sample_slot0000_seed100000.h5",
    "material": "cloth",
    "view": 1,
    "centroid": [
@@ -145,7 +145,7 @@
   },
   {
    "png": "sample_slot0000_seed100000_v2.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/b256/sample_slot0000_seed100000.h5",
+   "h5": "~/cloth/smoke_const/b256/sample_slot0000_seed100000.h5",
    "material": "cloth",
    "view": 2,
    "centroid": [
@@ -206,7 +206,7 @@
   },
   {
    "png": "sample_slot0000_seed100000_v3.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/b256/sample_slot0000_seed100000.h5",
+   "h5": "~/cloth/smoke_const/b256/sample_slot0000_seed100000.h5",
    "material": "cloth",
    "view": 3,
    "centroid": [
@@ -267,7 +267,7 @@
   },
   {
    "png": "sample_slot0001_seed100001_v0.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/b256/sample_slot0001_seed100001.h5",
+   "h5": "~/cloth/smoke_const/b256/sample_slot0001_seed100001.h5",
    "material": "cloth",
    "view": 0,
    "centroid": [
@@ -328,7 +328,7 @@
   },
   {
    "png": "sample_slot0001_seed100001_v1.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/b256/sample_slot0001_seed100001.h5",
+   "h5": "~/cloth/smoke_const/b256/sample_slot0001_seed100001.h5",
    "material": "cloth",
    "view": 1,
    "centroid": [
@@ -389,7 +389,7 @@
   },
   {
    "png": "sample_slot0001_seed100001_v2.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/b256/sample_slot0001_seed100001.h5",
+   "h5": "~/cloth/smoke_const/b256/sample_slot0001_seed100001.h5",
    "material": "cloth",
    "view": 2,
    "centroid": [
@@ -450,7 +450,7 @@
   },
   {
    "png": "sample_slot0001_seed100001_v3.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/b256/sample_slot0001_seed100001.h5",
+   "h5": "~/cloth/smoke_const/b256/sample_slot0001_seed100001.h5",
    "material": "cloth",
    "view": 3,
    "centroid": [
@@ -511,7 +511,7 @@
   },
   {
    "png": "sample_slot0002_seed100002_v0.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/b256/sample_slot0002_seed100002.h5",
+   "h5": "~/cloth/smoke_const/b256/sample_slot0002_seed100002.h5",
    "material": "cloth",
    "view": 0,
    "centroid": [
@@ -572,7 +572,7 @@
   },
   {
    "png": "sample_slot0002_seed100002_v1.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/b256/sample_slot0002_seed100002.h5",
+   "h5": "~/cloth/smoke_const/b256/sample_slot0002_seed100002.h5",
    "material": "cloth",
    "view": 1,
    "centroid": [
@@ -633,7 +633,7 @@
   },
   {
    "png": "sample_slot0002_seed100002_v2.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/b256/sample_slot0002_seed100002.h5",
+   "h5": "~/cloth/smoke_const/b256/sample_slot0002_seed100002.h5",
    "material": "cloth",
    "view": 2,
    "centroid": [
@@ -694,7 +694,7 @@
   },
   {
    "png": "sample_slot0002_seed100002_v3.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/b256/sample_slot0002_seed100002.h5",
+   "h5": "~/cloth/smoke_const/b256/sample_slot0002_seed100002.h5",
    "material": "cloth",
    "view": 3,
    "centroid": [
@@ -755,7 +755,7 @@
   },
   {
    "png": "sample_slot0003_seed100003_v0.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/b256/sample_slot0003_seed100003.h5",
+   "h5": "~/cloth/smoke_const/b256/sample_slot0003_seed100003.h5",
    "material": "cloth",
    "view": 0,
    "centroid": [
@@ -816,7 +816,7 @@
   },
   {
    "png": "sample_slot0003_seed100003_v1.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/b256/sample_slot0003_seed100003.h5",
+   "h5": "~/cloth/smoke_const/b256/sample_slot0003_seed100003.h5",
    "material": "cloth",
    "view": 1,
    "centroid": [
@@ -877,7 +877,7 @@
   },
   {
    "png": "sample_slot0003_seed100003_v2.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/b256/sample_slot0003_seed100003.h5",
+   "h5": "~/cloth/smoke_const/b256/sample_slot0003_seed100003.h5",
    "material": "cloth",
    "view": 2,
    "centroid": [
@@ -938,7 +938,7 @@
   },
   {
    "png": "sample_slot0003_seed100003_v3.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/b256/sample_slot0003_seed100003.h5",
+   "h5": "~/cloth/smoke_const/b256/sample_slot0003_seed100003.h5",
    "material": "cloth",
    "view": 3,
    "centroid": [
@@ -999,7 +999,7 @@
   },
   {
    "png": "sample_slot0000_seed6000_v0.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0000_seed6000.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0000_seed6000.h5",
    "material": "cloth",
    "view": 0,
    "centroid": [
@@ -1060,7 +1060,7 @@
   },
   {
    "png": "sample_slot0000_seed6000_v1.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0000_seed6000.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0000_seed6000.h5",
    "material": "cloth",
    "view": 1,
    "centroid": [
@@ -1121,7 +1121,7 @@
   },
   {
    "png": "sample_slot0000_seed6000_v2.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0000_seed6000.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0000_seed6000.h5",
    "material": "cloth",
    "view": 2,
    "centroid": [
@@ -1182,7 +1182,7 @@
   },
   {
    "png": "sample_slot0000_seed6000_v3.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0000_seed6000.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0000_seed6000.h5",
    "material": "cloth",
    "view": 3,
    "centroid": [
@@ -1243,7 +1243,7 @@
   },
   {
    "png": "sample_slot0001_seed6001_v0.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0001_seed6001.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0001_seed6001.h5",
    "material": "cloth",
    "view": 0,
    "centroid": [
@@ -1304,7 +1304,7 @@
   },
   {
    "png": "sample_slot0001_seed6001_v1.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0001_seed6001.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0001_seed6001.h5",
    "material": "cloth",
    "view": 1,
    "centroid": [
@@ -1365,7 +1365,7 @@
   },
   {
    "png": "sample_slot0001_seed6001_v2.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0001_seed6001.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0001_seed6001.h5",
    "material": "cloth",
    "view": 2,
    "centroid": [
@@ -1426,7 +1426,7 @@
   },
   {
    "png": "sample_slot0001_seed6001_v3.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0001_seed6001.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0001_seed6001.h5",
    "material": "cloth",
    "view": 3,
    "centroid": [
@@ -1487,7 +1487,7 @@
   },
   {
    "png": "sample_slot0002_seed56004_v0.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0002_seed56004.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0002_seed56004.h5",
    "material": "cloth",
    "view": 0,
    "centroid": [
@@ -1548,7 +1548,7 @@
   },
   {
    "png": "sample_slot0002_seed56004_v1.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0002_seed56004.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0002_seed56004.h5",
    "material": "cloth",
    "view": 1,
    "centroid": [
@@ -1609,7 +1609,7 @@
   },
   {
    "png": "sample_slot0002_seed56004_v2.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0002_seed56004.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0002_seed56004.h5",
    "material": "cloth",
    "view": 2,
    "centroid": [
@@ -1670,7 +1670,7 @@
   },
   {
    "png": "sample_slot0002_seed56004_v3.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0002_seed56004.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0002_seed56004.h5",
    "material": "cloth",
    "view": 3,
    "centroid": [
@@ -1731,7 +1731,7 @@
   },
   {
    "png": "sample_slot0003_seed6003_v0.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0003_seed6003.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0003_seed6003.h5",
    "material": "cloth",
    "view": 0,
    "centroid": [
@@ -1792,7 +1792,7 @@
   },
   {
    "png": "sample_slot0003_seed6003_v1.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0003_seed6003.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0003_seed6003.h5",
    "material": "cloth",
    "view": 1,
    "centroid": [
@@ -1853,7 +1853,7 @@
   },
   {
    "png": "sample_slot0003_seed6003_v2.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0003_seed6003.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0003_seed6003.h5",
    "material": "cloth",
    "view": 2,
    "centroid": [
@@ -1914,7 +1914,7 @@
   },
   {
    "png": "sample_slot0003_seed6003_v3.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0003_seed6003.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0003_seed6003.h5",
    "material": "cloth",
    "view": 3,
    "centroid": [
@@ -1975,7 +1975,7 @@
   },
   {
    "png": "sample_slot0004_seed56005_v0.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0004_seed56005.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0004_seed56005.h5",
    "material": "cloth",
    "view": 0,
    "centroid": [
@@ -2036,7 +2036,7 @@
   },
   {
    "png": "sample_slot0004_seed56005_v1.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0004_seed56005.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0004_seed56005.h5",
    "material": "cloth",
    "view": 1,
    "centroid": [
@@ -2097,7 +2097,7 @@
   },
   {
    "png": "sample_slot0004_seed56005_v2.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0004_seed56005.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0004_seed56005.h5",
    "material": "cloth",
    "view": 2,
    "centroid": [
@@ -2158,7 +2158,7 @@
   },
   {
    "png": "sample_slot0004_seed56005_v3.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0004_seed56005.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0004_seed56005.h5",
    "material": "cloth",
    "view": 3,
    "centroid": [
@@ -2219,7 +2219,7 @@
   },
   {
    "png": "sample_slot0005_seed6005_v0.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0005_seed6005.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0005_seed6005.h5",
    "material": "cloth",
    "view": 0,
    "centroid": [
@@ -2280,7 +2280,7 @@
   },
   {
    "png": "sample_slot0005_seed6005_v1.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0005_seed6005.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0005_seed6005.h5",
    "material": "cloth",
    "view": 1,
    "centroid": [
@@ -2341,7 +2341,7 @@
   },
   {
    "png": "sample_slot0005_seed6005_v2.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0005_seed6005.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0005_seed6005.h5",
    "material": "cloth",
    "view": 2,
    "centroid": [
@@ -2402,7 +2402,7 @@
   },
   {
    "png": "sample_slot0005_seed6005_v3.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0005_seed6005.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0005_seed6005.h5",
    "material": "cloth",
    "view": 3,
    "centroid": [
@@ -2463,7 +2463,7 @@
   },
   {
    "png": "sample_slot0006_seed56007_v0.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0006_seed56007.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0006_seed56007.h5",
    "material": "cloth",
    "view": 0,
    "centroid": [
@@ -2524,7 +2524,7 @@
   },
   {
    "png": "sample_slot0006_seed56007_v1.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0006_seed56007.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0006_seed56007.h5",
    "material": "cloth",
    "view": 1,
    "centroid": [
@@ -2585,7 +2585,7 @@
   },
   {
    "png": "sample_slot0006_seed56007_v2.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0006_seed56007.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0006_seed56007.h5",
    "material": "cloth",
    "view": 2,
    "centroid": [
@@ -2646,7 +2646,7 @@
   },
   {
    "png": "sample_slot0006_seed56007_v3.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0006_seed56007.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0006_seed56007.h5",
    "material": "cloth",
    "view": 3,
    "centroid": [
@@ -2707,7 +2707,7 @@
   },
   {
    "png": "sample_slot0007_seed6007_v0.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0007_seed6007.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0007_seed6007.h5",
    "material": "cloth",
    "view": 0,
    "centroid": [
@@ -2768,7 +2768,7 @@
   },
   {
    "png": "sample_slot0007_seed6007_v1.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0007_seed6007.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0007_seed6007.h5",
    "material": "cloth",
    "view": 1,
    "centroid": [
@@ -2829,7 +2829,7 @@
   },
   {
    "png": "sample_slot0007_seed6007_v2.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0007_seed6007.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0007_seed6007.h5",
    "material": "cloth",
    "view": 2,
    "centroid": [
@@ -2890,7 +2890,7 @@
   },
   {
    "png": "sample_slot0007_seed6007_v3.png",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0007_seed6007.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0007_seed6007.h5",
    "material": "cloth",
    "view": 3,
    "centroid": [

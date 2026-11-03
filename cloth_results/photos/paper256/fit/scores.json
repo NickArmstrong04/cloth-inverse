@@ -1,8 +1,8 @@
 {
  "args": {
   "photos": [
-   "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256",
-   "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/paper256"
+   "<repo>/cloth_results/photos/cloth256",
+   "<repo>/cloth_results/photos/paper256"
   ],
   "limit": 0,
   "pool": 4,

@@ -18,7 +18,8 @@ set -euo pipefail
 WORK="${1:?usage: chain_split.sbatch <work> <out> [grid_from_views args...]}"
 OUT="${2:?out}"
 shift 2
-B=/nfs/roberts/scratch/pi_sz622/naa79/cloth
+source "$SLURM_SUBMIT_DIR/cluster/cluster.env"
+B="$BASE_DIR"
 export HF_HOME=$B/.cache/hf PIP_CACHE_DIR=$B/.cache/pip
 SAMPY=$B/sam3env/bin/python
 PY="$SLURM_SUBMIT_DIR/.venv/bin/python"

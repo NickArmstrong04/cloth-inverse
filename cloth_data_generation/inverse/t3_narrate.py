@@ -1,4 +1,4 @@
-"""T3 (meta_comp_improvements.md item 3): Muse Spark writes the plain-language verdict of a demo result.
+"""T3 (hackathon tooling plan, item 3): Muse Spark writes the plain-language verdict of a demo result.
 
 Input: demo/backend/cache/entry_*.json (the /jobs/{id} payload). We hand Muse Spark only
 pre-rounded numbers (positions in cm on the 50 cm sheet, angles, impulses, per-push errors, the

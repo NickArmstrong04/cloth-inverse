@@ -1,9 +1,9 @@
 {
  "args": {
   "h5": [
-   "/home/narmstrong/cloth/smoke_paper_256"
+   "~/cloth/smoke_paper_256"
   ],
-  "out": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/paper256",
+  "out": "<repo>/cloth_results/photos/paper256",
   "views": 4,
   "size": 512,
   "fov": 40.0,
@@ -21,7 +21,7 @@
  "views": [
   {
    "png": "sample_slot0000_seed100000_v0.png",
-   "h5": "/home/narmstrong/cloth/smoke_paper_256/sample_slot0000_seed100000.h5",
+   "h5": "~/cloth/smoke_paper_256/sample_slot0000_seed100000.h5",
    "material": "paper",
    "view": 0,
    "R": [
@@ -75,7 +75,7 @@
   },
   {
    "png": "sample_slot0000_seed100000_v1.png",
-   "h5": "/home/narmstrong/cloth/smoke_paper_256/sample_slot0000_seed100000.h5",
+   "h5": "~/cloth/smoke_paper_256/sample_slot0000_seed100000.h5",
    "material": "paper",
    "view": 1,
    "R": [
@@ -129,7 +129,7 @@
   },
   {
    "png": "sample_slot0000_seed100000_v2.png",
-   "h5": "/home/narmstrong/cloth/smoke_paper_256/sample_slot0000_seed100000.h5",
+   "h5": "~/cloth/smoke_paper_256/sample_slot0000_seed100000.h5",
    "material": "paper",
    "view": 2,
    "R": [
@@ -183,7 +183,7 @@
   },
   {
    "png": "sample_slot0000_seed100000_v3.png",
-   "h5": "/home/narmstrong/cloth/smoke_paper_256/sample_slot0000_seed100000.h5",
+   "h5": "~/cloth/smoke_paper_256/sample_slot0000_seed100000.h5",
    "material": "paper",
    "view": 3,
    "R": [
@@ -237,7 +237,7 @@
   },
   {
    "png": "sample_slot0001_seed100001_v0.png",
-   "h5": "/home/narmstrong/cloth/smoke_paper_256/sample_slot0001_seed100001.h5",
+   "h5": "~/cloth/smoke_paper_256/sample_slot0001_seed100001.h5",
    "material": "paper",
    "view": 0,
    "R": [
@@ -291,7 +291,7 @@
   },
   {
    "png": "sample_slot0001_seed100001_v1.png",
-   "h5": "/home/narmstrong/cloth/smoke_paper_256/sample_slot0001_seed100001.h5",
+   "h5": "~/cloth/smoke_paper_256/sample_slot0001_seed100001.h5",
    "material": "paper",
    "view": 1,
    "R": [
@@ -345,7 +345,7 @@
   },
   {
    "png": "sample_slot0001_seed100001_v2.png",
-   "h5": "/home/narmstrong/cloth/smoke_paper_256/sample_slot0001_seed100001.h5",
+   "h5": "~/cloth/smoke_paper_256/sample_slot0001_seed100001.h5",
    "material": "paper",
    "view": 2,
    "R": [
@@ -399,7 +399,7 @@
   },
   {
    "png": "sample_slot0001_seed100001_v3.png",
-   "h5": "/home/narmstrong/cloth/smoke_paper_256/sample_slot0001_seed100001.h5",
+   "h5": "~/cloth/smoke_paper_256/sample_slot0001_seed100001.h5",
    "material": "paper",
    "view": 3,
    "R": [

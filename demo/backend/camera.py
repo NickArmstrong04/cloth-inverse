@@ -13,8 +13,8 @@ The research chain (cloth_data_generation/inverse, RESULTS.md M21) run on one sh
 6. M21-c on the camera grid (``X_photo_dec``) and on the true mesh (``X_oracle``), both scored
    against the true pushes.
 
-``package()`` turns step-5 outputs into the JSON the frontend draws; ``make_gallery.py`` calls it
-on the 100-sheet hosted-SAM run, ``run_live()`` runs steps 1-6 on a fresh simulation.
+``package()`` turns step-5 outputs into the JSON the frontend draws; ``run_live()`` runs
+steps 1-6 on a fresh simulation.
 
 Env: SIM_PY (python for photo / decode / grid, default this one), SAM_PY (python with VGGT,
 default this one), CAMERA_CKPT (run dir with model.pt, default checkpoints/M21c),

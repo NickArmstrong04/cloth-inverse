@@ -1,4 +1,4 @@
-"""T2 (meta_comp_improvements.md item 2): Muse Spark as the SAM 3.1 re-prompting agent.
+"""T2 (hackathon tooling plan, item 2): Muse Spark as the SAM 3.1 re-prompting agent.
 
 Per view: run hosted SAM 3.1 with a start phrase; show Muse Spark the photo, a red overlay of
 the masks (or the bare photo when K = 0), K and the mask fraction; it answers JSON

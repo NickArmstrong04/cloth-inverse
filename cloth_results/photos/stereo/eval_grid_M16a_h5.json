@@ -3,7 +3,7 @@
  "args": {
   "run": "runs/M16a",
   "h5": [
-   "/home/narmstrong/cloth/ds256_const_test16"
+   "~/cloth/ds256_const_test16"
   ],
   "vel": "oracle",
   "g": "oracle",

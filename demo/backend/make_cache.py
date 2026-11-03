@@ -5,7 +5,7 @@ and stores one ``*.json`` per entry in ``demo/backend/cache/`` holding the
 exact job result payload plus its true forces.
 
 Usage (WSL, warm GPU, ~15 x 13 s):
-    /home/narmstrong/cloth/.venv/bin/python demo/backend/make_cache.py \
+    <sim-venv>/bin/python demo/backend/make_cache.py \
         --ckpt demo/backend/checkpoints/M16a --n 15 --seed0 200000
 """
 

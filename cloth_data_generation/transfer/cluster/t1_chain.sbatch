@@ -1,5 +1,5 @@
 #!/bin/bash
-# T1 (meta_comp_improvements.md item 1): the full photo chain on a photo.py --stereo --texture coded --gt
+# T1 (hackathon tooling plan, item 1): the full photo chain on a photo.py --stereo --texture coded --gt
 # set whose SAM masks are already in <photos>/sam3/ (hosted SAM 3.1: inverse/sam_api.py --photos).
 # VGGT stereo lift (sam3env) -> coded-print decode -> world-frame grids (oracle and decoded
 # correspondences) -> eval_grid.py for each run given.
@@ -16,7 +16,8 @@
 set -euo pipefail
 P="${1:?usage: t1_chain.sbatch <photos_dir relative to inverse/> <run>...}"
 shift
-B=/nfs/roberts/scratch/pi_sz622/naa79/cloth
+source "$SLURM_SUBMIT_DIR/cluster/cluster.env"
+B="$BASE_DIR"
 export HF_HOME=$B/.cache/hf PIP_CACHE_DIR=$B/.cache/pip
 SAMPY=$B/sam3env/bin/python
 PY="$SLURM_SUBMIT_DIR/.venv/bin/python"

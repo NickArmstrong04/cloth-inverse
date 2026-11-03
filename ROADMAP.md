@@ -133,7 +133,7 @@ rung-4a checkpoint on the oracle and SAM packages.
 
 ### Rung 4b, step 3 (2026-10-30): VGGT lifts the photo to 3D
 
-Meta-only perception stack (Nick's preference): SAM 3 for the mask, VGGT (`inverse/lift.py`)
+Meta-only perception stack (decision 2026-10-30): SAM 3 for the mask, VGGT (`inverse/lift.py`)
 for depth + intrinsics from the single image; SAM 3D Objects deferred to the cluster (32 GB
 VRAM). VGGT's cloud is ~4 cm RMSE from the oracle after the best similarity transform (7 cm
 with only scale + centring), depth error 4% median: the lift, not segmentation, is the cost

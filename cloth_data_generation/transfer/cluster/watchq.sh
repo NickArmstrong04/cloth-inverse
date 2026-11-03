@@ -7,8 +7,8 @@
 #   watchq cloth_ladder        # exact name
 # Run it inside tmux/screen on the login node so it survives logout:  tmux new -s watchq
 watchq() {
-    local user="naa79"
-    local email="nick.armstrong@yale.edu"
+    local user="${USER}"
+    local email="${WATCH_EMAIL:-$USER}"   # export WATCH_EMAIL=you@example.org
     local patterns=("$@") out pat remaining=() still=() cleared=()
     [ ${#patterns[@]} -eq 0 ] && patterns=('*')
     remaining=("${patterns[@]}")

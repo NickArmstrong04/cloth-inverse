@@ -10,8 +10,8 @@ metrics, and timings.
 The service imports the simulator in-process, so it runs in the sim env:
 
 ```bash
-cd /mnt/c/Users/nicka/Desktop/projects/meta/demo/backend
-/home/narmstrong/cloth/.venv/bin/python -m uvicorn app:app --port 8000
+cd <repo>/demo/backend
+<sim-venv>/bin/python -m uvicorn app:app --port 8000   # the venv from cloth_data_generation/transfer/README.md
 ```
 
 `CKPT_DIR` defaults to `demo/backend/checkpoints/M16a`. `CORS_ORIGINS`

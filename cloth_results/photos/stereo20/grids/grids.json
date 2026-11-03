@@ -11,7 +11,7 @@
   {
    "stem": "sample_slot0000_seed100000_v0",
    "set": "stereo20",
-   "h5": "/home/narmstrong/cloth/smoke_const/b256/sample_slot0000_seed100000.h5",
+   "h5": "~/cloth/smoke_const/b256/sample_slot0000_seed100000.h5",
    "scale_geo": 1.3801870337143216,
    "visible_frac": 0.3016204833984375,
    "photo_visible_frac": 0.3016204833984375,
@@ -26,7 +26,7 @@
   {
    "stem": "sample_slot0000_seed100000_v1",
    "set": "stereo20",
-   "h5": "/home/narmstrong/cloth/smoke_const/b256/sample_slot0000_seed100000.h5",
+   "h5": "~/cloth/smoke_const/b256/sample_slot0000_seed100000.h5",
    "scale_geo": 1.2888000015961056,
    "visible_frac": 0.3098602294921875,
    "photo_visible_frac": 0.309814453125,
@@ -41,7 +41,7 @@
   {
    "stem": "sample_slot0000_seed6000_v0",
    "set": "stereo20",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0000_seed6000.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0000_seed6000.h5",
    "scale_geo": 0.9980345080431481,
    "visible_frac": 0.1912841796875,
    "photo_visible_frac": 0.1912841796875,
@@ -56,7 +56,7 @@
   {
    "stem": "sample_slot0000_seed6000_v1",
    "set": "stereo20",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0000_seed6000.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0000_seed6000.h5",
    "scale_geo": 1.2354590629052042,
    "visible_frac": 0.32513427734375,
    "photo_visible_frac": 0.32513427734375,
@@ -71,7 +71,7 @@
   {
    "stem": "sample_slot0001_seed100001_v0",
    "set": "stereo20",
-   "h5": "/home/narmstrong/cloth/smoke_const/b256/sample_slot0001_seed100001.h5",
+   "h5": "~/cloth/smoke_const/b256/sample_slot0001_seed100001.h5",
    "scale_geo": 1.3063848193008143,
    "visible_frac": 0.408416748046875,
    "photo_visible_frac": 0.408416748046875,
@@ -86,7 +86,7 @@
   {
    "stem": "sample_slot0001_seed100001_v1",
    "set": "stereo20",
-   "h5": "/home/narmstrong/cloth/smoke_const/b256/sample_slot0001_seed100001.h5",
+   "h5": "~/cloth/smoke_const/b256/sample_slot0001_seed100001.h5",
    "scale_geo": 0.9092123741112869,
    "visible_frac": 0.304840087890625,
    "photo_visible_frac": 0.3044891357421875,
@@ -101,7 +101,7 @@
   {
    "stem": "sample_slot0001_seed6001_v0",
    "set": "stereo20",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0001_seed6001.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0001_seed6001.h5",
    "scale_geo": 1.1656186571225227,
    "visible_frac": 0.170166015625,
    "photo_visible_frac": 0.170166015625,
@@ -116,7 +116,7 @@
   {
    "stem": "sample_slot0001_seed6001_v1",
    "set": "stereo20",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0001_seed6001.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0001_seed6001.h5",
    "scale_geo": 0.8918997470215452,
    "visible_frac": 0.3311767578125,
    "photo_visible_frac": 0.3310546875,
@@ -131,7 +131,7 @@
   {
    "stem": "sample_slot0002_seed100002_v0",
    "set": "stereo20",
-   "h5": "/home/narmstrong/cloth/smoke_const/b256/sample_slot0002_seed100002.h5",
+   "h5": "~/cloth/smoke_const/b256/sample_slot0002_seed100002.h5",
    "scale_geo": 1.0492867742757692,
    "visible_frac": 0.379058837890625,
    "photo_visible_frac": 0.379058837890625,
@@ -146,7 +146,7 @@
   {
    "stem": "sample_slot0002_seed100002_v1",
    "set": "stereo20",
-   "h5": "/home/narmstrong/cloth/smoke_const/b256/sample_slot0002_seed100002.h5",
+   "h5": "~/cloth/smoke_const/b256/sample_slot0002_seed100002.h5",
    "scale_geo": 1.299270138433209,
    "visible_frac": 0.237091064453125,
    "photo_visible_frac": 0.237091064453125,
@@ -161,7 +161,7 @@
   {
    "stem": "sample_slot0002_seed56004_v0",
    "set": "stereo20",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0002_seed56004.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0002_seed56004.h5",
    "scale_geo": 0.9884240168021302,
    "visible_frac": 0.26812744140625,
    "photo_visible_frac": 0.267822265625,
@@ -176,7 +176,7 @@
   {
    "stem": "sample_slot0002_seed56004_v1",
    "set": "stereo20",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0002_seed56004.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0002_seed56004.h5",
    "scale_geo": 1.0805902805475824,
    "visible_frac": 0.277587890625,
    "photo_visible_frac": 0.277587890625,
@@ -191,7 +191,7 @@
   {
    "stem": "sample_slot0003_seed100003_v0",
    "set": "stereo20",
-   "h5": "/home/narmstrong/cloth/smoke_const/b256/sample_slot0003_seed100003.h5",
+   "h5": "~/cloth/smoke_const/b256/sample_slot0003_seed100003.h5",
    "scale_geo": 1.2280204424180627,
    "visible_frac": 0.6472930908203125,
    "photo_visible_frac": 0.6472930908203125,
@@ -206,7 +206,7 @@
   {
    "stem": "sample_slot0003_seed100003_v1",
    "set": "stereo20",
-   "h5": "/home/narmstrong/cloth/smoke_const/b256/sample_slot0003_seed100003.h5",
+   "h5": "~/cloth/smoke_const/b256/sample_slot0003_seed100003.h5",
    "scale_geo": 0.9508302539305686,
    "visible_frac": 0.829010009765625,
    "photo_visible_frac": 0.8242950439453125,
@@ -221,7 +221,7 @@
   {
    "stem": "sample_slot0003_seed6003_v0",
    "set": "stereo20",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0003_seed6003.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0003_seed6003.h5",
    "scale_geo": 1.1891970894339656,
    "visible_frac": 0.50421142578125,
    "photo_visible_frac": 0.50421142578125,
@@ -236,7 +236,7 @@
   {
    "stem": "sample_slot0003_seed6003_v1",
    "set": "stereo20",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0003_seed6003.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0003_seed6003.h5",
    "scale_geo": 1.1464626109580784,
    "visible_frac": 0.303955078125,
    "photo_visible_frac": 0.303955078125,
@@ -251,7 +251,7 @@
   {
    "stem": "sample_slot0004_seed56005_v0",
    "set": "stereo20",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0004_seed56005.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0004_seed56005.h5",
    "scale_geo": 1.0363614214281691,
    "visible_frac": 0.41143798828125,
    "photo_visible_frac": 0.4110107421875,
@@ -266,7 +266,7 @@
   {
    "stem": "sample_slot0004_seed56005_v1",
    "set": "stereo20",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0004_seed56005.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0004_seed56005.h5",
    "scale_geo": 1.0991365178388186,
    "visible_frac": 0.45501708984375,
    "photo_visible_frac": 0.45245361328125,
@@ -281,7 +281,7 @@
   {
    "stem": "sample_slot0005_seed6005_v0",
    "set": "stereo20",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0005_seed6005.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0005_seed6005.h5",
    "scale_geo": 1.2176031566537269,
    "visible_frac": 0.274658203125,
    "photo_visible_frac": 0.271484375,
@@ -296,7 +296,7 @@
   {
    "stem": "sample_slot0005_seed6005_v1",
    "set": "stereo20",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0005_seed6005.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0005_seed6005.h5",
    "scale_geo": 0.8000828722173898,
    "visible_frac": 0.19915771484375,
    "photo_visible_frac": 0.1988525390625,
@@ -311,7 +311,7 @@
   {
    "stem": "sample_slot0006_seed56007_v0",
    "set": "stereo20",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0006_seed56007.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0006_seed56007.h5",
    "scale_geo": 1.0732533728956004,
    "visible_frac": 0.72161865234375,
    "photo_visible_frac": 0.72161865234375,
@@ -326,7 +326,7 @@
   {
    "stem": "sample_slot0006_seed56007_v1",
    "set": "stereo20",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0006_seed56007.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0006_seed56007.h5",
    "scale_geo": 1.1886606661547137,
    "visible_frac": 0.55902099609375,
    "photo_visible_frac": 0.55859375,
@@ -341,7 +341,7 @@
   {
    "stem": "sample_slot0007_seed6007_v0",
    "set": "stereo20",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0007_seed6007.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0007_seed6007.h5",
    "scale_geo": 0.7168228024909337,
    "visible_frac": 0.27972412109375,
    "photo_visible_frac": 0.27972412109375,
@@ -356,7 +356,7 @@
   {
    "stem": "sample_slot0007_seed6007_v1",
    "set": "stereo20",
-   "h5": "/home/narmstrong/cloth/smoke_const/batch8/sample_slot0007_seed6007.h5",
+   "h5": "~/cloth/smoke_const/batch8/sample_slot0007_seed6007.h5",
    "scale_geo": 0.9314104081536503,
    "visible_frac": 0.134765625,
    "photo_visible_frac": 0.134765625,

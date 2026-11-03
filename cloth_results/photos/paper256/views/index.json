@@ -5,7 +5,7 @@
    "stem": "sample_slot0000_seed100000_v0",
    "source": "oracle",
    "N": 20483,
-   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/paper256/views/sample_slot0000_seed100000_v0_pts_oracle.npz",
+   "path": "<repo>/cloth_results/photos/paper256/views/sample_slot0000_seed100000_v0_pts_oracle.npz",
    "size": 512,
    "fov": 40.0
   },
@@ -13,7 +13,7 @@
    "stem": "sample_slot0000_seed100000_v0",
    "source": "sam3",
    "N": 20290,
-   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/paper256/views/sample_slot0000_seed100000_v0_pts_sam3.npz",
+   "path": "<repo>/cloth_results/photos/paper256/views/sample_slot0000_seed100000_v0_pts_sam3.npz",
    "size": 512,
    "fov": 40.0
   },
@@ -21,7 +21,7 @@
    "stem": "sample_slot0000_seed100000_v1",
    "source": "oracle",
    "N": 39384,
-   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/paper256/views/sample_slot0000_seed100000_v1_pts_oracle.npz",
+   "path": "<repo>/cloth_results/photos/paper256/views/sample_slot0000_seed100000_v1_pts_oracle.npz",
    "size": 512,
    "fov": 40.0
   },
@@ -29,7 +29,7 @@
    "stem": "sample_slot0000_seed100000_v1",
    "source": "sam3",
    "N": 38970,
-   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/paper256/views/sample_slot0000_seed100000_v1_pts_sam3.npz",
+   "path": "<repo>/cloth_results/photos/paper256/views/sample_slot0000_seed100000_v1_pts_sam3.npz",
    "size": 512,
    "fov": 40.0
   },
@@ -37,7 +37,7 @@
    "stem": "sample_slot0000_seed100000_v2",
    "source": "oracle",
    "N": 35230,
-   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/paper256/views/sample_slot0000_seed100000_v2_pts_oracle.npz",
+   "path": "<repo>/cloth_results/photos/paper256/views/sample_slot0000_seed100000_v2_pts_oracle.npz",
    "size": 512,
    "fov": 40.0
   },
@@ -45,7 +45,7 @@
    "stem": "sample_slot0000_seed100000_v2",
    "source": "sam3",
    "N": 34953,
-   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/paper256/views/sample_slot0000_seed100000_v2_pts_sam3.npz",
+   "path": "<repo>/cloth_results/photos/paper256/views/sample_slot0000_seed100000_v2_pts_sam3.npz",
    "size": 512,
    "fov": 40.0
   },
@@ -53,7 +53,7 @@
    "stem": "sample_slot0000_seed100000_v3",
    "source": "oracle",
    "N": 57014,
-   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/paper256/views/sample_slot0000_seed100000_v3_pts_oracle.npz",
+   "path": "<repo>/cloth_results/photos/paper256/views/sample_slot0000_seed100000_v3_pts_oracle.npz",
    "size": 512,
    "fov": 40.0
   },
@@ -61,7 +61,7 @@
    "stem": "sample_slot0000_seed100000_v3",
    "source": "sam3",
    "N": 56544,
-   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/paper256/views/sample_slot0000_seed100000_v3_pts_sam3.npz",
+   "path": "<repo>/cloth_results/photos/paper256/views/sample_slot0000_seed100000_v3_pts_sam3.npz",
    "size": 512,
    "fov": 40.0
   },
@@ -69,7 +69,7 @@
    "stem": "sample_slot0001_seed100001_v0",
    "source": "oracle",
    "N": 41782,
-   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/paper256/views/sample_slot0001_seed100001_v0_pts_oracle.npz",
+   "path": "<repo>/cloth_results/photos/paper256/views/sample_slot0001_seed100001_v0_pts_oracle.npz",
    "size": 512,
    "fov": 40.0
   },
@@ -77,7 +77,7 @@
    "stem": "sample_slot0001_seed100001_v0",
    "source": "sam3",
    "N": 41298,
-   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/paper256/views/sample_slot0001_seed100001_v0_pts_sam3.npz",
+   "path": "<repo>/cloth_results/photos/paper256/views/sample_slot0001_seed100001_v0_pts_sam3.npz",
    "size": 512,
    "fov": 40.0
   },
@@ -85,7 +85,7 @@
    "stem": "sample_slot0001_seed100001_v1",
    "source": "oracle",
    "N": 36885,
-   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/paper256/views/sample_slot0001_seed100001_v1_pts_oracle.npz",
+   "path": "<repo>/cloth_results/photos/paper256/views/sample_slot0001_seed100001_v1_pts_oracle.npz",
    "size": 512,
    "fov": 40.0
   },
@@ -93,7 +93,7 @@
    "stem": "sample_slot0001_seed100001_v1",
    "source": "sam3",
    "N": 36404,
-   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/paper256/views/sample_slot0001_seed100001_v1_pts_sam3.npz",
+   "path": "<repo>/cloth_results/photos/paper256/views/sample_slot0001_seed100001_v1_pts_sam3.npz",
    "size": 512,
    "fov": 40.0
   },
@@ -101,7 +101,7 @@
    "stem": "sample_slot0001_seed100001_v2",
    "source": "oracle",
    "N": 29838,
-   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/paper256/views/sample_slot0001_seed100001_v2_pts_oracle.npz",
+   "path": "<repo>/cloth_results/photos/paper256/views/sample_slot0001_seed100001_v2_pts_oracle.npz",
    "size": 512,
    "fov": 40.0
   },
@@ -109,7 +109,7 @@
    "stem": "sample_slot0001_seed100001_v2",
    "source": "sam3",
    "N": 29378,
-   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/paper256/views/sample_slot0001_seed100001_v2_pts_sam3.npz",
+   "path": "<repo>/cloth_results/photos/paper256/views/sample_slot0001_seed100001_v2_pts_sam3.npz",
    "size": 512,
    "fov": 40.0
   },
@@ -117,7 +117,7 @@
    "stem": "sample_slot0001_seed100001_v3",
    "source": "oracle",
    "N": 104925,
-   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/paper256/views/sample_slot0001_seed100001_v3_pts_oracle.npz",
+   "path": "<repo>/cloth_results/photos/paper256/views/sample_slot0001_seed100001_v3_pts_oracle.npz",
    "size": 512,
    "fov": 40.0
   },
@@ -125,7 +125,7 @@
    "stem": "sample_slot0001_seed100001_v3",
    "source": "sam3",
    "N": 104140,
-   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/paper256/views/sample_slot0001_seed100001_v3_pts_sam3.npz",
+   "path": "<repo>/cloth_results/photos/paper256/views/sample_slot0001_seed100001_v3_pts_sam3.npz",
    "size": 512,
    "fov": 40.0
   }

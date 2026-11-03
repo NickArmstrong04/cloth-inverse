@@ -1,4 +1,4 @@
-"""T0 (meta_comp_improvements.md): hosted SAM 3.1 vs the oracle mask, and one Muse Spark image call.
+"""T0 (hackathon tooling plan): hosted SAM 3.1 vs the oracle mask, and one Muse Spark image call.
 
 Scores every `<stem>_v<k>.png` that has a `_gt.npz` (written by `photo.py --gt`) with the
 same metric as `segment.py`: the highest-coverage instance and the union of all instances,

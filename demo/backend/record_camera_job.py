@@ -21,7 +21,7 @@ import urllib.request
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _REPO = os.path.abspath(os.path.join(_HERE, "..", ".."))
-API = "https://nicka238340--cloth-demo-web.us-east.modal.run"
+API = os.environ.get("API_URL", "http://localhost:8000")  # the deployed backend URL
 
 
 def req(url: str, body: dict | None = None, timeout: float = 300):

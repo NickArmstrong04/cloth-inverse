@@ -16,7 +16,7 @@ Failed seeds (1, excluded): 100011.
 ## Under the hood: the camera path as a step strip (2026-11-03)
 
 Why: judges score the Meta tooling they can see run; the first camera UI (gallery + mesh/camera
-comparison, 58588d3) was removed on 2026-11-03 as unclear. Decision (Nick): one tile per step,
+comparison, 58588d3) was removed on 2026-11-03 as unclear. Decision: one tile per step,
 filled in live after every Push, with the real intermediate image and the model named.
 
 Steps and what each tile shows (`demo/backend/camera.py` `on_stage`, `GET /jobs/{id}.stages`):
@@ -37,10 +37,10 @@ polls every 2 s. The metrics table gets a "from the camera" row.
 
 ## Model menu (2026-11-03)
 
-Menu labels (Nick, 2026-11-03): "Positions + final velocities" (M16-a), "Positions only" (M20-a3),
+Menu labels (2026-11-03): "Positions + final velocities" (M16-a), "Positions only" (M20-a3),
 "Pseudo camera" (M21-c).
 
-Decision (Nick): the demo's model is the clean model with velocities, M16-a (cloth at release,
+Decision: the demo's model is the clean model with velocities, M16-a (cloth at release,
 1.0 cm / 4.3 deg); a dropdown next to Push offers the two rest-state paper models, M20-a3 (clean
 grids, positions only; 2.8 / 6.6 clean) and M21-c (trained on camera-chain grids; 3.4 / 7.3 clean).
 No model with a second simulated guess (M22 refinement) in the demo.
@@ -60,7 +60,7 @@ cache entry rebuilt as a JobResult by `demo/backend/make_present.py`) and `publi
 (one recorded camera-path job, `demo/backend/record_camera_job.py`) with no backend call; the panel
 and the step strip stay hidden until cued (`window.__present`, key bindings), so a scripted
 browser can record the demo with no waits. Built for the submission video
-(`C:\Users\nicka\Desktop\projects\meta_video_generation\video\`, pipeline README there); normal
+(a separate `meta_video_generation/video/` folder, not in this repo); normal
 visitors see no change.
 
 Fixes made on the way: the player and the cache fallback assumed 30 frames per result, but six

@@ -7,7 +7,7 @@ differs), upsamples the 128 final state to 256, scores both with the M16-a
 wrapper, and writes the error tables + grid decision to ``demo/README.md``.
 
 Usage (WSL, warm GPU):
-    /home/narmstrong/cloth/.venv/bin/python demo/backend/measure_grid.py \
+    <sim-venv>/bin/python demo/backend/measure_grid.py \
         --ckpt demo/backend/checkpoints/M16a --n 20 --seed0 100000
 """
 

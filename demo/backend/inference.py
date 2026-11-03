@@ -10,8 +10,8 @@ exactly (see ``eval_grid.py GridRun`` + ``grid_input`` + ``data.py``)::
 * metrics via ``metrics.pair_metrics`` with symmetry off (known frame)
 
 ``model.pt`` is a dict with ``state``, ``args``, ``scaler`` (mean, std),
-``xstd``, ``gstd``. The M16-a checkpoint lives on the cluster only; Nick
-copies ``model.pt`` + ``metrics.json`` to ``demo/backend/checkpoints/M16a/``.
+``xstd``, ``gstd``. The M16-a checkpoint is a training-run output (not tracked);
+copy ``model.pt`` + ``metrics.json`` to ``demo/backend/checkpoints/M16a/``.
 """
 
 from __future__ import annotations
@@ -54,9 +54,8 @@ def load_checkpoint(ckpt_dir: str, device=None):
     pt = os.path.join(ckpt_dir, "model.pt")
     if not os.path.exists(pt):
         raise FileNotFoundError(
-            f"{pt} not found. Ask Nick to copy model.pt + metrics.json from "
-            "/home/naa79/scratch_pi_sz622/naa79/cloth-inverse/"
-            "cloth_data_generation/inverse/runs/M16a/ to demo/backend/checkpoints/M16a/")
+            f"{pt} not found. Copy model.pt + metrics.json from the training run "
+            "(cloth_data_generation/inverse/runs/<id>/) to " + ckpt_dir)
     ck = torch.load(pt, map_location=device, weights_only=False)
     a = ck["args"]
     for k, v in EXPECTED.items():

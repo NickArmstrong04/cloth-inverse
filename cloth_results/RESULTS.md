@@ -418,7 +418,7 @@ Reading (380 -> 912 samples):
 - **Velocities at release are worth ~0.3 cm** (M20-c2 vs M20-d2), small, as before.
 - **Magnitude is still at chance** (means 0.61-0.66 vs 0.58; medians 0.43-0.49 vs 0.52). More
   data does not fix it; it needs a label or physics change (the VBD velocity clamp delivers ~8%
-  of nominal impulse, CLAUDE.md), not volume.
+  of nominal impulse, `cloth_data_generation/transfer/REPORT.md`), not volume.
 
 ### M20-a2 on photo-like input (2026-11-01)
 

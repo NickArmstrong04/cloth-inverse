@@ -87,7 +87,7 @@ ones. Points per view: SAM / oracle = 0.968 mean on cloth (0.985-0.993 on every 
 miss gives an empty package) and 0.990 on paper; oracle median 33.6k (cloth) / 38.1k (paper) points
 from 512 px views.
 
-### Hosted SAM 3.1 through the Meta Model API (T0 of `meta_comp_improvements.md`, 2026-11-01)
+### Hosted SAM 3.1 through the Meta Model API (T0 of the hackathon tooling plan, 2026-11-01)
 
 `inverse/sam_api.py` calls `sam-3.1` on `POST api.meta.ai/v1/responses` (local PNG as a base64
 data URL, `metadata.mask_encoding = one_bit`) and decodes the masks in pure Python: a port of
@@ -213,7 +213,7 @@ Open design question: a fixed camera with a known rest position would make the d
 
 ## Shape-from-template, step 1: can known knowledge replace depth prediction? (2026-10-30)
 
-Question (Nick): we know the node count, the rest grid and the sheet's conditions; can the mesh
+Question: we know the node count, the rest grid and the sheet's conditions; can the mesh
 be recovered from the SAM segmentation instead of predicting depth? `inverse/fit_template.py`
 answers it with oracle correspondences (the upper bound): every pooled grid vertex is a free 3D
 point; visible vertices are held to their true pixel (photo.py --gt `vpix`, half-pixel tolerance);
@@ -245,7 +245,7 @@ pattern (step 2). Hidden-vertex error stays at ~8 cm, as expected for the unseen
 
 ## Where the depth error lives, and what fixes it (2026-10-31)
 
-Goal (Nick): improve the input a photo yields, keeping SAM as the gate; a predicted depth is
+Goal: improve the input a photo yields, keeping SAM as the gate; a predicted depth is
 acceptable, no depth would be better. Four experiments, all on the 55 lifted views unless stated
 (`inverse/depth_decomp.py`, `calib_template.py`, `lift_multi.py`, `lift_stereo.py`; results in
 `align/*.json` and `stereo/`).
@@ -346,7 +346,7 @@ protocol of two photos ~20 deg apart and a known camera motion. The residual is 
 error (1.2 cm) plus scale noise; the aliases vanish with a non-repeating print (step 2 of the
 template work, needed for correspondences anyway). Next: package the stereo lift for
 `eval_views.py` (the models still need the drift feature, M18) and decide the capture protocol
-with Nick: fixed base camera + a second shot, or a phone pose track.
+to decide: fixed base camera + a second shot, or a phone pose track.
 
 ## Phase A: the photo pair as rung-1 input, priced one barrier at a time (2026-10-31)
 

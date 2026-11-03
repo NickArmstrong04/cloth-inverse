@@ -1,7 +1,7 @@
 {
  "args": {
   "h5": [
-   "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test"
+   "$BASE_DIR/cloth_data/ds256_free_splits/test"
   ],
   "out": "../../cloth_results/photos/free256",
   "views": 4,
@@ -21,7 +21,7 @@
  "views": [
   {
    "png": "sample_slot0007_seed150008_v0.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0007_seed150008.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0007_seed150008.h5",
    "material": "cloth",
    "view": 0,
    "R": [
@@ -75,7 +75,7 @@
   },
   {
    "png": "sample_slot0007_seed150008_v1.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0007_seed150008.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0007_seed150008.h5",
    "material": "cloth",
    "view": 1,
    "R": [
@@ -129,7 +129,7 @@
   },
   {
    "png": "sample_slot0007_seed150008_v2.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0007_seed150008.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0007_seed150008.h5",
    "material": "cloth",
    "view": 2,
    "R": [
@@ -183,7 +183,7 @@
   },
   {
    "png": "sample_slot0007_seed150008_v3.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0007_seed150008.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0007_seed150008.h5",
    "material": "cloth",
    "view": 3,
    "R": [
@@ -237,7 +237,7 @@
   },
   {
    "png": "sample_slot0032_seed100032_v0.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0032_seed100032.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0032_seed100032.h5",
    "material": "cloth",
    "view": 0,
    "R": [
@@ -291,7 +291,7 @@
   },
   {
    "png": "sample_slot0032_seed100032_v1.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0032_seed100032.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0032_seed100032.h5",
    "material": "cloth",
    "view": 1,
    "R": [
@@ -345,7 +345,7 @@
   },
   {
    "png": "sample_slot0032_seed100032_v2.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0032_seed100032.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0032_seed100032.h5",
    "material": "cloth",
    "view": 2,
    "R": [
@@ -399,7 +399,7 @@
   },
   {
    "png": "sample_slot0032_seed100032_v3.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0032_seed100032.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0032_seed100032.h5",
    "material": "cloth",
    "view": 3,
    "R": [
@@ -453,7 +453,7 @@
   },
   {
    "png": "sample_slot0050_seed100050_v0.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0050_seed100050.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0050_seed100050.h5",
    "material": "cloth",
    "view": 0,
    "R": [
@@ -507,7 +507,7 @@
   },
   {
    "png": "sample_slot0050_seed100050_v1.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0050_seed100050.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0050_seed100050.h5",
    "material": "cloth",
    "view": 1,
    "R": [
@@ -561,7 +561,7 @@
   },
   {
    "png": "sample_slot0050_seed100050_v2.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0050_seed100050.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0050_seed100050.h5",
    "material": "cloth",
    "view": 2,
    "R": [
@@ -615,7 +615,7 @@
   },
   {
    "png": "sample_slot0050_seed100050_v3.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0050_seed100050.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0050_seed100050.h5",
    "material": "cloth",
    "view": 3,
    "R": [
@@ -669,7 +669,7 @@
   },
   {
    "png": "sample_slot0052_seed100052_v0.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0052_seed100052.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0052_seed100052.h5",
    "material": "cloth",
    "view": 0,
    "R": [
@@ -723,7 +723,7 @@
   },
   {
    "png": "sample_slot0052_seed100052_v1.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0052_seed100052.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0052_seed100052.h5",
    "material": "cloth",
    "view": 1,
    "R": [
@@ -777,7 +777,7 @@
   },
   {
    "png": "sample_slot0052_seed100052_v2.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0052_seed100052.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0052_seed100052.h5",
    "material": "cloth",
    "view": 2,
    "R": [
@@ -831,7 +831,7 @@
   },
   {
    "png": "sample_slot0052_seed100052_v3.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0052_seed100052.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0052_seed100052.h5",
    "material": "cloth",
    "view": 3,
    "R": [
@@ -885,7 +885,7 @@
   },
   {
    "png": "sample_slot0053_seed100053_v0.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0053_seed100053.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0053_seed100053.h5",
    "material": "cloth",
    "view": 0,
    "R": [
@@ -939,7 +939,7 @@
   },
   {
    "png": "sample_slot0053_seed100053_v1.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0053_seed100053.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0053_seed100053.h5",
    "material": "cloth",
    "view": 1,
    "R": [
@@ -993,7 +993,7 @@
   },
   {
    "png": "sample_slot0053_seed100053_v2.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0053_seed100053.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0053_seed100053.h5",
    "material": "cloth",
    "view": 2,
    "R": [
@@ -1047,7 +1047,7 @@
   },
   {
    "png": "sample_slot0053_seed100053_v3.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0053_seed100053.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0053_seed100053.h5",
    "material": "cloth",
    "view": 3,
    "R": [
@@ -1101,7 +1101,7 @@
   },
   {
    "png": "sample_slot0068_seed100068_v0.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0068_seed100068.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0068_seed100068.h5",
    "material": "cloth",
    "view": 0,
    "R": [
@@ -1155,7 +1155,7 @@
   },
   {
    "png": "sample_slot0068_seed100068_v1.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0068_seed100068.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0068_seed100068.h5",
    "material": "cloth",
    "view": 1,
    "R": [
@@ -1209,7 +1209,7 @@
   },
   {
    "png": "sample_slot0068_seed100068_v2.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0068_seed100068.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0068_seed100068.h5",
    "material": "cloth",
    "view": 2,
    "R": [
@@ -1263,7 +1263,7 @@
   },
   {
    "png": "sample_slot0068_seed100068_v3.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0068_seed100068.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0068_seed100068.h5",
    "material": "cloth",
    "view": 3,
    "R": [
@@ -1317,7 +1317,7 @@
   },
   {
    "png": "sample_slot0073_seed100073_v0.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0073_seed100073.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0073_seed100073.h5",
    "material": "cloth",
    "view": 0,
    "R": [
@@ -1371,7 +1371,7 @@
   },
   {
    "png": "sample_slot0073_seed100073_v1.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0073_seed100073.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0073_seed100073.h5",
    "material": "cloth",
    "view": 1,
    "R": [
@@ -1425,7 +1425,7 @@
   },
   {
    "png": "sample_slot0073_seed100073_v2.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0073_seed100073.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0073_seed100073.h5",
    "material": "cloth",
    "view": 2,
    "R": [
@@ -1479,7 +1479,7 @@
   },
   {
    "png": "sample_slot0073_seed100073_v3.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0073_seed100073.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0073_seed100073.h5",
    "material": "cloth",
    "view": 3,
    "R": [
@@ -1533,7 +1533,7 @@
   },
   {
    "png": "sample_slot0085_seed100085_v0.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0085_seed100085.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0085_seed100085.h5",
    "material": "cloth",
    "view": 0,
    "R": [
@@ -1587,7 +1587,7 @@
   },
   {
    "png": "sample_slot0085_seed100085_v1.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0085_seed100085.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0085_seed100085.h5",
    "material": "cloth",
    "view": 1,
    "R": [
@@ -1641,7 +1641,7 @@
   },
   {
    "png": "sample_slot0085_seed100085_v2.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0085_seed100085.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0085_seed100085.h5",
    "material": "cloth",
    "view": 2,
    "R": [
@@ -1695,7 +1695,7 @@
   },
   {
    "png": "sample_slot0085_seed100085_v3.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0085_seed100085.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0085_seed100085.h5",
    "material": "cloth",
    "view": 3,
    "R": [
@@ -1749,7 +1749,7 @@
   },
   {
    "png": "sample_slot0104_seed150105_v0.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0104_seed150105.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0104_seed150105.h5",
    "material": "cloth",
    "view": 0,
    "R": [
@@ -1803,7 +1803,7 @@
   },
   {
    "png": "sample_slot0104_seed150105_v1.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0104_seed150105.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0104_seed150105.h5",
    "material": "cloth",
    "view": 1,
    "R": [
@@ -1857,7 +1857,7 @@
   },
   {
    "png": "sample_slot0104_seed150105_v2.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0104_seed150105.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0104_seed150105.h5",
    "material": "cloth",
    "view": 2,
    "R": [
@@ -1911,7 +1911,7 @@
   },
   {
    "png": "sample_slot0104_seed150105_v3.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0104_seed150105.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0104_seed150105.h5",
    "material": "cloth",
    "view": 3,
    "R": [
@@ -1965,7 +1965,7 @@
   },
   {
    "png": "sample_slot0153_seed100153_v0.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0153_seed100153.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0153_seed100153.h5",
    "material": "cloth",
    "view": 0,
    "R": [
@@ -2019,7 +2019,7 @@
   },
   {
    "png": "sample_slot0153_seed100153_v1.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0153_seed100153.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0153_seed100153.h5",
    "material": "cloth",
    "view": 1,
    "R": [
@@ -2073,7 +2073,7 @@
   },
   {
    "png": "sample_slot0153_seed100153_v2.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0153_seed100153.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0153_seed100153.h5",
    "material": "cloth",
    "view": 2,
    "R": [
@@ -2127,7 +2127,7 @@
   },
   {
    "png": "sample_slot0153_seed100153_v3.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0153_seed100153.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0153_seed100153.h5",
    "material": "cloth",
    "view": 3,
    "R": [
@@ -2181,7 +2181,7 @@
   },
   {
    "png": "sample_slot0162_seed100162_v0.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0162_seed100162.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0162_seed100162.h5",
    "material": "cloth",
    "view": 0,
    "R": [
@@ -2235,7 +2235,7 @@
   },
   {
    "png": "sample_slot0162_seed100162_v1.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0162_seed100162.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0162_seed100162.h5",
    "material": "cloth",
    "view": 1,
    "R": [
@@ -2289,7 +2289,7 @@
   },
   {
    "png": "sample_slot0162_seed100162_v2.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0162_seed100162.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0162_seed100162.h5",
    "material": "cloth",
    "view": 2,
    "R": [
@@ -2343,7 +2343,7 @@
   },
   {
    "png": "sample_slot0162_seed100162_v3.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0162_seed100162.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0162_seed100162.h5",
    "material": "cloth",
    "view": 3,
    "R": [
@@ -2397,7 +2397,7 @@
   },
   {
    "png": "sample_slot0165_seed100165_v0.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0165_seed100165.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0165_seed100165.h5",
    "material": "cloth",
    "view": 0,
    "R": [
@@ -2451,7 +2451,7 @@
   },
   {
    "png": "sample_slot0165_seed100165_v1.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0165_seed100165.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0165_seed100165.h5",
    "material": "cloth",
    "view": 1,
    "R": [
@@ -2505,7 +2505,7 @@
   },
   {
    "png": "sample_slot0165_seed100165_v2.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0165_seed100165.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0165_seed100165.h5",
    "material": "cloth",
    "view": 2,
    "R": [
@@ -2559,7 +2559,7 @@
   },
   {
    "png": "sample_slot0165_seed100165_v3.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0165_seed100165.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0165_seed100165.h5",
    "material": "cloth",
    "view": 3,
    "R": [
@@ -2613,7 +2613,7 @@
   },
   {
    "png": "sample_slot0175_seed100175_v0.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0175_seed100175.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0175_seed100175.h5",
    "material": "cloth",
    "view": 0,
    "R": [
@@ -2667,7 +2667,7 @@
   },
   {
    "png": "sample_slot0175_seed100175_v1.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0175_seed100175.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0175_seed100175.h5",
    "material": "cloth",
    "view": 1,
    "R": [
@@ -2721,7 +2721,7 @@
   },
   {
    "png": "sample_slot0175_seed100175_v2.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0175_seed100175.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0175_seed100175.h5",
    "material": "cloth",
    "view": 2,
    "R": [
@@ -2775,7 +2775,7 @@
   },
   {
    "png": "sample_slot0175_seed100175_v3.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0175_seed100175.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0175_seed100175.h5",
    "material": "cloth",
    "view": 3,
    "R": [
@@ -2829,7 +2829,7 @@
   },
   {
    "png": "sample_slot0183_seed150184_v0.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0183_seed150184.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0183_seed150184.h5",
    "material": "cloth",
    "view": 0,
    "R": [
@@ -2883,7 +2883,7 @@
   },
   {
    "png": "sample_slot0183_seed150184_v1.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0183_seed150184.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0183_seed150184.h5",
    "material": "cloth",
    "view": 1,
    "R": [
@@ -2937,7 +2937,7 @@
   },
   {
    "png": "sample_slot0183_seed150184_v2.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0183_seed150184.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0183_seed150184.h5",
    "material": "cloth",
    "view": 2,
    "R": [
@@ -2991,7 +2991,7 @@
   },
   {
    "png": "sample_slot0183_seed150184_v3.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0183_seed150184.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0183_seed150184.h5",
    "material": "cloth",
    "view": 3,
    "R": [
@@ -3045,7 +3045,7 @@
   },
   {
    "png": "sample_slot0229_seed100229_v0.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0229_seed100229.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0229_seed100229.h5",
    "material": "cloth",
    "view": 0,
    "R": [
@@ -3099,7 +3099,7 @@
   },
   {
    "png": "sample_slot0229_seed100229_v1.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0229_seed100229.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0229_seed100229.h5",
    "material": "cloth",
    "view": 1,
    "R": [
@@ -3153,7 +3153,7 @@
   },
   {
    "png": "sample_slot0229_seed100229_v2.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0229_seed100229.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0229_seed100229.h5",
    "material": "cloth",
    "view": 2,
    "R": [
@@ -3207,7 +3207,7 @@
   },
   {
    "png": "sample_slot0229_seed100229_v3.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0229_seed100229.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0229_seed100229.h5",
    "material": "cloth",
    "view": 3,
    "R": [
@@ -3261,7 +3261,7 @@
   },
   {
    "png": "sample_slot0238_seed100238_v0.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0238_seed100238.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0238_seed100238.h5",
    "material": "cloth",
    "view": 0,
    "R": [
@@ -3315,7 +3315,7 @@
   },
   {
    "png": "sample_slot0238_seed100238_v1.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0238_seed100238.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0238_seed100238.h5",
    "material": "cloth",
    "view": 1,
    "R": [
@@ -3369,7 +3369,7 @@
   },
   {
    "png": "sample_slot0238_seed100238_v2.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0238_seed100238.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0238_seed100238.h5",
    "material": "cloth",
    "view": 2,
    "R": [
@@ -3423,7 +3423,7 @@
   },
   {
    "png": "sample_slot0238_seed100238_v3.png",
-   "h5": "/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_free_splits/test/sample_slot0238_seed100238.h5",
+   "h5": "$BASE_DIR/cloth_data/ds256_free_splits/test/sample_slot0238_seed100238.h5",
    "material": "cloth",
    "view": 3,
    "R": [

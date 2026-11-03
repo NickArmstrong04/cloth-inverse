@@ -5,7 +5,7 @@ Layout on the container mirrors the repo (``/app/demo/backend`` +
 ``/app/cloth_data_generation/...``) so ``app.py``'s repo-relative imports
 work untouched. The checkpoint arrives via a Volume, not the image.
 
-One-time setup (Nick, from WSL):
+One-time setup (from the simulator environment):
     modal setup                                            # first time only
     modal volume create cloth-demo-checkpoints
     modal volume put cloth-demo-checkpoints \
@@ -96,7 +96,6 @@ def web():
     os.environ.setdefault("HF_HOME", "/vol/hf")
     os.environ.setdefault(
         "CORS_ORIGINS",
-        "http://localhost:5173,https://cloth-inverse.vercel.app,"
-        "https://cloth-inverse-js3blwak2-nick-armstrong-s-projects.vercel.app")
+        "http://localhost:5173,https://cloth-inverse.vercel.app")
     from app import create_app  # noqa: E402
     return create_app()

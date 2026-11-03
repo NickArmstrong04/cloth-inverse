@@ -11,7 +11,7 @@
   "oracle_lengths": false,
   "l1": true,
   "limit": 0,
-  "out": "/mnt/c/Users/nicka/AppData/Local/Temp/claude/C--Users-nicka-Desktop-projects-meta/45b86908-d640-44b0-89fd-ea3ef80ac204/scratchpad/calib_l1_dof2.json"
+  "out": "<tmp>/calib_l1_dof2.json"
  },
  "records": [
   {
