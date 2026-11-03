@@ -32,8 +32,8 @@ Steps and what each tile shows (`demo/backend/camera.py` `on_stage`, `GET /jobs/
 8. Muse Spark verdict (`demo/backend/narrate.py`): three sentences from the rounded numbers only,
    every number checked (`t3_narrate.check`); fixed sentence when the check or the API fails.
 
-The mesh path (M16-a) stays the headline; the camera job starts when the mesh result lands and
-polls every 2 s. The metrics table gets a "from the camera" row.
+The mesh path (M16-a) stays the headline; the camera job starts from a button under Push once the
+mesh result lands (on demand since 2026-11-03; it used to start by itself) and polls every 2 s. The metrics table gets a "from the camera" row.
 
 ## Model menu (2026-11-03)
 

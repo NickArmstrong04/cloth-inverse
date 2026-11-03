@@ -91,7 +91,9 @@ REFERENCE = {"pos_cm": 1.0, "dir_deg": 4.3, "impulse_rel": 0.156}
 
 _executor = ThreadPoolExecutor(max_workers=1)  # one GPU: sims run in order
 _sim_pool = ThreadPoolExecutor(max_workers=1)  # the sim itself, so it can time out
-JOB_TIMEOUT_S = float(os.environ.get("JOB_TIMEOUT_S", "90"))
+# 300 s (was 90, 2026-11-03): the first sim on a fresh container compiles the Warp kernels and
+# overran 90 s, so a cold Push silently fell back to the nearest cache entry (wrong forces).
+JOB_TIMEOUT_S = float(os.environ.get("JOB_TIMEOUT_S", "300"))
 _jobs: dict[str, dict] = {}
 _lock = threading.Lock()
 _svc: SimService | None = None

@@ -187,6 +187,17 @@ export default function App() {
     }
   }, [forms, model]);
 
+  // Same pushes through the camera path (paper re-sim -> photos -> SAM 3.1 -> VGGT -> M21-c),
+  // shown step by step under the canvas. On demand only, after a mesh result.
+  const runCamera = useCallback(() => {
+    if (!result || cam) return;
+    const fs = result.true_forces.map((f) => ({ u: f.u, v: f.v, direction: f.direction, magnitude: f.magnitude, duration: f.duration }));
+    setCam({ id: '', job: null, startedAt: Date.now() });
+    postCamera(fs)
+      .then((cid) => setCam({ id: cid, job: null, startedAt: Date.now() }))
+      .catch((e) => setCam({ id: '', job: { status: 'failed', progress: 0 }, startedAt: Date.now(), error: String(e) }));
+  }, [result, cam]);
+
   useEffect(() => {
     if (stage !== 'running') return;
     const t = setInterval(() => setNow(Date.now()), 1000);
@@ -202,11 +213,12 @@ export default function App() {
           clearInterval(t);
           const { data } = b64ToFrames(s.result.frames);
           setFrames(data);
-          setFrame(Math.max(0, Math.round(data.length / (64 * 64 * 3)) - 1));
+          // Play the pushes from the start (was: sit on the end state), 2026-11-03.
+          setFrame(0);
           setResult(s.result);
           setCachedNote(!!s.result.cached);
           setStage('done');
-          setPlaying(false);
+          setPlaying(true);
           setJob(null);
           // Paper models clamp the pushes to their training range: the cards and the true
           // arrows then show what was actually simulated (result.adjustments says what changed).
@@ -216,11 +228,7 @@ export default function App() {
               return withDir({ u: t.u, v: t.v, magnitude: t.magnitude, duration: t.duration, direction: d, ...azElFromDir(d) });
             }));
           }
-          // Same pushes through the camera path, shown step by step under the canvas.
-          const fs = s.result.true_forces.map((f) => ({ u: f.u, v: f.v, direction: f.direction, magnitude: f.magnitude, duration: f.duration }));
-          postCamera(fs)
-            .then((cid) => setCam({ id: cid, job: null, startedAt: Date.now() }))
-            .catch((e) => setCam({ id: '', job: { status: 'failed', progress: 0 }, startedAt: Date.now(), error: String(e) }));
+          // The camera path no longer starts by itself (2026-11-03): see runCamera / the button.
         } else if (s.status === 'failed') {
           clearInterval(t);
           setJob({ id: job.id, progress: 1, error: s.error ?? 'job failed' });
@@ -467,6 +475,9 @@ export default function App() {
         {(stage === 'running' || stage === 'done') && (
           <button className="ghost" onClick={reset}>Start over</button>
         )}
+        {stage === 'done' && result && !cam && !PRESENT && (
+          <button className="ghost" onClick={runCamera}>Run the camera path on these pushes (~3-5 min)</button>
+        )}
 
         {frames && (
           <div>
@@ -489,7 +500,8 @@ export default function App() {
         {result && (
           <div>
             <h3>Model vs your pushes</h3>
-            {cachedNote && <div className="notice">Served from cache (GPU busy) — nearest precomputed result.</div>}
+            {cachedNote && <div className="err">Not a live prediction: the simulation timed out or the GPU was busy, so this is the nearest
+              precomputed result re-scored against your pushes. Press Start over and Push again once the server is warm.</div>}
             {result.model && result.model !== 'M16a' && (
               <div className="notice">{menu.find((m) => m.name === result.model)?.label ?? result.model} on the paper physics
                 {result.adjustments?.length ? `. Pushes clamped to its training range: ${result.adjustments.join('; ')}.` : '.'}</div>

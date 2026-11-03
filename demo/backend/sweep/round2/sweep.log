@@ -1,0 +1,77 @@
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, Driver 13.3
+   Devices:
+     "cpu"      : "x86_64"
+     "cuda:0"   : "NVIDIA GeForce RTX 4070 Ti SUPER" (16 GiB, sm_89, mempool enabled)
+   Kernel cache:
+     /home/narmstrong/.cache/warp/1.18.0
+warm 3 s; 8 sets x 6 seeds; masks: renderer (no META_API_KEY)
+Module warp._src.coloring 811e0ea load on device 'cpu' took 1.05 ms  (cached)
+Module newton._src.utils.mesh 92b663b load on device 'cpu' took 0.36 ms  (cached)
+Module newton._src.geometry.bvh 58a3a49 load on device 'cuda:0' took 0.99 ms  (cached)
+Module newton._src.geometry.kernels d40735d load on device 'cuda:0' took 2.48 ms  (cached)
+Module newton._src.geometry.kernels 4b3d16e load on device 'cuda:0' took 1.24 ms  (cached)
+Module newton._src.geometry.kernels 01c2fac load on device 'cuda:0' took 1.22 ms  (cached)
+Module newton._src.solvers.vbd.particle_vbd_kernels efa6bbf load on device 'cuda:0' took 24.12 ms  (cached)
+Module make_solve_elasticity_tile__locals__solve_elasticity_tile_kernel_cebb5ef2 f8e9914 load on device 'cuda:0' took 0.75 ms  (cached)
+Module cloth_sim.plasticity cfe25f1 load on device 'cuda:0' took 7.03 ms  (cached)
+cache:12  s3  camera   6.7 cm  14.4 deg 0.64 | M21-c exact  1.2 cm 11.3 deg | M16-a  1.4 cm  5.4 deg 0.18 | seen 0.39 decoded 0.19 | 22.5+95.4 s  
+cache:12  s4  camera  12.2 cm  11.6 deg 1.05 | M21-c exact  1.2 cm 11.3 deg | M16-a  1.4 cm  5.4 deg 0.18 | seen 0.18 decoded 0.09 | 10.4+83.6 s  
+cache:12  s5  camera   4.2 cm   8.7 deg 0.83 | M21-c exact  1.2 cm 11.3 deg | M16-a  1.4 cm  5.4 deg 0.18 | seen 0.41 decoded 0.23 | 10.4+83.9 s  
+cache:12  s6  camera   8.1 cm  13.2 deg 0.94 | M21-c exact  1.2 cm 11.3 deg | M16-a  1.4 cm  5.4 deg 0.18 | seen 0.23 decoded 0.10 | 10.4+84.0 s  
+cache:12  s7  camera   6.9 cm  10.8 deg 1.34 | M21-c exact  1.2 cm 11.3 deg | M16-a  1.4 cm  5.4 deg 0.18 | seen 0.08 decoded 0.02 | 10.4+83.9 s  
+cache:12  s8  camera   6.9 cm   8.0 deg 1.01 | M21-c exact  1.2 cm 11.3 deg | M16-a  1.4 cm  5.4 deg 0.18 | seen 0.43 decoded 0.34 | 10.4+85.9 s  
+cache:08  s3  camera  10.4 cm  24.6 deg 0.46 | M21-c exact  2.6 cm 18.7 deg | M16-a  0.2 cm  2.1 deg 0.23 | seen 0.27 decoded 0.22 | 8.9+87.4 s  
+cache:08  s4  camera   6.6 cm  19.8 deg 0.54 | M21-c exact  2.7 cm 16.5 deg | M16-a  0.2 cm  2.1 deg 0.23 | seen 0.53 decoded 0.51 | 8.7+102.8 s  
+cache:08  s5  camera   6.5 cm  16.2 deg 0.55 | M21-c exact  3.0 cm 17.5 deg | M16-a  0.2 cm  2.1 deg 0.23 | seen 0.47 decoded 0.35 | 8.8+94.9 s  
+cache:08  s6  camera  14.4 cm  26.3 deg 0.33 | M21-c exact  3.4 cm 17.5 deg | M16-a  0.2 cm  2.1 deg 0.23 | seen 0.22 decoded 0.08 | 8.7+102.1 s  
+cache:08  s7  camera   9.8 cm  87.4 deg 0.47 | M21-c exact  2.5 cm 17.4 deg | M16-a  0.2 cm  2.1 deg 0.23 | seen 0.25 decoded 0.17 | 8.8+93.6 s  
+cache:08  s8  camera   5.1 cm  43.0 deg 0.43 | M21-c exact  4.0 cm 20.2 deg | M16-a  0.2 cm  2.1 deg 0.23 | seen 0.57 decoded 0.55 | 8.9+97.3 s  
+cache:03  s3  camera  15.7 cm  54.2 deg 0.52 | M21-c exact  5.1 cm 13.7 deg | M16-a  0.6 cm  2.7 deg 0.29 | seen 0.20 decoded 0.03 | 12.1+101.0 s  
+cache:03  s4  camera   6.1 cm  14.8 deg 0.59 | M21-c exact  4.3 cm 10.9 deg | M16-a  0.6 cm  2.7 deg 0.29 | seen 0.74 decoded 0.56 | 12.1+100.9 s  
+cache:03  s5  camera   3.7 cm  14.9 deg 0.78 | M21-c exact  4.1 cm 11.2 deg | M16-a  0.6 cm  2.7 deg 0.29 | seen 0.60 decoded 0.51 | 12.2+103.6 s  
+cache:03  s6  camera   4.6 cm  17.9 deg 0.51 | M21-c exact  3.9 cm 11.2 deg | M16-a  0.6 cm  2.7 deg 0.29 | seen 0.28 decoded 0.14 | 12.1+103.7 s  
+cache:03  s7  camera  12.2 cm  27.0 deg 1.04 | M21-c exact  5.2 cm 13.3 deg | M16-a  0.6 cm  2.7 deg 0.29 | seen 0.49 decoded 0.37 | 12.1+101.1 s  
+cache:03  s8  camera   7.6 cm   9.8 deg 0.55 | M21-c exact  4.8 cm 12.0 deg | M16-a  0.6 cm  2.7 deg 0.29 | seen 0.57 decoded 0.46 | 12.2+94.2 s  
+cache:02  s3  camera  12.3 cm  10.8 deg 0.56 | M21-c exact  5.1 cm  9.9 deg | M16-a  0.9 cm  2.1 deg 0.25 | seen 0.20 decoded 0.11 | 15.1+94.4 s  
+cache:02  s4  camera   8.3 cm  19.9 deg 0.40 | M21-c exact  5.5 cm 14.4 deg | M16-a  0.9 cm  2.1 deg 0.25 | seen 0.33 decoded 0.21 | 14.9+91.0 s  
+cache:02  s5  camera   2.7 cm  15.1 deg 0.64 | M21-c exact  2.9 cm 17.7 deg | M16-a  0.9 cm  2.1 deg 0.25 | seen 0.24 decoded 0.09 | 15.0+68.8 s  
+Traceback (most recent call last):
+  File "/mnt/c/Users/nicka/Desktop/projects/meta/demo/backend/sweep_live.py", line 159, in main
+    rec = camera_path(cam, model, sim, ref, forces, seed, work)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/c/Users/nicka/Desktop/projects/meta/demo/backend/sweep_live.py", line 99, in camera_path
+    out = cam.run_live(model, sim, forces, ref["sim_config"], ref["force_footprint"], work, seed, on_stage=on_stage)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/c/Users/nicka/Desktop/projects/meta/demo/backend/camera.py", line 377, in run_live
+    c = chain(P, h5, seed, log, on_stage)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/c/Users/nicka/Desktop/projects/meta/demo/backend/camera.py", line 331, in chain
+    _sh([SIM_PY, "photo.py", "--h5", h5, "--views", "1", "--stereo", "20", "--texture", "coded", "--gt",
+  File "/mnt/c/Users/nicka/Desktop/projects/meta/demo/backend/camera.py", line 251, in _sh
+    raise RuntimeError(f"{os.path.basename(cmd[1])} failed (rc {r.returncode}): {tail}")
+RuntimeError: photo.py failed (rc 1): 5trt/cache02_s6/sample_live.h5 --views 1 --stereo 20 --texture coded --gt --seed 6 --out /tmp/sweep_4h5n5trt/cache02_s6/photos
+Traceback (most recent call last):
+  File "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_data_generation/inverse/photo.py", line 408, in <module>
+    main()
+  File "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_data_generation/inverse/photo.py", line 369, in main
+    R, d = sample_cameras(grid.reshape(-1, 3) - grid.reshape(-1, 3).mean(0), args.views)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_data_generation/inverse/photo.py", line 86, in sample_cameras
+    raise RuntimeError("could not find non-degenerate views")
+RuntimeError: could not find non-degenerate views
+
+cache:02  s6  camera   nan cm   nan deg nan | M21-c exact  nan cm  nan deg | M16-a  0.9 cm  2.1 deg 0.25 | seen nan decoded nan | 14.9+0 s  RuntimeError: ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_data_generation/inverse/photo.py", line 86, in sample_cameras
+    raise RuntimeError("could not find non-degenerate views")
+RuntimeError: could not find non-degenerate views
+
+cache:02  s7  camera  13.7 cm  58.4 deg 0.34 | M21-c exact  6.5 cm 16.0 deg | M16-a  0.9 cm  2.1 deg 0.25 | seen 0.12 decoded 0.01 | 15.0+105.7 s  
+cache:02  s8  camera   4.1 cm  16.7 deg 1.20 | M21-c exact  3.1 cm 14.8 deg | M16-a  0.9 cm  2.1 deg 0.25 | seen 0.39 decoded 0.21 | 14.9+91.8 s  
+cache:07  s3  camera  14.3 cm  12.0 deg 1.31 | M21-c exact  9.9 cm 10.7 deg | M16-a  0.5 cm  5.0 deg 0.31 | seen 0.60 decoded 0.48 | 10.0+85.5 s  
+cache:07  s4  camera  12.8 cm  12.6 deg 1.63 | M21-c exact  9.9 cm 10.7 deg | M16-a  0.5 cm  5.0 deg 0.31 | seen 0.34 decoded 0.28 | 10.2+85.0 s  
+cache:07  s5  camera  11.7 cm  10.4 deg 1.16 | M21-c exact  9.9 cm 10.7 deg | M16-a  0.5 cm  5.0 deg 0.31 | seen 0.44 decoded 0.28 | 10.0+84.6 s  
+cache:07  s6  camera  17.0 cm  17.5 deg 1.18 | M21-c exact  9.9 cm 10.7 deg | M16-a  0.5 cm  5.0 deg 0.31 | seen 0.42 decoded 0.19 | 10.1+84.4 s  
+cache:07  s7  camera  17.0 cm  21.4 deg 1.26 | M21-c exact  9.9 cm 10.7 deg | M16-a  0.5 cm  5.0 deg 0.31 | seen 0.16 decoded 0.04 | 10.1+84.1 s  
+cache:07  s8  camera   9.6 cm   7.1 deg 1.08 | M21-c exact  9.9 cm 10.7 deg | M16-a  0.5 cm  5.0 deg 0.31 | seen 0.61 decoded 0.57 | 10.1+85.6 s  
+cache:13  s3  camera   4.0 cm  40.6 deg 0.48 | M21-c exact  1.9 cm 14.7 deg | M16-a  1.3 cm  1.8 deg 0.65 | seen 0.15 decoded 0.01 | 8.3+78.6 s  
