@@ -7,7 +7,7 @@ photographs with Meta's SAM 3.1, VGGT and Muse Spark.
 
 | | |
 |---|---|
-| **Live demo** | https://cloth-inverse.vercel.app (the backend scales to zero when idle: the first push after a quiet spell takes 1-2 min, every one after that about 10 s) |
+| **Live demo** | https://uncrumple.vercel.app (the backend scales to zero when idle: the first push after a quiet spell takes 1-2 min, every one after that about 10 s) |
 | **Submission video** | [`demo/demo.mp4`](demo/demo.mp4) (2 min 27 s, silent cut of the live site) |
 | **Results** | [`cloth_results/RESULTS.md`](cloth_results/RESULTS.md) (every model, dated), [`cloth_results/photos/README.md`](cloth_results/photos/README.md) (the photo chain) |
 | **Meta models** | In the pipeline: Meta Model API `sam-3.1`, `muse-spark-1.3`; open weights SAM 3 (`facebook/sam3`), VGGT (`facebook/VGGT-1B`), DINOv2 (ablation). In the build: Muse Spark for planning, Muse Code for the first demo scaffold. Details in [Use of Meta AI tooling](#use-of-meta-ai-tooling). |
@@ -161,7 +161,7 @@ result, in [`cloth_results/JOBS.md`](cloth_results/JOBS.md); 25 dated result sec
 
 ## Demo
 
-https://cloth-inverse.vercel.app
+https://uncrumple.vercel.app
 
 What a judge does, in about a minute:
 
