@@ -22,3 +22,16 @@ demo/backend/checkpoints/
 # demo frontend build output and deps
 demo/frontend/node_modules/
 demo/frontend/dist/
+# working notes kept locally, not published
+CLAUDE.md
+DEMO_PROMPT.md
+meta_comp_improvements.md
+# local training runs, SAM study outputs and smoke evals
+cloth_data_generation/inverse/runs/
+cloth_results/photos/**/sam3*/
+cloth_results/photos/check/
+cloth_results/photos/stereo20/views/
+cloth_results/photos/eval_views_smoke*.json
+# README images are the one exception to the *.png rule
+!docs/img/*.png
+!docs/img/*.jpg
