@@ -62,14 +62,14 @@ CKPT_DIR = os.environ.get("CKPT_DIR", os.path.join(CKPT_ROOT, "M16a"))
 # References: RESULTS.md M16 table (M16-a), M21 table "clean test" column (M20-a3, M21-c); the
 # paper models were not scored on impulse there (None -> shown as a dash).
 MODELS = {
-    "M16a": {"label": "M16-a: cloth at release, positions + velocities", "physics": "cloth",
-             "blurb": "The clean model: sees the full mesh with velocities at the instant the pushes end.",
+    "M16a": {"label": "Positions + final velocities", "physics": "cloth",
+             "blurb": "M16-a: the full mesh with its velocities at the instant the pushes end (cloth, zero gravity).",
              "reference": {"pos_cm": 1.0, "dir_deg": 4.3, "impulse_rel": 0.156}},
-    "M20a3": {"label": "M20-a3: paper at rest, positions only", "physics": "paper",
-              "blurb": "A creased paper sheet settled to rest, no velocities: the still-image setting on exact geometry.",
+    "M20a3": {"label": "Positions only", "physics": "paper",
+              "blurb": "M20-a3: a creased paper sheet settled to rest, exact geometry, no velocities (~2 min per push).",
               "reference": {"pos_cm": 2.8, "dir_deg": 6.6, "impulse_rel": None}},
-    "M21c": {"label": "M21-c: paper at rest, trained on camera grids", "physics": "paper",
-             "blurb": "Same setting, fine-tuned on grids rebuilt from photos; the camera path's model.",
+    "M21c": {"label": "Pseudo camera", "physics": "paper",
+             "blurb": "M21-c: same paper setting, trained on grids rebuilt from photos, the camera path's model (~2 min per push).",
              "reference": {"pos_cm": 3.4, "dir_deg": 7.3, "impulse_rel": None}},
 }
 
