@@ -34,3 +34,18 @@ Steps and what each tile shows (`demo/backend/camera.py` `on_stage`, `GET /jobs/
 
 The mesh path (M16-a) stays the headline; the camera job starts when the mesh result lands and
 polls every 2 s. The metrics table gets a "from the camera" row.
+
+## Model menu (2026-11-03)
+
+Decision (Nick): the demo's model is the clean model with velocities, M16-a (cloth at release,
+1.0 cm / 4.3 deg); a dropdown next to Push offers the two rest-state paper models, M20-a3 (clean
+grids, positions only; 2.8 / 6.6 clean) and M21-c (trained on camera-chain grids; 3.4 / 7.3 clean).
+No model with a second simulated guess (M22 refinement) in the demo.
+
+How it runs (`app.py` `MODELS`, `_run_paper`, `GET /models`, `POST /simulate {"model"}`): the
+paper models run the paper physics (`camera.py`'s Simulator from `rest_reference.json`, 30
+snapshots for the playback, ~100 s per push) with the pushes clamped to their training range
+(`scrunch_forces`; the cards and true arrows update to what was simulated and the table says what
+changed), then the model on the exact final grid (positions only). Checkpoints resolve as
+`CKPT_ROOT/<name>/model.pt` (`/vol` on Modal); a model without a checkpoint is listed as
+"(checkpoint not deployed)" and refused with 422. M20-a3 comes from Bouchet `runs/M20a3/model.pt`.

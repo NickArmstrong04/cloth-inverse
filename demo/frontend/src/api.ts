@@ -20,16 +20,40 @@ export interface Metric {
   impulse_rel: number;
 }
 
+export interface Reference {
+  pos_cm: number;
+  dir_deg: number;
+  impulse_rel: number | null;
+}
+
 export interface JobResult {
   frames: string;
   frame_shape: number[];
   true_forces: ForceEx[];
   predicted_forces: ForceEx[];
   reversal_forces: ForceEx[];
-  metrics: { per_force: Metric[]; mean: Metric; reference: Metric };
+  metrics: { per_force: Metric[]; mean: Metric; reference: Reference };
   timings: { sim_s: number; infer_s: number };
   grid: number;
   cached: boolean;
+  model?: string;
+  physics?: 'cloth' | 'paper';
+  adjustments?: string[];
+}
+
+export interface ModelInfo {
+  name: string;
+  label: string;
+  physics: 'cloth' | 'paper';
+  blurb: string;
+  reference: Reference;
+  available: boolean;
+}
+
+export async function getModels(): Promise<{ default: string; models: ModelInfo[] }> {
+  const r = await fetch(`${API}/models`);
+  if (!r.ok) throw new Error(`GET /models: ${r.status}`);
+  return (await r.json()) as { default: string; models: ModelInfo[] };
 }
 
 export interface JobStatus {
@@ -127,11 +151,11 @@ export async function getCameraJob(jobId: string): Promise<CameraJob> {
   return (await r.json()) as CameraJob;
 }
 
-export async function postSimulate(forces: ForceInput[]): Promise<string> {
+export async function postSimulate(forces: ForceInput[], model = 'M16a'): Promise<string> {
   const r = await fetch(`${API}/simulate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ forces }),
+    body: JSON.stringify({ forces, model }),
   });
   if (!r.ok) {
     const detail = await r.json().catch(() => ({}));

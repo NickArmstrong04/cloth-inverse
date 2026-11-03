@@ -1,13 +1,34 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { ACCENTS, REVERSAL, SceneView, type PlacedForce, type Stage } from './Scene';
-import { b64ToFrames, dirFromAzEl, getCameraJob, getJob, postCamera, postSimulate, type JobResult } from './api';
+import { b64ToFrames, dirFromAzEl, getCameraJob, getJob, getModels, postCamera, postSimulate, type JobResult, type ModelInfo } from './api';
 import { StepStrip, type CamState } from './StepStrip';
 
 interface ForceForm extends PlacedForce {
   az: number;
   el: number;
 }
+
+/** Inverse of dirFromAzEl: a unit direction -> azimuth / elevation in degrees. */
+function azElFromDir(d: [number, number, number]): { az: number; el: number } {
+  const az = (Math.atan2(d[1], d[0]) * 180) / Math.PI;
+  const el = (Math.asin(Math.max(-1, Math.min(1, d[2]))) * 180) / Math.PI;
+  return { az: Math.round(az), el: Math.round(el) };
+}
+
+// The model menu (mirrors the backend's MODELS; /models adds availability). Default M16-a.
+// No multi-guess refinement models (M22) by decision 2026-11-03.
+const MODEL_MENU: ModelInfo[] = [
+  { name: 'M16a', label: 'M16-a: cloth at release, positions + velocities', physics: 'cloth', available: true,
+    blurb: 'The clean model: sees the full mesh with velocities at the instant the pushes end.',
+    reference: { pos_cm: 1.0, dir_deg: 4.3, impulse_rel: 0.156 } },
+  { name: 'M20a3', label: 'M20-a3: paper at rest, positions only', physics: 'paper', available: false,
+    blurb: 'A creased paper sheet settled to rest, no velocities: the still-image setting on exact geometry. ~2 min per push.',
+    reference: { pos_cm: 2.8, dir_deg: 6.6, impulse_rel: null } },
+  { name: 'M21c', label: 'M21-c: paper at rest, trained on camera grids', physics: 'paper', available: false,
+    blurb: 'Same setting, fine-tuned on grids rebuilt from photos; the camera path\'s model. ~2 min per push.',
+    reference: { pos_cm: 3.4, dir_deg: 7.3, impulse_rel: null } },
+];
 
 const DEFAULTS: ForceForm[] = [
   { u: 0.3, v: 0.6, az: -68, el: 57, direction: [0, 0, 1], magnitude: 0.8, duration: 0.5 },
@@ -70,7 +91,13 @@ export default function App() {
   const [result, setResult] = useState<JobResult | null>(null);
   // The camera path (step strip under the canvas): started when the mesh result lands.
   const [cam, setCam] = useState<CamState | null>(null);
+  const [model, setModel] = useState('M16a');
+  const [menu, setMenu] = useState<ModelInfo[]>(MODEL_MENU);
   const [showTrue, setShowTrue] = useState(true);
+
+  useEffect(() => {
+    getModels().then((m) => setMenu(m.models)).catch(() => {});
+  }, []);
   const [showPred, setShowPred] = useState(true);
   const [showRev, setShowRev] = useState(true);
   const [dark, setDark] = useState(true);
@@ -127,6 +154,7 @@ export default function App() {
     try {
       const id = await postSimulate(
         forms.map((f) => ({ u: f.u, v: f.v, direction: f.direction, magnitude: f.magnitude, duration: f.duration })),
+        model,
       );
       setJob({ id, progress: 0 });
       setStage('running');
@@ -135,7 +163,7 @@ export default function App() {
     } catch (e) {
       setJob({ id: '', progress: 0, error: String(e) });
     }
-  }, [forms]);
+  }, [forms, model]);
 
   useEffect(() => {
     if (!job || job.error || stage !== 'running') return;
@@ -152,8 +180,16 @@ export default function App() {
           setStage('done');
           setPlaying(false);
           setJob(null);
+          // Paper models clamp the pushes to their training range: the cards and the true
+          // arrows then show what was actually simulated (result.adjustments says what changed).
+          if (s.result.adjustments?.length && s.result.true_forces.length === 2) {
+            setForms(s.result.true_forces.map((t) => {
+              const d = t.direction as [number, number, number];
+              return withDir({ u: t.u, v: t.v, magnitude: t.magnitude, duration: t.duration, direction: d, ...azElFromDir(d) });
+            }));
+          }
           // Same pushes through the camera path, shown step by step under the canvas.
-          const fs = forms.map((f) => ({ u: f.u, v: f.v, direction: f.direction, magnitude: f.magnitude, duration: f.duration }));
+          const fs = s.result.true_forces.map((f) => ({ u: f.u, v: f.v, direction: f.direction, magnitude: f.magnitude, duration: f.duration }));
           postCamera(fs)
             .then((cid) => setCam({ id: cid, job: null, startedAt: Date.now() }))
             .catch((e) => setCam({ id: '', job: { status: 'failed', progress: 0 }, startedAt: Date.now(), error: String(e) }));
@@ -278,6 +314,19 @@ export default function App() {
         ))}
         {tooClose && <div className="warn">Patches are closer than 0.2 in (u, v) — move one.</div>}
 
+        <div className="row" title={menu.find((m) => m.name === model)?.blurb}>
+          <label htmlFor="model">model</label>
+          <select id="model" value={model} disabled={stage === 'running'}
+            onChange={(e) => { setModel(e.target.value); if (stage === 'done') { setResult(null); setCam(null); setStage('ready'); } }}>
+            {menu.map((m) => (
+              <option key={m.name} value={m.name} disabled={!m.available}>
+                {m.label}{m.available ? '' : ' (checkpoint not deployed)'}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="notice">{menu.find((m) => m.name === model)?.blurb}</div>
+
         <button onClick={push} disabled={stage !== 'ready' || tooClose || !allPlaced}>
           {stage === 'running' ? 'Working…' : 'Push'}
         </button>
@@ -308,6 +357,10 @@ export default function App() {
           <div>
             <h3>Model vs your pushes</h3>
             {cachedNote && <div className="notice">Served from cache (GPU busy) — nearest precomputed result.</div>}
+            {result.model && result.model !== 'M16a' && (
+              <div className="notice">{menu.find((m) => m.name === result.model)?.label ?? result.model} on the paper physics
+                {result.adjustments?.length ? `. Pushes clamped to its training range: ${result.adjustments.join('; ')}.` : '.'}</div>
+            )}
             <div className="legend">
               <span><span className="swatch" style={{ background: ACCENTS[0] }} />true 1</span>
               <span><span className="swatch" style={{ background: ACCENTS[1] }} />true 2</span>
@@ -334,9 +387,10 @@ export default function App() {
                   <td>average</td><td>{result.metrics.mean.pos_cm.toFixed(1)}</td>
                   <td>{result.metrics.mean.dir_deg.toFixed(0)}</td><td>{(100 * result.metrics.mean.impulse_rel).toFixed(0)}%</td>
                 </tr>
-                <tr title="What the model (M16-a) scores on average over its held-out test set. Your numbers near these are normal.">
-                  <td>typical (test set)</td><td>{result.metrics.reference.pos_cm.toFixed(1)}</td>
-                  <td>{result.metrics.reference.dir_deg.toFixed(0)}</td><td>{(100 * result.metrics.reference.impulse_rel).toFixed(0)}%</td>
+                <tr title="What this model scores on average over its held-out test set. Your numbers near these are normal.">
+                  <td>typical ({result.model ?? 'M16a'} test set)</td><td>{result.metrics.reference.pos_cm.toFixed(1)}</td>
+                  <td>{result.metrics.reference.dir_deg.toFixed(0)}</td>
+                  <td>{result.metrics.reference.impulse_rel == null ? '–' : `${(100 * result.metrics.reference.impulse_rel).toFixed(0)}%`}</td>
                 </tr>
                 {cam?.job?.result && (
                   <tr title="The camera path under the canvas: the same pushes re-simulated on paper, photographed, and read back with SAM 3.1, VGGT and the print decoder before M21-c guesses. Typical: 7.4 cm / 17°.">

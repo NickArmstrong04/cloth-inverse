@@ -4,8 +4,13 @@ Runs unchanged under plain ``uvicorn`` (local, Baseten later) and behind
 ``modal_app.py`` on Modal. All Modal-specific code lives in ``modal_app.py``.
 
 Endpoints:
-    POST /simulate        {"forces": [{u,v,direction,magnitude,duration} x2]}
-                          -> {"job_id"}. 422 on out-of-range forces.
+    POST /simulate        {"forces": [{u,v,direction,magnitude,duration} x2], "model"?: name}
+                          -> {"job_id"}. 422 on out-of-range forces or an unavailable model.
+                          Models (GET /models): M16a (default; cloth at release, positions +
+                          velocities, M16-a) and the rest-state paper models M20a3 (clean
+                          grids, positions only) and M21c (trained on camera-chain grids); the
+                          paper models run the paper physics (camera.py's Simulator, ~100 s)
+                          with the pushes clamped to their training range (``adjustments``).
     GET  /jobs/{job_id}   {"status", "progress", "result" | "error", "stages"?}.
                           Polling every 500 ms is fine. Camera jobs carry ``stages``: one entry
                           per finished step (simulating, render, sam, vggt, decode, grid,
@@ -34,6 +39,8 @@ from __future__ import annotations
 
 import os
 import threading
+
+import numpy as np
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
@@ -48,7 +55,31 @@ import camera as cam
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 
-CKPT_DIR = os.environ.get("CKPT_DIR", os.path.join(_HERE, "checkpoints", "M16a"))
+CKPT_ROOT = os.environ.get("CKPT_ROOT", os.path.join(_HERE, "checkpoints"))
+CKPT_DIR = os.environ.get("CKPT_DIR", os.path.join(CKPT_ROOT, "M16a"))
+
+# The demo's model menu. No refinement (M22, several simulated guesses) by decision 2026-11-03.
+# References: RESULTS.md M16 table (M16-a), M21 table "clean test" column (M20-a3, M21-c); the
+# paper models were not scored on impulse there (None -> shown as a dash).
+MODELS = {
+    "M16a": {"label": "M16-a: cloth at release, positions + velocities", "physics": "cloth",
+             "blurb": "The clean model: sees the full mesh with velocities at the instant the pushes end.",
+             "reference": {"pos_cm": 1.0, "dir_deg": 4.3, "impulse_rel": 0.156}},
+    "M20a3": {"label": "M20-a3: paper at rest, positions only", "physics": "paper",
+              "blurb": "A creased paper sheet settled to rest, no velocities: the still-image setting on exact geometry.",
+              "reference": {"pos_cm": 2.8, "dir_deg": 6.6, "impulse_rel": None}},
+    "M21c": {"label": "M21-c: paper at rest, trained on camera grids", "physics": "paper",
+             "blurb": "Same setting, fine-tuned on grids rebuilt from photos; the camera path's model.",
+             "reference": {"pos_cm": 3.4, "dir_deg": 7.3, "impulse_rel": None}},
+}
+
+
+def model_dir(name: str) -> str:
+    return CKPT_DIR if name == "M16a" else os.path.join(CKPT_ROOT, name)
+
+
+def model_available(name: str) -> bool:
+    return name in MODELS and os.path.exists(os.path.join(model_dir(name), "model.pt"))
 GRID_NX = int(os.environ.get("GRID_NX", "256"))
 SNAPSHOTS = int(os.environ.get("SNAPSHOTS", "30"))
 CORS_ORIGINS = [o.strip() for o in
@@ -69,6 +100,7 @@ _entries: list = []
 CAMERA_TIMEOUT_S = float(os.environ.get("CAMERA_TIMEOUT_S", "600"))
 NARRATE_TIMEOUT_S = float(os.environ.get("NARRATE_TIMEOUT_S", "45"))
 _cam: dict = {}  # model, sim, ref: warmed on the first /camera job
+_paper_models: dict = {}  # name -> camera.Model for the paper models of the mesh path
 
 
 def _warm():
@@ -147,9 +179,76 @@ def _run(job_id: str, forces: list[dict]):
             "timings": {"sim_s": sim["wall_s"], "infer_s": infer_s},
             "grid": GRID_NX,
             "cached": False,
+            "model": "M16a",
+            "physics": "cloth",
+            "adjustments": [],
         })
     except Exception as e:  # never leave a job hanging; cache fallback lands in step 6
         _set(job_id, status="failed", error=f"{type(e).__name__}: {e}")
+
+
+def _paper_model(name: str):
+    with _lock:
+        m = _paper_models.get(name)
+    if m is None:
+        m = _cam["model"] if name == "M21c" else cam.Model(model_dir(name))
+        with _lock:
+            _paper_models[name] = m
+    return m
+
+
+def _run_paper(job_id: str, forces: list[dict], name: str):
+    """Mesh path on the rest-state paper physics for M20a3 / M21c: the pushes clamped to the
+    training range, the paper simulated to rest (30 snapshots for playback), the model on the
+    exact final grid (positions only)."""
+    import random
+    import h5py
+    import inference as inf2
+    try:
+        _set(job_id, status="simulating", progress=0.05)
+        _warm_camera()
+        model = _paper_model(name)
+        ref, sim = _cam["ref"], _cam["sim"]
+        fs, notes = cam.scrunch_forces(forces, ref["force_footprint"])
+        settle = float(ref["sim_config"]["t_capture"]) - max(float(f["duration"]) for f in ref["force_footprint"][:2])
+        t_cap = max(f["duration"] for f in fs) + settle
+        h5 = os.path.join(_cam["work"], f"mesh_{job_id}.h5")
+        sim.sim.n_snapshots = SNAPSHOTS
+        t0 = time.time()
+        fut = _sim_pool.submit(sim.run, fs, t_cap, random.randrange(10 ** 6), h5)
+        grid, _vel = fut.result(timeout=CAMERA_TIMEOUT_S)
+        sim_s = time.time() - t0
+        with h5py.File(h5, "r") as h:
+            frames = np.asarray(h["intermediate_grids"][()], np.float32)
+        os.remove(h5)
+        if len(frames) != SNAPSHOTS:  # resample by index so the player's 30-frame clock holds
+            idx = np.linspace(0, len(frames) - 1, SNAPSHOTS).round().astype(int)
+            frames = frames[idx]
+        _set(job_id, progress=0.8, status="predicting")
+        t0 = time.time()
+        X, G = inf2.grid_input(grid, None)
+        pred = model.predict(X, G)
+        infer_s = time.time() - t0
+        predicted = cam.forces_out(pred)
+        per_force, mean = cam.score(pred, fs)
+        reversal = [dict(f, direction=[-x for x in f["direction"]]) for f in predicted]
+        frames64 = downsample_frames(frames, 64)
+        _set(job_id, status="done", progress=1.0, result={
+            "frames": encode_frames(frames64),
+            "frame_shape": list(frames64.shape),
+            "true_forces": [dict(f, impulse=f["magnitude"] * f["duration"]) for f in fs],
+            "predicted_forces": predicted,
+            "reversal_forces": reversal,
+            "metrics": {"per_force": per_force, "mean": mean, "reference": MODELS[name]["reference"]},
+            "timings": {"sim_s": sim_s, "infer_s": infer_s},
+            "grid": int(grid.shape[0]),
+            "cached": False,
+            "model": name,
+            "physics": "paper",
+            "adjustments": notes,
+        })
+    except Exception as e:
+        _set(job_id, status="failed", error=f"{name}: {type(e).__name__}: {str(e)[-300:]}")
 
 
 def create_app() -> FastAPI:
@@ -170,18 +269,33 @@ def create_app() -> FastAPI:
             warm = _svc is not None and _ckpt is not None
         return {"status": "ok", "warm": warm}
 
+    @app.get("/models")
+    def models():
+        return {"default": "M16a",
+                "models": [{"name": k, **v, "available": model_available(k)} for k, v in MODELS.items()]}
+
     @app.post("/simulate")
     def simulate(body: dict):
         if "forces" not in body:
             raise HTTPException(422, "missing 'forces'")
+        name = body.get("model") or "M16a"
+        if name not in MODELS:
+            raise HTTPException(422, f"unknown model {name!r}; one of {list(MODELS)}")
+        if not model_available(name):
+            raise HTTPException(422, f"model {name} has no checkpoint on this server")
         try:
             forces = validate_forces(body["forces"])
+            if MODELS[name]["physics"] == "paper":
+                cam.scrunch_forces(forces, [{"sigma_cells": 6.0, "radius_cells": 18.0}])
         except ValueError as e:
             raise HTTPException(422, str(e))
         job_id = uuid.uuid4().hex[:12]
         with _lock:
             _jobs[job_id] = {"status": "queued", "progress": 0.0}
-        _executor.submit(_warm_and_run, job_id, forces)
+        if MODELS[name]["physics"] == "paper":
+            _executor.submit(_run_paper, job_id, forces, name)
+        else:
+            _executor.submit(_warm_and_run, job_id, forces)
         return {"job_id": job_id}
 
     @app.post("/camera")

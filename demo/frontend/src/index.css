@@ -86,6 +86,10 @@ canvas.thumb { image-rendering: pixelated; cursor: default; }
 .row label { width: 86px; flex: none; color: var(--muted); }
 .row output { width: 64px; flex: none; text-align: right; font-family: var(--mono); font-size: 12px; }
 .row input[type="range"] { flex: 1; min-width: 0; }
+.row select {
+  flex: 1; min-width: 0; background: var(--bg); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 6px; padding: 5px 6px; font-size: 12.5px;
+}
 button {
   background: #2563eb; color: #fff; border: 0; border-radius: var(--radius);
   padding: 9px 14px; font-size: 14px; cursor: pointer;

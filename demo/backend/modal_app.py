@@ -13,6 +13,10 @@ One-time setup (Nick, from WSL):
     modal volume put cloth-demo-checkpoints \
         demo/backend/checkpoints/M16a/metrics.json M16a/metrics.json
 
+Model menu (POST /simulate "model"): the paper models need their checkpoints on the volume:
+    modal volume put cloth-demo-checkpoints \
+        demo/backend/checkpoints/M20a3/model.pt M20a3/model.pt     # (M21c: below)
+
 Camera path (POST /camera, camera.py), one-time additions:
     modal volume put cloth-demo-checkpoints \
         demo/backend/checkpoints/M21c/model.pt M21c/model.pt
@@ -86,6 +90,7 @@ vol = modal.Volume.from_name("cloth-demo-checkpoints", create_if_missing=True)
 def web():
     import sys  # noqa: E402
     sys.path.insert(0, "/app/demo/backend")
+    os.environ.setdefault("CKPT_ROOT", "/vol")  # M16a, M20a3, M21c as /vol/<name>/model.pt
     os.environ.setdefault("CKPT_DIR", "/vol/M16a")
     os.environ.setdefault("CAMERA_CKPT", "/vol/M21c")
     os.environ.setdefault("HF_HOME", "/vol/hf")
