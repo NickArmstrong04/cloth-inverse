@@ -69,6 +69,11 @@ the payload. A flat sheet rendered solid blue (zero height span); it is now neut
 `narrate.py` rejected every Muse Spark verdict that mentioned "SAM 3.1" (3.1 read as an
 unsupported number); 3.1 is now allowed. The live backend needs a `modal deploy` to pick that up.
 
+Since 2026-11-03 the normal app also offers the same files behind a "View the demo video's run"
+button next to Push (`App.tsx` `showDemoRun`): result shown at once with the pushes set and
+locked, a "Show the camera path for this run" button replays the recorded camera job into the
+step strip (~1 s per tile), no backend call either way. Judges skip the wait.
+
 Video entry: cache entry 10 (its camera run decodes 397 / 1024 print cells, 40 % of the sheet
 seen; entry 12 crumples harder but only 4 % decodes after the paper re-sim).
 

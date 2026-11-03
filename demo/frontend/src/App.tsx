@@ -119,6 +119,9 @@ export default function App() {
   const [showRev, setShowRev] = useState(true);
   const [dark, setDark] = useState(true);
   const [cachedNote, setCachedNote] = useState(false);
+  // True while the shown result is the precomputed run from the demo video (public/present/*),
+  // loaded by the "View the demo video's run" button with no backend call (2026-11-03).
+  const [demoRun, setDemoRun] = useState(false);
   const controlsRef = useRef<OrbitControlsImpl>(null!);
 
   useEffect(() => {
@@ -194,6 +197,42 @@ export default function App() {
       .catch((e) => setCam({ id: '', job: { status: 'failed', progress: 0 }, startedAt: Date.now(), error: String(e) }));
   }, [result, cam]);
 
+  // The precomputed run from the demo video (cache entry 10, the same files presentation
+  // mode replays): shown at once, pushes set and locked, no backend call. Judges skip the wait.
+  const showDemoRun = useCallback(async () => {
+    try {
+      const d = presentData.current ?? (await loadPresent());
+      presentData.current = d;
+      const { data } = b64ToFrames(d.entry.frames);
+      setForms(d.entry.true_forces.map((t) => {
+        const dir = t.direction as [number, number, number];
+        return withDir({ u: t.u, v: t.v, magnitude: t.magnitude, duration: t.duration, direction: dir, ...azElFromDir(dir) });
+      }));
+      setPlaced([true, true]);
+      setPinned(true);
+      setModel(d.entry.model ?? 'M16a');
+      setFrames(data);
+      setFrame(0);
+      setResult(d.entry);
+      setCachedNote(false);
+      setDemoRun(true);
+      setJob(null);
+      setCam(null);
+      setStage('done');
+      setLoop(false);
+      setPlaying(true);
+    } catch (e) {
+      setJob({ id: '', progress: 0, error: `demo run: ${e}` });
+    }
+  }, []);
+
+  // For the demo run the camera path is the recorded job, replayed tile by tile (~1 s each).
+  const replayDemoCamera = useCallback(() => {
+    const d = presentData.current;
+    if (!d?.camera || cam) return;
+    void replayCamera(d.camera.job, 1.0, setCam);
+  }, [cam]);
+
   useEffect(() => {
     if (stage !== 'running') return;
     const t = setInterval(() => setNow(Date.now()), 1000);
@@ -213,6 +252,7 @@ export default function App() {
           setFrame(0);
           setResult(s.result);
           setCachedNote(!!s.result.cached);
+          setDemoRun(false);
           setStage('done');
           setLoop(false);  // play once through (2026-11-03)
           setPlaying(true);
@@ -381,8 +421,10 @@ export default function App() {
     setStage('ready');
     setJob(null);
     setCam(null);
+    setDemoRun(false);
   };
   const reset = () => {
+    setDemoRun(false);
     setResult(null);
     setFrames(null);
     setFrame(0);
@@ -476,6 +518,9 @@ export default function App() {
         <button onClick={push} disabled={stage !== 'ready' || tooClose || !allPlaced}>
           {stage === 'running' ? 'Working…' : 'Push'}
         </button>
+        {stage !== 'running' && stage !== 'done' && !PRESENT && (
+          <button className="ghost" onClick={showDemoRun}>View the demo video's run (precomputed, no wait)</button>
+        )}
         {stage === 'running' && job?.startedAt && !job.error && (
           <div className="notice">
             {Math.max(0, Math.round((now - job.startedAt) / 1000))} s elapsed · typically ~{MODEL_MENU.find((m) => m.name === model)?.physics === 'paper' ? '2 min' : '20 s'} per push,
@@ -489,8 +534,11 @@ export default function App() {
         {(stage === 'running' || stage === 'done') && (
           <button className="ghost" onClick={reset}>Start over</button>
         )}
-        {stage === 'done' && result && !cam && !PRESENT && (
+        {stage === 'done' && result && !cam && !PRESENT && !demoRun && (
           <button className="ghost" onClick={runCamera}>Run the camera path on these pushes (~3-5 min)</button>
+        )}
+        {stage === 'done' && result && !cam && !PRESENT && demoRun && presentData.current?.camera && (
+          <button className="ghost" onClick={replayDemoCamera}>Show the camera path for this run (recorded, ~10 s)</button>
         )}
 
         {frames && (
@@ -514,6 +562,7 @@ export default function App() {
         {result && (
           <div>
             <h3>Model vs your pushes</h3>
+            {demoRun && <div className="notice">The precomputed run from the demo video: pushes, simulation and prediction as recorded, no server call.</div>}
             {cachedNote && <div className="err">Not a live prediction: the simulation timed out or the GPU was busy, so this is the nearest
               precomputed result re-scored against your pushes. Press Start over and Push again once the server is warm.</div>}
             {result.model && result.model !== 'M16a' && (
