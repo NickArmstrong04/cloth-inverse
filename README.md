@@ -9,7 +9,7 @@ from photographs with Meta's SAM 3.1, VGGT and Muse Spark.
 | **Live demo** | https://cloth-inverse.vercel.app (the backend scales to zero when idle: the first push after a quiet spell takes 1-2 min, every one after that about 10 s) |
 | **Submission video** | [`demo/demo.mp4`](demo/demo.mp4) (2 min 27 s, silent cut of the live site) |
 | **Results** | [`cloth_results/RESULTS.md`](cloth_results/RESULTS.md) (every model, dated), [`cloth_results/photos/README.md`](cloth_results/photos/README.md) (the photo chain) |
-| **Meta models** | Meta Model API: `sam-3.1`, `muse-spark-1.3`. Open weights: SAM 3 (`facebook/sam3`), VGGT (`facebook/VGGT-1B`), DINOv2 (ablation). Details in [Use of Meta AI tooling](#use-of-meta-ai-tooling-25-). |
+| **Meta models** | In the pipeline: Meta Model API `sam-3.1`, `muse-spark-1.3`; open weights SAM 3 (`facebook/sam3`), VGGT (`facebook/VGGT-1B`), DINOv2 (ablation). In the build: Muse Spark for planning, Muse Code for the first demo scaffold. Details in [Use of Meta AI tooling](#use-of-meta-ai-tooling). |
 | **Built** | 2026-10-27 to 2026-11-04 for the Meta AI Developer Hackathon. First commit 2026-10-27 22:49 ET; all code, data and results in this repository date from inside the building period. |
 
 ![The live demo: a pushed sheet, the user's two pushes (solid), the model's guesses (faded) and the reversal (green)](docs/img/demo_result.png)
@@ -49,7 +49,7 @@ identical inputs replay bit-exactly below 1e-4). SAM 3.1 finds the sheet in 64 o
 views at median IoU 0.990; the VGGT stereo lift reaches 1.42 cm median depth error with no
 ground-truth scale.
 
-## Impact (30 %)
+## Impact
 
 **Who benefits.** Anything that handles sheet-like material and needs to reason about loads it
 did not observe:
@@ -69,14 +69,37 @@ to about one centimetre with the exact mesh, and to about seven centimetres thro
 photograph-based pipeline on rendered photos with a printed code. No real phone photo has been
 through the chain yet; the renders have a known camera motion, no clutter and no sensor noise.
 Force magnitude is learned as a regularity of this solver rather than a conserved quantity
-(see [Technical depth](#technical-depth--execution-20-)). Those are the next steps, not
+(see [Technical depth](#technical-depth--execution)). Those are the next steps, not
 hidden assumptions.
 
-## Use of Meta AI tooling (25 %)
+## Use of Meta AI tooling
 
-Stage One: the project uses the Meta Model API (`sam-3.1`, `muse-spark-1.3`) in the deployed
-demo and in the research chain, and Meta open-weight models (SAM 3, VGGT, DINOv2) in the
-research chain. Each use is measured.
+Meta models appear in this project in two ways: as **components of the pipeline** (SAM 3.1,
+VGGT and Muse Spark run inside the deployed demo; SAM 3, VGGT and DINOv2 in the research
+chain), and as **collaborators in the build**, from the first day's planning to the demo
+scaffold.
+
+### Muse Spark and Muse Code in the build
+
+Before and during the eight-day build, the team used Muse Spark as the planning assistant and
+Muse Code as the coding model for the parts of the project that had to be designed before they
+could be measured:
+
+- **Physics model choices.** How to load a simulated sheet so that its final shape carries the
+  force information: two Gaussian patches in material coordinates, a constant force for a fixed
+  duration, paper as plastic hinges with permanent creases, and the two capture modes (at
+  release, and settled to rest for the single-photo setting). The resulting settings are the
+  ones documented in [`transfer/REPORT.md`](cloth_data_generation/transfer/REPORT.md).
+- **Network layouts.** The layout of the inverse models in
+  [`models.py`](cloth_data_generation/inverse/models.py): the grid CNN with auxiliary heads, the
+  hybrid strain/curvature input, the unordered-pair loss under the sheet's D4 symmetry, and the
+  point-transformer variant for unordered clouds.
+- **Initial demo scaffold.** The first version of the demo (FastAPI job endpoints with polling,
+  the three.js sheet with free camera, the force cards and the arrow overlay) was scaffolded
+  with Muse Code and then measured and reworked by hand.
+
+These sessions are not tracked in the repository; what is tracked is their output, and every
+number below was measured afterwards. The pipeline uses are the ones a judge can see run:
 
 | model | access | where in the code | role in the pipeline | measured | in the live demo |
 |---|---|---|---|---|---|
@@ -107,7 +130,7 @@ Findings worth passing on about the tools (all from
 - Muse Spark narration is reliable only with a hard check that every number it writes came
   from its input; with that check it passed 15/15.
 
-## Technical depth & execution (20 %)
+## Technical depth & execution
 
 **Simulator** ([`cloth_data_generation/transfer/`](cloth_data_generation/transfer/README.md),
 physics notes in [`REPORT.md`](cloth_data_generation/transfer/REPORT.md)). Newton 1.7 / Warp
@@ -157,7 +180,7 @@ Record keeping: 22 experiment matrices and about 100 cluster jobs, each with its
 result, in [`cloth_results/JOBS.md`](cloth_results/JOBS.md); 25 dated result sections in
 [`RESULTS.md`](cloth_results/RESULTS.md); 156 commits over eight days.
 
-## Demo (25 %)
+## Demo
 
 https://cloth-inverse.vercel.app
 
