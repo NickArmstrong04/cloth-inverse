@@ -194,7 +194,7 @@ export function StepStrip({ cam, mesh }: { cam: CamState | null; mesh: JobResult
       </div>
       <div className="uh-tiles">
         {STEPS.map((st, i) => (
-          <div key={st.key} className={`tile ${state(st.key)}`} title={st.blurb}>
+          <div key={st.key} className={`tile ${st.key} ${state(st.key)}`} title={st.blurb}>
             <div className="tile-n">{i + 1}</div>
             <div className="tile-title">{st.title}</div>
             <div className="tile-model">{st.model}</div>

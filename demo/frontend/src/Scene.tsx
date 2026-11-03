@@ -96,7 +96,7 @@ function SheetMesh({
     const cC = new THREE.Color('#e2483d');
     const c = new THREE.Color();
     for (let k = 0; k < GRID * GRID; k++) {
-      const t = (zs[k] - zmin) / span;
+      const t = span < 1e-4 ? 0.5 : (zs[k] - zmin) / span; // flat sheet: neutral, not the low colour
       if (t < 0.5) c.lerpColors(cA, cB, t * 2);
       else c.lerpColors(cB, cC, (t - 0.5) * 2);
       colors[k * 3] = c.r;

@@ -71,7 +71,8 @@ def verdict(out: dict, timeout: float = 45.0) -> dict:
     if not os.environ.get("META_API_KEY"):
         return {"text": None, "ok": False, "model": MODEL, "error": "META_API_KEY not set"}
     f = facts(out)
-    given = numbers_in(f)
+    # The model names "SAM 3.1" in its first sentence (facts.sheet_found_by): 3.1 is not a measurement.
+    given = numbers_in(f) | {3.1}
     t0 = time.time()
     last = None
     for attempt in range(2):

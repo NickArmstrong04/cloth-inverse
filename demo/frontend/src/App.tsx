@@ -3,6 +3,8 @@ import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { ACCENTS, REVERSAL, SceneView, type PlacedForce, type Stage } from './Scene';
 import { b64ToFrames, dirFromAzEl, getCameraJob, getJob, getModels, postCamera, postSimulate, type JobResult, type ModelInfo } from './api';
 import { StepStrip, type CamState } from './StepStrip';
+import * as THREE from 'three';
+import { PRESENT, bindKeys, loadPresent, noteFrame, replayCamera, type PresentApi, type PresentData } from './present';
 
 interface ForceForm extends PlacedForce {
   az: number;
@@ -84,6 +86,9 @@ export default function App() {
   const [locked, setLocked] = useState([false, false]);
   const allPlaced = placed[0] && placed[1];
   const [frames, setFrames] = useState<Float32Array | null>(null);
+  // Frames per result: 30 normally, fewer in some cached runs (never index past the last one).
+  const nFrames = frames ? Math.max(1, Math.round(frames.length / (64 * 64 * 3))) : 30;
+  const last = nFrames - 1;
   const [frame, setFrame] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [loop, setLoop] = useState(true);
@@ -96,8 +101,15 @@ export default function App() {
   const [showTrue, setShowTrue] = useState(true);
 
   useEffect(() => {
+    if (PRESENT) return;
     getModels().then((m) => setMenu(m.models)).catch(() => {});
   }, []);
+  // Presentation mode (video): static data, panel/strip hidden until cued (present.ts).
+  const [panelIn, setPanelIn] = useState(!PRESENT);
+  const presentData = useRef<PresentData | null>(null);
+  const [cursor, setCursor] = useState<{ x: number; y: number; down: boolean }>({ x: -100, y: -100, down: false });
+  const [marksOff, setMarksOff] = useState(PRESENT);
+  const [flat, setFlat] = useState(false);
   const [showPred, setShowPred] = useState(true);
   const [showRev, setShowRev] = useState(true);
   const [dark, setDark] = useState(true);
@@ -151,6 +163,13 @@ export default function App() {
   };
 
   const push = useCallback(async () => {
+    if (PRESENT) {
+      setJob({ id: 'present', progress: 0.3 });
+      setStage('running');
+      setResult(null);
+      setCam(null);
+      return;
+    }
     try {
       const id = await postSimulate(
         forms.map((f) => ({ u: f.u, v: f.v, direction: f.direction, magnitude: f.magnitude, duration: f.duration })),
@@ -166,7 +185,7 @@ export default function App() {
   }, [forms, model]);
 
   useEffect(() => {
-    if (!job || job.error || stage !== 'running') return;
+    if (PRESENT || !job || job.error || stage !== 'running') return;
     const t = setInterval(async () => {
       try {
         const s = await getJob(job.id);
@@ -174,7 +193,7 @@ export default function App() {
           clearInterval(t);
           const { data } = b64ToFrames(s.result.frames);
           setFrames(data);
-          setFrame(29);
+          setFrame(Math.max(0, Math.round(data.length / (64 * 64 * 3)) - 1));
           setResult(s.result);
           setCachedNote(!!s.result.cached);
           setStage('done');
@@ -211,7 +230,7 @@ export default function App() {
 
   // Camera-path job: poll until done/failed; the strip re-renders as stages arrive.
   useEffect(() => {
-    if (!cam || !cam.id) return;
+    if (PRESENT || !cam || !cam.id) return;
     const st = cam.job?.status;
     if (st === 'done' || st === 'failed') return;
     const id = cam.id;
@@ -231,14 +250,97 @@ export default function App() {
   useEffect(() => {
     if (!playing || !frames) return;
     const t = setInterval(() => {
-      setFrame((f) => (f >= 29 ? (loop ? 0 : 29) : f + 1));
+      setFrame((f) => (f >= last ? (loop ? 0 : last) : f + 1));
     }, 100);
     return () => clearInterval(t);
-  }, [playing, frames, loop]);
+  }, [playing, frames, loop, last]);
 
   useEffect(() => {
-    if (frame >= 29 && !loop) setPlaying(false);
-  }, [frame, loop]);
+    if (frame >= last && !loop) setPlaying(false);
+  }, [frame, loop, last]);
+
+  // Presentation mode: load the static entry, show it on its last frame with the pushes placed
+  // (stage 'ready' so Push is live), and expose window.__present for the capture script.
+  useEffect(() => {
+    if (!PRESENT) return;
+    document.documentElement.dataset.theme = '';
+    loadPresent().then((d) => {
+      presentData.current = d;
+      const { data } = b64ToFrames(d.entry.frames);
+      const n = Math.max(1, Math.round(data.length / (64 * 64 * 3)));
+      setFrames(data);
+      setFrame(n - 1);
+      noteFrame(n - 1);
+      setForms(d.entry.true_forces.map((t) => {
+        const dir = t.direction as [number, number, number];
+        return withDir({ u: t.u, v: t.v, magnitude: t.magnitude, duration: t.duration, direction: dir, ...azElFromDir(dir) });
+      }));
+      setPlaced([true, true]);
+      setPinned(true);
+      setStage('ready');
+      setShowTrue(false); setShowPred(false); setShowRev(false);
+      setLoop(false);
+    }).catch((e) => setJob({ id: '', progress: 0, error: `present data: ${e}` }));
+    const onMove = (e: MouseEvent) => setCursor((c) => ({ ...c, x: e.clientX, y: e.clientY }));
+    const onDown = () => setCursor((c) => ({ ...c, down: true }));
+    const onUp = () => setCursor((c) => ({ ...c, down: false }));
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mousedown', onDown);
+    window.addEventListener('mouseup', onUp);
+    return () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mousedown', onDown); window.removeEventListener('mouseup', onUp); };
+  }, []);
+
+  useEffect(() => {
+    if (!PRESENT) return;
+    const api: PresentApi = {
+      setFrame: (k) => { const kk = Math.min(last, Math.max(0, k)); setPlaying(false); setFrame(kk); noteFrame(kk); },
+      last: () => last,
+      play: (once = true) => { setLoop(!once); setFrame(0); noteFrame(0); setPlaying(true); },
+      pause: () => setPlaying(false),
+      marks: (on) => setMarksOff(!on),
+      flat: (on) => setFlat(on),
+      panel: (on) => { setPanelIn(on); if (on) setMarksOff(false); },
+      working: (on) => { if (on) { setJob({ id: 'present', progress: 0.3 }); setStage('running'); setResult(null); setCam(null); } else { setJob(null); setStage('ready'); } },
+      result: (on) => {
+        const d = presentData.current;
+        if (on && d) { setResult(d.entry); setCachedNote(false); setStage('done'); setJob(null); setShowTrue(true); setShowPred(true); setShowRev(false); }
+        else { setResult(null); setStage('ready'); }
+      },
+      arrows: (a) => { if (a.true != null) setShowTrue(a.true); if (a.pred != null) setShowPred(a.pred); if (a.rev != null) setShowRev(a.rev); },
+      scrollPanel: (selector) => document.querySelector(selector)?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+      camera: (stepS = 1.5) => {
+        const d = presentData.current;
+        if (!d?.camera) return Promise.resolve();
+        return replayCamera(d.camera.job, stepS, setCam);
+      },
+      lightbox: (stepKey) => {
+        if (stepKey == null) (document.querySelector('.lightbox') as HTMLElement | null)?.click();
+        else (document.querySelector(`.tile.${stepKey} .thumb`) as HTMLElement | null)?.click();
+      },
+      orbit: (deg, ms = 2000) => new Promise((resolve) => {
+        const c = controlsRef.current;
+        if (!c) { resolve(); return; }
+        const cam = c.object;
+        const axis = new THREE.Vector3(0, 0, 1);
+        const total = (deg * Math.PI) / 180;
+        const t0 = performance.now();
+        let done = 0;
+        const tick = () => {
+          const u = Math.min(1, (performance.now() - t0) / ms);
+          const target = total * (1 - Math.cos(Math.PI * u)) / 2; // ease in-out
+          cam.position.applyAxisAngle(axis, target - done);
+          done = target;
+          c.update();
+          if (u < 1) requestAnimationFrame(tick); else resolve();
+        };
+        requestAnimationFrame(tick);
+      }),
+      reset: () => { setResult(null); setCam(null); setJob(null); setStage('ready'); setFrame(last); noteFrame(last); setPlaying(false); setShowTrue(false); setShowPred(false); setShowRev(false); setPanelIn(false); },
+      data: () => presentData.current,
+    };
+    (window as unknown as { __present: PresentApi }).__present = api;
+    return bindKeys(api);
+  });
 
   const tooClose = sep(forms[0], forms[1]) < 0.2;
   const reset = () => {
@@ -261,23 +363,25 @@ export default function App() {
   };
 
   return (
-    <div className="app">
+    <div className={`app${PRESENT ? ' present' : ''}${panelIn ? '' : ' panel-out'}`}>
       <div className="stage-wrap">
         <div className="scene">
           <SceneView
-            frames={frames}
+            frames={flat ? null : frames}
             frame={frame}
             stage={stage}
-            placed={placed}
+            placed={marksOff ? [false, false] : placed}
             allForms={forms}
             result={result ? { predicted: result.predicted_forces, reversal: result.reversal_forces, showTrue, showPred, showRev } : null}
             onPlace={onPlace}
             controlsRef={controlsRef}
             dark={dark}
           />
-          <div className="stage-hint">
-            {hint(stage, active, placed, locked)}
-          </div>
+          {!PRESENT && (
+            <div className="stage-hint">
+              {hint(stage, active, placed, locked)}
+            </div>
+          )}
         </div>
         <StepStrip cam={cam} mesh={result} />
       </div>
@@ -340,9 +444,9 @@ export default function App() {
             <h3>Playback</h3>
             <div className="row">
               <button className="ghost" onClick={() => setPlaying((p) => !p)}>{playing ? 'Pause' : 'Play'}</button>
-              <input type="range" min={0} max={29} step={1} value={frame}
+              <input type="range" min={0} max={last} step={1} value={frame}
                 onChange={(e) => setFrame(Number(e.target.value))} style={{ flex: 1 }} />
-              <output>{frame}/29</output>
+              <output>{frame}/{last}</output>
             </div>
             <div className="row">
               <label><input type="checkbox" checked={loop} onChange={(e) => setLoop(e.target.checked)} /> loop</label>
@@ -426,6 +530,11 @@ export default function App() {
           PyTorch · Newton/Warp VBD sim · M16-a cnn_reg+hybrid (1.0 cm / 4.3° / 0.156) · camera path: SAM 3.1 + VGGT + M21-c + Muse Spark · React + three.js
         </footer>
       </div>
+      {PRESENT && (
+        <div className={`fake-cursor${cursor.down ? ' down' : ''}`} style={{ left: cursor.x, top: cursor.y }}>
+          <svg width="22" height="30" viewBox="0 0 22 30"><path d="M1 1 L1 23 L6.5 18 L10 27 L14 25.5 L10.5 17 L18 17 Z" fill="#fff" stroke="#000" strokeWidth="1.4" strokeLinejoin="round" /></svg>
+        </div>
+      )}
     </div>
   );
 }

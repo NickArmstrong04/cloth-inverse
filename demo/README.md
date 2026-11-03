@@ -52,3 +52,22 @@ snapshots for the playback, ~100 s per push) with the pushes clamped to their tr
 changed), then the model on the exact final grid (positions only). Checkpoints resolve as
 `CKPT_ROOT/<name>/model.pt` (`/vol` on Modal); a model without a checkpoint is listed as
 "(checkpoint not deployed)" and refused with 422. M20-a3 comes from Bouchet `runs/M20a3/model.pt`.
+
+## Presentation mode and the 3-minute video (2026-11-03)
+
+`?present=1` (`demo/frontend/src/present.ts`): the app replays `public/present/entry.json` (one
+cache entry rebuilt as a JobResult by `demo/backend/make_present.py`) and `public/present/camera.json`
+(one recorded camera-path job, `demo/backend/record_camera_job.py`) with no backend call; the panel
+and the step strip stay hidden until cued (`window.__present`, key bindings), so a scripted
+browser can record the demo with no waits. Built for the submission video
+(`C:\Users\nicka\Desktop\projects\meta_video_generation\video\`, pipeline README there); normal
+visitors see no change.
+
+Fixes made on the way: the player and the cache fallback assumed 30 frames per result, but six
+cache entries hold 22-27 (the sheet vanished past the last frame); the frame count now comes from
+the payload. A flat sheet rendered solid blue (zero height span); it is now neutral.
+`narrate.py` rejected every Muse Spark verdict that mentioned "SAM 3.1" (3.1 read as an
+unsupported number); 3.1 is now allowed. The live backend needs a `modal deploy` to pick that up.
+
+Video entry: cache entry 10 (its camera run decodes 397 / 1024 print cells, 40 % of the sheet
+seen; entry 12 crumples harder but only 4 % decodes after the paper re-sim).
