@@ -132,3 +132,7 @@ footer.stack { color: var(--muted); font-size: 11.5px; border-top: 1px solid var
 .fake-cursor.down svg { transform: scale(0.85); transform-origin: 2px 2px; }
 
 input[type=range]:disabled, input[type=checkbox]:disabled { opacity: 0.45; cursor: not-allowed; }
+/* Playback toggles: four checkboxes on one wrapping line (the fixed 86 px card label width cut the fourth off). */
+.row.toggles { flex-wrap: wrap; gap: 6px 14px; }
+.row.toggles label { width: auto; flex: none; white-space: nowrap; color: var(--ink); }
+.swatch.faded { opacity: 0.4; }

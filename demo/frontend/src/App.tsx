@@ -214,6 +214,7 @@ export default function App() {
           setResult(s.result);
           setCachedNote(!!s.result.cached);
           setStage('done');
+          setLoop(false);  // play once through (2026-11-03)
           setPlaying(true);
           setJob(null);
           // Paper models clamp the pushes to their training range: the cards and the true
@@ -501,7 +502,7 @@ export default function App() {
                 onChange={(e) => setFrame(Number(e.target.value))} style={{ flex: 1 }} />
               <output>{frame}/{last}</output>
             </div>
-            <div className="row">
+            <div className="row toggles">
               <label><input type="checkbox" checked={loop} onChange={(e) => setLoop(e.target.checked)} /> loop</label>
               <label><input type="checkbox" checked={showTrue} onChange={(e) => setShowTrue(e.target.checked)} /> true</label>
               <label><input type="checkbox" checked={showPred} onChange={(e) => setShowPred(e.target.checked)} /> predicted</label>
@@ -523,7 +524,9 @@ export default function App() {
               <span><span className="swatch" style={{ background: ACCENTS[0] }} />true 1</span>
               <span><span className="swatch" style={{ background: ACCENTS[1] }} />true 2</span>
               <span><span className="swatch" style={{ background: REVERSAL }} />reversal</span>
+              <span><span className="swatch faded" style={{ background: ACCENTS[0] }} /><span className="swatch faded" style={{ background: ACCENTS[1] }} />predicted (faded)</span>
             </div>
+            <p className="notice">Solid arrows are the pushes you set; the faded arrows next to them are the model's guess of each push from the end state alone.</p>
             <p className="notice">How far off is the model's guess of each push? Lower is better.</p>
             <table className="metrics">
               <thead><tr>
