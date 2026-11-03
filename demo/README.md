@@ -74,6 +74,11 @@ button next to Push (`App.tsx` `showDemoRun`): result shown at once with the pus
 locked, a "Show the camera path for this run" button replays the recorded camera job into the
 step strip (~1 s per tile), no backend call either way. Judges skip the wait.
 
+`public/present/camera.json` re-recorded 2026-11-03 against the live Modal backend
+(`record_camera_job.py --forces-json <old camera.json> --seed 2 --api <modal url>`): SAM 3.1 live
+(prompt "fabric", 1 instance, 2.2 s) and a Muse Spark verdict; the earlier file came from the local
+sweep and carried the renderer-mask fallback ("SAM 3.1 unavailable") into the replay.
+
 Video entry: cache entry 10 (its camera run decodes 397 / 1024 print cells, 40 % of the sheet
 seen; entry 12 crumples harder but only 4 % decodes after the paper re-sim).
 
