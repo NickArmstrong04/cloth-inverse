@@ -2,7 +2,8 @@
 
 React 18 + Vite + TypeScript + three.js (fiber/drei). Single page: free-camera
 3D sheet, force cards, Push → 30-frame playback, true/predicted/reversal
-arrows, metrics with M16-a references, camera-path tile.
+arrows, metrics with M16-a references. The Camera tab (photo -> SAM 3.1 -> VGGT -> M21-c,
+commit 58588d3) was removed on 2026-11-03 (Nick: too unclear); the backend keeps POST /camera.
 
 ## Run against the local backend
 
