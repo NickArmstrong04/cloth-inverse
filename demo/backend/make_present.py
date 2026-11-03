@@ -5,7 +5,7 @@ app's ``/jobs/{id}`` returns for a live push (same scoring path as ``app._fallba
 frontend's presentation mode (``?present=1``) can replay it with no backend.
 
 Usage (WSL, cloth venv):
-    /home/narmstrong/cloth/.venv/bin/python demo/backend/make_present.py --entry 12 \
+    <sim-venv>/bin/python demo/backend/make_present.py --entry 12 \
         --ckpt demo/backend/checkpoints/M16a --out demo/frontend/public/present/entry.json
 """
 
