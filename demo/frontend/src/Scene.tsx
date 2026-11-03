@@ -27,8 +27,18 @@ function gridPos(frames: Float32Array | null, frame: number, i: number, j: numbe
     out.set(((i / (GRID - 1)) - 0.5) * SHEET, ((j / (GRID - 1)) - 0.5) * SHEET, 0);
     return;
   }
-  const o = (frame * GRID * GRID + j * GRID + i) * 3;
-  out.set(frames[o], frames[o + 1], frames[o + 2]);
+  const nF = Math.max(1, Math.round(frames.length / (GRID * GRID * 3)));
+  const f = Math.min(nF - 1, Math.max(0, frame));
+  const a = Math.floor(f);
+  const t = f - a;
+  const o = (a * GRID * GRID + j * GRID + i) * 3;
+  if (t < 1e-6 || a + 1 >= nF) {
+    out.set(frames[o], frames[o + 1], frames[o + 2]);
+    return;
+  }
+  // fractional frame (presentation capture): linear interpolation of the vertex between snapshots
+  const o2 = o + GRID * GRID * 3;
+  out.set(frames[o] + t * (frames[o2] - frames[o]), frames[o + 1] + t * (frames[o2 + 1] - frames[o + 1]), frames[o + 2] + t * (frames[o2 + 2] - frames[o + 2]));
 }
 
 function SheetMesh({
