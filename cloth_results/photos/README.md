@@ -87,6 +87,39 @@ ones. Points per view: SAM / oracle = 0.968 mean on cloth (0.985-0.993 on every 
 miss gives an empty package) and 0.990 on paper; oracle median 33.6k (cloth) / 38.1k (paper) points
 from 512 px views.
 
+### Hosted SAM 3.1 through the Meta Model API (T0 of `meta_comp_improvements.md`, 2026-11-01)
+
+`inverse/sam_api.py` calls `sam-3.1` on `POST api.meta.ai/v1/responses` (local PNG as a base64
+data URL, `metadata.mask_encoding = one_bit`) and decodes the masks in pure Python: a port of
+`decodeRaster` from npm `@meta-sam/parser` 0.1.0 (the PyPI `meta-sam-parser` 0.0.1 is an empty
+placeholder). The mask is an H x W raster at the box's top-left. `inverse/t0_api_check.py` on the
+64 `free256` views, prompt "fabric": 64/64 found, K = 1 on every view, IoU vs oracle median 0.990
+(min 0.966; 64/64 >= 0.95), precision 1.000 / recall 0.990: the same as open-weight SAM 3 above.
+API latency median 0.97 s, max 3.2 s per 512 px view (decode 0.2 s). `muse-spark-1.3` with an image
+answers in 4-8 s ("a blue-and-white checkered cloth ... crumpled"; one run said "folded").
+Scores: `sam31_api/scores.json`. So the hosted path can replace or back up open-weight SAM 3 in
+the demo; items 2-3 (Muse Spark agent, narration) are unblocked.
+
+T2, Muse Spark as the re-prompting agent (`inverse/t2_reprompt.py`, 2026-11-01, 64 `free256` views,
+outputs `sam31_api/t2_*.json`). Hosted SAM 3.1 alone repeats the open-weight prompt sensitivity:
+"paper" 3/64, "sheet" 0/64, "a crumpled cloth" 26/64 at IoU >= 0.95, every miss K = 0. The agent
+(photo + red mask overlay + K + mask fraction; accept / reprompt / box, <= 3 rounds, never sees the
+oracle) recovers 60/64 from "paper" and 62/64 from "sheet" (2.1-2.2 SAM calls, 13-14 s per view)
+and accepts first time on 16/16 "fabric" control views (no false re-prompts). But the hard-coded
+fallback list (fabric, a piece of cloth, cloth) gets 64/64 from both starts in 1.7 s: the agent
+never proposes "fabric" (95 of 128 finals are "cloth", 20 "flag"), its four misses are views where
+"cloth" also fails, and one of its box prompts was too tight (IoU 0.36). On synthetic renders the
+agent passes the bar (>= 45/48-equivalent) but loses to a fixed list; any value is on real photos,
+untested. Demo use: fixed list first, agent only when the list returns K = 0, decisions logged.
+
+T3, narration (`inverse/t3_narrate.py`, 2026-11-01): `muse-spark-1.3` gets only pre-rounded facts
+from each of the 15 demo cache entries (`origin/demo:demo/backend/cache`; per-push errors recomputed,
+match `metrics_mean` to rounding) and must write two sentences. Pass 15/15: no number outside the
+given ones, none over two sentences. But the text is number-dense run-on prose, units dropped
+in places ("missed by 0.6 on spot"), and 14-28 s per call (median 22 s), so for the demo: shorter
+fact list (averages + one "typical?" flag), fetch asynchronously after the result is shown.
+Output: `sam31_api/t3_narration.json`.
+
 ## VGGT lifting (rung 4b, step 3, 2026-10-30)
 
 Meta's VGGT (`facebook/VGGT-1B`, installed by `setup_sam3.sh` into the SAM venv) predicts a

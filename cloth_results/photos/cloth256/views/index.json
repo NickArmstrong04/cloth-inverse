@@ -1,0 +1,773 @@
+{
+ "prompt": "fabric",
+ "records": [
+  {
+   "stem": "sample_slot0000_seed100000_v0",
+   "source": "oracle",
+   "N": 26532,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0000_seed100000_v0_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0000_seed100000_v0",
+   "source": "sam3",
+   "N": 26354,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0000_seed100000_v0_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0000_seed100000_v1",
+   "source": "oracle",
+   "N": 27088,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0000_seed100000_v1_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0000_seed100000_v1",
+   "source": "sam3",
+   "N": 26802,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0000_seed100000_v1_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0000_seed100000_v2",
+   "source": "oracle",
+   "N": 46079,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0000_seed100000_v2_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0000_seed100000_v2",
+   "source": "sam3",
+   "N": 45776,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0000_seed100000_v2_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0000_seed100000_v3",
+   "source": "oracle",
+   "N": 37739,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0000_seed100000_v3_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0000_seed100000_v3",
+   "source": "sam3",
+   "N": 37277,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0000_seed100000_v3_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0000_seed6000_v0",
+   "source": "oracle",
+   "N": 22424,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0000_seed6000_v0_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0000_seed6000_v0",
+   "source": "sam3",
+   "N": 22124,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0000_seed6000_v0_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0000_seed6000_v1",
+   "source": "oracle",
+   "N": 26965,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0000_seed6000_v1_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0000_seed6000_v1",
+   "source": "sam3",
+   "N": 26737,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0000_seed6000_v1_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0000_seed6000_v2",
+   "source": "oracle",
+   "N": 22970,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0000_seed6000_v2_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0000_seed6000_v2",
+   "source": "sam3",
+   "N": 22656,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0000_seed6000_v2_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0000_seed6000_v3",
+   "source": "oracle",
+   "N": 55037,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0000_seed6000_v3_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0000_seed6000_v3",
+   "source": "sam3",
+   "N": 54515,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0000_seed6000_v3_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0001_seed100001_v0",
+   "source": "oracle",
+   "N": 51413,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0001_seed100001_v0_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0001_seed100001_v0",
+   "source": "sam3",
+   "N": 50942,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0001_seed100001_v0_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0001_seed100001_v1",
+   "source": "oracle",
+   "N": 62994,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0001_seed100001_v1_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0001_seed100001_v1",
+   "source": "sam3",
+   "N": 62362,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0001_seed100001_v1_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0001_seed100001_v2",
+   "source": "oracle",
+   "N": 36463,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0001_seed100001_v2_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0001_seed100001_v2",
+   "source": "sam3",
+   "N": 35764,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0001_seed100001_v2_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0001_seed100001_v3",
+   "source": "oracle",
+   "N": 21250,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0001_seed100001_v3_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0001_seed100001_v3",
+   "source": "sam3",
+   "N": 0,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0001_seed100001_v3_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0001_seed6001_v0",
+   "source": "oracle",
+   "N": 17324,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0001_seed6001_v0_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0001_seed6001_v0",
+   "source": "sam3",
+   "N": 17103,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0001_seed6001_v0_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0001_seed6001_v1",
+   "source": "oracle",
+   "N": 34862,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0001_seed6001_v1_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0001_seed6001_v1",
+   "source": "sam3",
+   "N": 34459,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0001_seed6001_v1_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0001_seed6001_v2",
+   "source": "oracle",
+   "N": 26783,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0001_seed6001_v2_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0001_seed6001_v2",
+   "source": "sam3",
+   "N": 26382,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0001_seed6001_v2_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0001_seed6001_v3",
+   "source": "oracle",
+   "N": 21588,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0001_seed6001_v3_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0001_seed6001_v3",
+   "source": "sam3",
+   "N": 21373,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0001_seed6001_v3_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0002_seed100002_v0",
+   "source": "oracle",
+   "N": 41473,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0002_seed100002_v0_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0002_seed100002_v0",
+   "source": "sam3",
+   "N": 41169,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0002_seed100002_v0_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0002_seed100002_v1",
+   "source": "oracle",
+   "N": 21348,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0002_seed100002_v1_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0002_seed100002_v1",
+   "source": "sam3",
+   "N": 21163,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0002_seed100002_v1_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0002_seed100002_v2",
+   "source": "oracle",
+   "N": 32282,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0002_seed100002_v2_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0002_seed100002_v2",
+   "source": "sam3",
+   "N": 31997,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0002_seed100002_v2_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0002_seed100002_v3",
+   "source": "oracle",
+   "N": 47530,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0002_seed100002_v3_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0002_seed100002_v3",
+   "source": "sam3",
+   "N": 47094,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0002_seed100002_v3_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0002_seed56004_v0",
+   "source": "oracle",
+   "N": 27342,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0002_seed56004_v0_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0002_seed56004_v0",
+   "source": "sam3",
+   "N": 26813,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0002_seed56004_v0_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0002_seed56004_v1",
+   "source": "oracle",
+   "N": 24350,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0002_seed56004_v1_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0002_seed56004_v1",
+   "source": "sam3",
+   "N": 24044,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0002_seed56004_v1_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0002_seed56004_v2",
+   "source": "oracle",
+   "N": 24127,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0002_seed56004_v2_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0002_seed56004_v2",
+   "source": "sam3",
+   "N": 23786,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0002_seed56004_v2_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0002_seed56004_v3",
+   "source": "oracle",
+   "N": 40675,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0002_seed56004_v3_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0002_seed56004_v3",
+   "source": "sam3",
+   "N": 40062,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0002_seed56004_v3_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0003_seed100003_v0",
+   "source": "oracle",
+   "N": 56879,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0003_seed100003_v0_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0003_seed100003_v0",
+   "source": "sam3",
+   "N": 56485,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0003_seed100003_v0_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0003_seed100003_v1",
+   "source": "oracle",
+   "N": 105517,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0003_seed100003_v1_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0003_seed100003_v1",
+   "source": "sam3",
+   "N": 104293,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0003_seed100003_v1_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0003_seed100003_v2",
+   "source": "oracle",
+   "N": 30358,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0003_seed100003_v2_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0003_seed100003_v2",
+   "source": "sam3",
+   "N": 30143,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0003_seed100003_v2_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0003_seed100003_v3",
+   "source": "oracle",
+   "N": 48270,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0003_seed100003_v3_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0003_seed100003_v3",
+   "source": "sam3",
+   "N": 47673,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0003_seed100003_v3_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0003_seed6003_v0",
+   "source": "oracle",
+   "N": 37678,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0003_seed6003_v0_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0003_seed6003_v0",
+   "source": "sam3",
+   "N": 37306,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0003_seed6003_v0_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0003_seed6003_v1",
+   "source": "oracle",
+   "N": 28161,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0003_seed6003_v1_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0003_seed6003_v1",
+   "source": "sam3",
+   "N": 27942,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0003_seed6003_v1_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0003_seed6003_v2",
+   "source": "oracle",
+   "N": 46033,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0003_seed6003_v2_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0003_seed6003_v2",
+   "source": "sam3",
+   "N": 45641,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0003_seed6003_v2_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0003_seed6003_v3",
+   "source": "oracle",
+   "N": 31701,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0003_seed6003_v3_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0003_seed6003_v3",
+   "source": "sam3",
+   "N": 31455,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0003_seed6003_v3_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0004_seed56005_v0",
+   "source": "oracle",
+   "N": 37320,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0004_seed56005_v0_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0004_seed56005_v0",
+   "source": "sam3",
+   "N": 36976,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0004_seed56005_v0_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0004_seed56005_v1",
+   "source": "oracle",
+   "N": 40080,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0004_seed56005_v1_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0004_seed56005_v1",
+   "source": "sam3",
+   "N": 39232,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0004_seed56005_v1_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0004_seed56005_v2",
+   "source": "oracle",
+   "N": 18781,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0004_seed56005_v2_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0004_seed56005_v2",
+   "source": "sam3",
+   "N": 18580,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0004_seed56005_v2_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0004_seed56005_v3",
+   "source": "oracle",
+   "N": 46279,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0004_seed56005_v3_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0004_seed56005_v3",
+   "source": "sam3",
+   "N": 45750,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0004_seed56005_v3_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0005_seed6005_v0",
+   "source": "oracle",
+   "N": 25373,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0005_seed6005_v0_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0005_seed6005_v0",
+   "source": "sam3",
+   "N": 24998,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0005_seed6005_v0_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0005_seed6005_v1",
+   "source": "oracle",
+   "N": 24454,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0005_seed6005_v1_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0005_seed6005_v1",
+   "source": "sam3",
+   "N": 24074,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0005_seed6005_v1_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0005_seed6005_v2",
+   "source": "oracle",
+   "N": 22095,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0005_seed6005_v2_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0005_seed6005_v2",
+   "source": "sam3",
+   "N": 21764,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0005_seed6005_v2_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0005_seed6005_v3",
+   "source": "oracle",
+   "N": 37226,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0005_seed6005_v3_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0005_seed6005_v3",
+   "source": "sam3",
+   "N": 36827,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0005_seed6005_v3_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0006_seed56007_v0",
+   "source": "oracle",
+   "N": 65229,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0006_seed56007_v0_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0006_seed56007_v0",
+   "source": "sam3",
+   "N": 64783,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0006_seed56007_v0_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0006_seed56007_v1",
+   "source": "oracle",
+   "N": 37226,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0006_seed56007_v1_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0006_seed56007_v1",
+   "source": "sam3",
+   "N": 36892,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0006_seed56007_v1_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0006_seed56007_v2",
+   "source": "oracle",
+   "N": 35528,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0006_seed56007_v2_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0006_seed56007_v2",
+   "source": "sam3",
+   "N": 35252,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0006_seed56007_v2_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0006_seed56007_v3",
+   "source": "oracle",
+   "N": 68170,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0006_seed56007_v3_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0006_seed56007_v3",
+   "source": "sam3",
+   "N": 67645,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0006_seed56007_v3_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0007_seed6007_v0",
+   "source": "oracle",
+   "N": 26768,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0007_seed6007_v0_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0007_seed6007_v0",
+   "source": "sam3",
+   "N": 26502,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0007_seed6007_v0_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0007_seed6007_v1",
+   "source": "oracle",
+   "N": 19828,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0007_seed6007_v1_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0007_seed6007_v1",
+   "source": "sam3",
+   "N": 19624,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0007_seed6007_v1_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0007_seed6007_v2",
+   "source": "oracle",
+   "N": 31151,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0007_seed6007_v2_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0007_seed6007_v2",
+   "source": "sam3",
+   "N": 30794,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0007_seed6007_v2_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0007_seed6007_v3",
+   "source": "oracle",
+   "N": 37272,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0007_seed6007_v3_pts_oracle.npz",
+   "size": 512,
+   "fov": 40.0
+  },
+  {
+   "stem": "sample_slot0007_seed6007_v3",
+   "source": "sam3",
+   "N": 36877,
+   "path": "/mnt/c/Users/nicka/Desktop/projects/meta/cloth_results/photos/cloth256/views/sample_slot0007_seed6007_v3_pts_sam3.npz",
+   "size": 512,
+   "fov": 40.0
+  }
+ ]
+}

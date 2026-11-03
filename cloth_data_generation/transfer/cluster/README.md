@@ -11,17 +11,17 @@ are skipped, rejected attempts are not re-simulated.
 
 ## 1. Get the code onto the cluster
 
-Everything lives under `/home/naa79/scratch_pi_sz622/naa79`:
+Everything lives under `/nfs/roberts/scratch/pi_sz622/naa79/cloth`:
 
 ```bash
-cd /home/naa79/scratch_pi_sz622/naa79
+cd /nfs/roberts/scratch/pi_sz622/naa79/cloth
 git clone https://github.com/NickArmstrong04/cloth-inverse.git
 cd cloth-inverse/cloth_data_generation/transfer        # this is CODE_DIR
 # later updates
-cd /home/naa79/scratch_pi_sz622/naa79/cloth-inverse && git pull
+cd /nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth-inverse && git pull
 ```
 
-Datasets go to `/home/naa79/scratch_pi_sz622/naa79/cloth_data/<name>/`
+Datasets go to `/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/<name>/`
 (`DATA_DIR` in `cluster.env`). The `.venv` and `.warp_cache` created inside
 CODE_DIR are git-ignored.
 
@@ -45,7 +45,7 @@ bash cluster/interactive.sh gpu      # 1 GPU on gpu_devel, to try generate_sampl
 Then:
 
 ```bash
-cd /home/naa79/scratch_pi_sz622/naa79/cloth-inverse/cloth_data_generation/transfer
+cd /nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth-inverse/cloth_data_generation/transfer
 bash cluster/setup_env.sh
 ```
 
@@ -74,7 +74,7 @@ calls `sbatch`, the simulations themselves run as batch jobs.)
 # tiny: 4 samples at 128x128, 2 tasks x 2, short time limit, devel GPU partition
 python3 cluster/submit.py --n 4 --nx 128 --chunk 2 --name smoke128 --time 00:30:00 --partition gpu_devel
 python3 cluster/submit.py --status smoke128          # progress, queue, missing slots
-cat /home/naa79/scratch_pi_sz622/naa79/cloth_data/smoke128/slurm/gen_*_0.out  # task log
+cat /nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/smoke128/slurm/gen_*_0.out  # task log
 
 # preview the real thing without submitting
 python3 cluster/submit.py --n 1000 --dry-run
@@ -113,9 +113,9 @@ In the morning, whatever finished is the dataset (slots are independent):
 ```bash
 python3 cluster/submit.py --status ds768_night            # passing count, missing slots
 scancel -u $USER -n cloth_gen                             # stop the rest if you are done
-.venv/bin/python cluster/merge_summaries.py --indir /home/naa79/scratch_pi_sz622/naa79/cloth_data/ds768_night
-.venv/bin/python package_splits.py --indir /home/naa79/scratch_pi_sz622/naa79/cloth_data/ds768_night \
-    --outdir /home/naa79/scratch_pi_sz622/naa79/cloth_data/ds768_night_splits
+.venv/bin/python cluster/merge_summaries.py --indir /nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds768_night
+.venv/bin/python package_splits.py --indir /nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds768_night \
+    --outdir /nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds768_night_splits
 ```
 
 Sizing: one L40S makes ~12 samples/h at 768 single-process (~306 s each incl.
@@ -175,7 +175,7 @@ datasets are reproduced with `--batch-args ''` and `--nx 768` (or 128).
 
 ```bash
 bash cluster/setup_env.sh --with-torch                        # once (adds PyTorch to the venv)
-sbatch cluster/train.sbatch /home/naa79/scratch_pi_sz622/naa79/cloth_data/ds768_night_splits 300
+sbatch cluster/train.sbatch /nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds768_night_splits 300
 tail -f train_<jobid>.out
 ```
 
@@ -190,7 +190,7 @@ predictions land in `../inverse/runs/<splits>_<model>_*/`.
 ## 4. Outputs
 
 ```
-/home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_1000/
+/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_1000/
   sample_slot00000_seed100000.h5 ...   passing samples (QC gate: no NaN,
   forces_slot*_seed*.json              stretch<=2, no gross piercing)
   rejected/                            failed attempts (kept for inspection)
@@ -199,7 +199,7 @@ predictions land in `../inverse/runs/<splits>_<model>_*/`.
   dataset_summary.json                 QC stats, retries, GPU hours, missing slots
   progress_*.jsonl                     per-task incremental log
   slurm/                               rendered sbatch files, submission.json, logs
-/home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_1000_splits/{train,val,test}/ + dataset_manifest.json
+/nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_1000_splits/{train,val,test}/ + dataset_manifest.json
 ```
 
 Check the retention policy of `scratch_pi_sz622` with your group; if it is
@@ -282,7 +282,7 @@ targeting by setting `GPUS=l40s:1` in `cluster.env` if one type wins clearly).
 python3 cluster/submit.py --status ds256_1000
 squeue -u $USER
 sacct -j <ARRAY_JOB_ID> --format=JobID,State,Elapsed,MaxRSS,ExitCode | head
-tail -n 20 /home/naa79/scratch_pi_sz622/naa79/cloth_data/ds256_1000/slurm/gen_<JOBID>_<TASK>.err
+tail -n 20 /nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds256_1000/slurm/gen_<JOBID>_<TASK>.err
 ```
 
 - `CUDA driver` / `no device` errors in a task: the partition has no GPU or

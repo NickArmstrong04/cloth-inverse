@@ -60,30 +60,58 @@ def perturb_depth(depth_v: np.ndarray, vpix: np.ndarray, size: int, fov: float, 
     return d.astype(np.float32)
 
 
-def degrade_file(src: str, dst_stem: str, out_dir: str, K: int, size: int, fov: float, p: dict, rng, dev):
+def orbit_pairs(x: torch.Tensor, K: int, deg: float):
+    """K camera pairs: a random non-degenerate camera and its twin orbited by deg about the
+    camera's vertical axis around the sheet centre (20 = the stereo capture, 180 = front + back).
+    Returns R (2K, 3, 3), d (2K,) ordered [pair0 a, pair0 b, pair1 a, ...]."""
+    R1, d1 = sample_cameras(x, K)
+    t = math.radians(deg)
+    Ry = torch.tensor([[math.cos(t), 0, math.sin(t)], [0, 1, 0], [-math.sin(t), 0, math.cos(t)]],
+                      dtype=R1.dtype, device=R1.device)
+    R = torch.stack([R1, Ry @ R1], 1).reshape(-1, 3, 3)
+    return R, d1.repeat_interleave(2)
+
+
+def degrade_file(src: str, dst_stem: str, out_dir: str, K: int, size: int, fov: float, p: dict, rng, dev,
+                 fuse_deg: float | None = None):
     with h5py.File(src, "r") as h:
         pos = h["final_grid"][()].astype(np.float32)
-        extra = {k: h[k][()] for k in h.keys() if k not in ("final_grid", "final_vel")}
+        # labels/config only: groups and the stored snapshots (full train files, 16 MB) are not
+        # needed to train on the photo-like grid, and release_* would be an undegraded leak
+        extra = {k: h[k][()] for k in h.keys()
+                 if k not in ("final_grid", "final_vel") and isinstance(h[k], h5py.Dataset)
+                 and not k.startswith(("intermediate_", "release_"))}
         attrs = dict(h.attrs)
     ny, nx = pos.shape[:2]
     c = pos.reshape(-1, 3).mean(0).astype(np.float32)
     grid = torch.from_numpy(pos).to(dev)
-    R, d = sample_cameras(grid.reshape(-1, 3) - grid.reshape(-1, 3).mean(0), K)
+    xc = grid.reshape(-1, 3) - grid.reshape(-1, 3).mean(0)
+    R, d = sample_cameras(xc, K) if fuse_deg is None else orbit_pairs(xc, K, fuse_deg)
+    V = len(R)
     _, gt = photograph(grid, R, d, None, size, fov)
-    vis = gt["vis"].cpu().numpy().reshape(K, ny, nx)
-    vpix = gt["vpix"].cpu().numpy().reshape(K, ny, nx, 2)
-    depth = gt["depth"].cpu().numpy()  # (K, S, S) metres, rows down
-    names, fracs = [], []
-    for k in range(K):
+    vis = gt["vis"].cpu().numpy().reshape(V, ny, nx)
+    vpix = gt["vpix"].cpu().numpy().reshape(V, ny, nx, 2)
+    depth = gt["depth"].cpu().numpy()  # (V, S, S) metres, rows down
+    lifts, pvs = [], []
+    for k in range(V):
         Rk, dk = R[k].cpu().numpy().astype(np.float32), float(d[k])
         vp = vpix[k].reshape(-1, 2)
         dv = depth[k][np.clip(vp[:, 1], 0, size - 1), np.clip(vp[:, 0], 0, size - 1)]
         pv = vis[k].reshape(-1) & (dv > 0)
         dv = perturb_depth(dv, vp, size, fov, p, rng)
         rays = pixel_rays(vp, size, fov)
-        lifted = cam_to_world(rays * dv[:, None], Rk, dk, c).reshape(ny, nx, 3).astype(np.float32)
-        X = harmonic_fill(np.where(pv.reshape(ny, nx)[..., None], lifted, 0).astype(np.float32), pv.reshape(ny, nx))
-        name = f"{dst_stem}_v{k}.h5"
+        lifts.append(cam_to_world(rays * dv[:, None], Rk, dk, c).reshape(ny, nx, 3).astype(np.float32))
+        pvs.append(pv.reshape(ny, nx))
+    # one output grid per view, or per fused pair (mean of the lifted positions where both see)
+    groups = [[k] for k in range(V)] if fuse_deg is None else [[2 * k, 2 * k + 1] for k in range(K)]
+    names, fracs = [], []
+    for k, g in enumerate(groups):
+        cnt = sum(pvs[i].astype(np.float32) for i in g)
+        acc = sum(np.where(pvs[i][..., None], lifts[i], 0) for i in g)
+        seen = cnt > 0
+        lifted = (acc / np.maximum(cnt, 1)[..., None]).astype(np.float32)
+        X = harmonic_fill(np.where(seen[..., None], lifted, 0).astype(np.float32), seen)
+        name = f"{dst_stem}_{'v' if fuse_deg is None else 'f'}{k}.h5"
         with h5py.File(os.path.join(out_dir, name), "w") as h:
             h.create_dataset("final_grid", data=X)
             h.create_dataset("final_vel", data=np.zeros_like(X))
@@ -92,12 +120,14 @@ def degrade_file(src: str, dst_stem: str, out_dir: str, K: int, size: int, fov: 
             for kk, v in attrs.items():
                 h.attrs[kk] = v
             h.attrs["degraded_from"] = os.path.basename(src)
-            h.attrs["visible_frac"] = float(pv.mean())
-            h.attrs["view_R"] = Rk.ravel()
-            h.attrs["view_d"] = dk
+            h.attrs["visible_frac"] = float(seen.mean())
+            h.attrs["view_R"] = np.stack([R[i].cpu().numpy() for i in g]).astype(np.float32).ravel()
+            h.attrs["view_d"] = np.array([float(d[i]) for i in g], dtype=np.float32)
+            if fuse_deg is not None:
+                h.attrs["fuse_deg"] = fuse_deg
             h.attrs["err_all_cm"] = float(np.linalg.norm(X - pos, axis=-1).mean() * 100)
         names.append(name)
-        fracs.append(float(pv.mean()))
+        fracs.append(float(seen.mean()))
     return names, fracs
 
 
@@ -111,6 +141,9 @@ def main():
     ap.add_argument("--fov", type=float, default=40.0)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--fuse-deg", type=float, default=None,
+                    help="per sample, --views camera PAIRS this many deg apart (orbit about the camera's "
+                         "vertical axis), each pair fused into one grid before the fill (20: stereo pair, 180: front + back)")
     args = ap.parse_args()
     dev = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     torch.manual_seed(args.seed)
@@ -130,7 +163,7 @@ def main():
         new_entries, fr, n = [], [], 0
         for f in files:
             stem = os.path.splitext(os.path.basename(f))[0]
-            names, fracs = degrade_file(f, stem, out_dir, args.views, args.size, args.fov, p, rng, dev)
+            names, fracs = degrade_file(f, stem, out_dir, args.views, args.size, args.fov, p, rng, dev, args.fuse_deg)
             fr += fracs
             for name in names:
                 e = dict(entries.get(os.path.basename(f), {"file": os.path.basename(f)}))

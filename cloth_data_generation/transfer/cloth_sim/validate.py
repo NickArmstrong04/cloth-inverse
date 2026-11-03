@@ -105,12 +105,17 @@ def _shrunk_abs(t: np.ndarray, eps: float) -> np.ndarray:
 DEPTH_LEVELS = (0.0001, 0.0005, 0.001)  # penetration-depth thresholds [m]
 
 
-def _candidate_pairs(mn: np.ndarray, mx: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+def _candidate_pairs(mn: np.ndarray, mx: np.ndarray, max_cells_per_tri: int = 32,
+                     max_cand: int = 20_000_000) -> tuple[np.ndarray, np.ndarray] | str:
     """All triangle pairs (a < b) whose AABBs overlap, via a uniform spatial hash.
 
     Each AABB is binned into every cell it covers; two overlapping boxes share
     a point and hence a cell, so the union of within-cell pairs is exactly the
     set of AABB-overlapping pairs (after the exact overlap test below).
+    Returns a reason string instead when the geometry would need more than
+    max_cells_per_tri cell entries per triangle or max_cand within-cell pairs: an
+    exploded or collapsed sheet, which would otherwise fill any memory limit
+    (healthy 256 sheets: ~1-3 cells per triangle, ~1e5 pairs).
     """
     m = len(mn)
     ext = (mx - mn).max(axis=1)
@@ -119,7 +124,10 @@ def _candidate_pairs(mn: np.ndarray, mx: np.ndarray) -> tuple[np.ndarray, np.nda
     c0 = np.floor((mn - lo) / h).astype(np.int64)
     c1 = np.floor((mx - lo) / h).astype(np.int64)
     span = c1 - c0 + 1
-    counts = np.prod(span, axis=1)
+    counts = np.prod(span.astype(np.float64), axis=1)
+    if counts.sum() > max_cells_per_tri * m:
+        return f"{counts.sum():.3g} hash cells for {m} triangles"
+    counts = counts.astype(np.int64)
     rep = np.repeat(np.arange(m), counts)
     offs = np.arange(len(rep)) - np.repeat(np.cumsum(counts) - counts, counts)
     sp = span[rep]
@@ -132,6 +140,9 @@ def _candidate_pairs(mn: np.ndarray, mx: np.ndarray) -> tuple[np.ndarray, np.nda
     key, rep = key[order], rep[order]
     starts = np.flatnonzero(np.r_[True, key[1:] != key[:-1]])
     sizes = np.diff(np.r_[starts, len(key)])
+    n_cand = float(np.sum(sizes.astype(np.float64) * (sizes - 1) / 2))
+    if n_cand > max_cand:
+        return f"{n_cand:.3g} candidate pairs (largest cell {sizes.max()} triangles)"
     pa, pb = [], []
     for sz in np.unique(sizes):
         if sz < 2:
@@ -191,7 +202,15 @@ def count_self_intersections(grid: np.ndarray, max_pairs: int = 2_000_000) -> di
     ci = (tris[:, 0] % nx).astype(np.int64)
     cj = (tris[:, 0] // nx).astype(np.int64)
 
-    a, b = _candidate_pairs(mn, mx)
+    # Exploded or collapsed sheets made the spatial hash fill any memory limit (J-007 tasks
+    # OOM-killed at 12G and 48G, 2026-10-31; NaN cast to int64 gives garbage cell indices).
+    # Such samples fail the stretch/NaN gates anyway: report the check as not run.
+    if not np.all(np.isfinite(pts)):
+        return {"piercing_pairs": None, "pairs_checked": 0, "truncated": True, "degenerate": "non-finite"}
+    cand = _candidate_pairs(mn, mx)
+    if isinstance(cand, str):
+        return {"piercing_pairs": None, "pairs_checked": 0, "truncated": True, "degenerate": cand}
+    a, b = cand
     keep = (np.abs(ci[a] - ci[b]) > 1) | (np.abs(cj[a] - cj[b]) > 1)
     a, b = a[keep], b[keep]
     truncated = len(a) > max_pairs
@@ -301,7 +320,9 @@ def qc_sample_h5(path: str, stretch_max: float = 2.0,
         pierce = count_self_intersections(final)
         metrics["piercing_pairs"] = pierce["piercing_pairs"]
         metrics["pairs_checked"] = pierce["pairs_checked"]
-        if pierce["piercing_pairs"] > pierce_max:
+        if pierce["piercing_pairs"] is None:
+            reasons.append(f"degenerate geometry ({pierce['degenerate']}), piercing check not run")
+        elif pierce["piercing_pairs"] > pierce_max:
             reasons.append(f"piercing {pierce['piercing_pairs']} > {pierce_max}")
     else:
         metrics["piercing_pairs"] = None  # skipped (CPU check too slow at high resolution)

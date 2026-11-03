@@ -68,6 +68,24 @@ def harmonic_fill(X: np.ndarray, known: np.ndarray) -> np.ndarray:
     return out.reshape(ny, nx, 3)
 
 
+SHEET_M = 0.5  # side of the simulated sheet (metres); the scale check's only prior knowledge
+
+
+def span_ratio(X: np.ndarray, known: np.ndarray | None, L: int = 16) -> tuple[float, int]:
+    """Median 3D distance between known vertices L cells apart (rows and columns) over their material
+    distance L * h (h = SHEET_M / (n - 1)): chord / arc of the sheet, scale-free; on a lifted grid it
+    carries the depth-scale error as a factor. Returns (median, number of pairs)."""
+    ny, nx = X.shape[:2]
+    h = SHEET_M / (nx - 1)
+    k = np.ones((ny, nx), bool) if known is None else known
+    d = []
+    for a, b, ka, kb in [(X[:, :-L], X[:, L:], k[:, :-L], k[:, L:]), (X[:-L], X[L:], k[:-L], k[L:])]:
+        m = ka & kb
+        d.append(np.linalg.norm(a[m] - b[m], axis=-1))
+    d = np.concatenate(d)
+    return (float(np.median(d) / (L * h)) if len(d) else float("nan")), int(len(d))
+
+
 def stereo_depth_map(pdir: str, stem: str, gt) -> tuple[np.ndarray | None, float]:
     """Per-pixel metric stereo depth of the base view, rebuilt from the lift_stereo package (pixel
     order = np.nonzero of the mask it was made with), scaled by the photometric scale (no oracle)."""
@@ -87,6 +105,40 @@ def stereo_depth_map(pdir: str, stem: str, gt) -> tuple[np.ndarray | None, float
     return depth, float(z["scale_geo"])
 
 
+def scale_correction(P_cam: np.ndarray, known: np.ndarray, args) -> float:
+    """Known-size check of a lifted view (camera-frame vertex positions P_cam, known vertices): span
+    ratio vs the prior of true sheets; the photometric scale aliases (coded print: -23 to -41% on 4
+    of 34 T1 views) show up as a ratio far from the prior. Returns the factor to multiply the depth
+    by: prior / measured when they disagree by more than --scale-fix, else 1."""
+    if args.scale_fix <= 0:
+        return 1.0
+    r, n = span_ratio(P_cam, known, args.span_L)
+    if n < 200 or not np.isfinite(r) or r <= 0:
+        return 1.0
+    k = args.span_prior / r
+    # one-sided: the aliases all shrink the sheet (k 1.3-1.7 on T1), while lift noise only inflates the
+    # measured span (good views k <= 1.07), so only a sheet too small by more than the margin is rescaled
+    return float(k) if k > 1 + args.scale_fix else 1.0
+
+
+def write_h5(path: str, X: np.ndarray, src: str, extra_attrs: dict) -> None:
+    """Training file in degrade_split.py's layout: the photo-derived grid as final_grid, zero velocity,
+    labels/config datasets and attributes of the source sample (no snapshots, no release_* leak)."""
+    import h5py
+    with h5py.File(src, "r") as h:
+        extra = {k: h[k][()] for k in h.keys()
+                 if k not in ("final_grid", "final_vel") and isinstance(h[k], h5py.Dataset)
+                 and not k.startswith(("intermediate_", "release_"))}
+        attrs = dict(h.attrs)
+    with h5py.File(path, "w") as h:
+        h.create_dataset("final_grid", data=X.astype(np.float32))
+        h.create_dataset("final_vel", data=np.zeros_like(X, dtype=np.float32))
+        for k, v in extra.items():
+            h.create_dataset(k, data=v)
+        for k, v in (attrs | extra_attrs).items():
+            h.attrs[k] = v
+
+
 def cam_to_world(p_cam: np.ndarray, R: np.ndarray, d: float, c: np.ndarray) -> np.ndarray:
     """Inverse of photo.photograph with the fixed-camera calibration (R, t = -R c - (0,0,d))."""
     t = -R @ c - np.array([0, 0, d], np.float32)
@@ -103,10 +155,20 @@ def main():
     ap.add_argument("--smooth", nargs="*", type=int, default=[2, 4, 8], help="Gaussian sigmas (cells) for smoothed variants")
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--out", default=None, help="default <photos>/grids")
+    ap.add_argument("--h5-out", default=None,
+                    help="write training files <dir>/<stem>.h5 instead of the variant ladder: the photo grid "
+                         "(decoded correspondences with --corr decoded), degrade_split.py layout")
+    ap.add_argument("--scale-fix", type=float, default=0.0,
+                    help="known-size scale check: rescale a view whose lifted sheet is smaller than the prior by more "
+                         "than this fraction (0 = off; 0.15 from scale_prior.py on the 34 T1 views, 2026-11-02)")
+    ap.add_argument("--span-prior", type=float, default=1.013,
+                    help="span ratio of a correctly scaled lifted sheet: true sheets 0.996 at L=32 (train split) x "
+                         "1.017 lift-noise inflation (T1 views, scale_prior.py)")
+    ap.add_argument("--span-L", type=int, default=32, help="span length in cells for the scale check")
     args = ap.parse_args()
     for pdir in args.photos:
         out = args.out or os.path.join(pdir, "grids")
-        os.makedirs(out, exist_ok=True)
+        os.makedirs(args.h5_out or out, exist_ok=True)
         man = json.load(open(os.path.join(pdir, "manifest.json")))
         views = {os.path.splitext(v["png"])[0]: v for v in man["views"]}
         recs, cache = [], {}
@@ -137,6 +199,8 @@ def main():
             pvis = vis & (dvert > 0)
             rays = pixel_rays(vpix.reshape(-1, 2), int(gt["size"]), float(gt["fov_deg"])).reshape(ny, nx, 3)
             lifted_cam = rays * dvert[..., None]
+            k_or = scale_correction(lifted_cam, pvis, args)
+            lifted_cam = lifted_cam * k_or
             lifted = cam_to_world(lifted_cam.reshape(-1, 3), R, d, c).reshape(ny, nx, 3).astype(np.float32)
             dec = None
             if args.corr == "decoded":
@@ -150,9 +214,28 @@ def main():
                 d_est = depth[ei[..., 1], ei[..., 0]]
                 dvis = has & (d_est > 0)
                 rays_e = pixel_rays(est.reshape(-1, 2), int(gt["size"]), float(gt["fov_deg"])).reshape(ny, nx, 3)
-                lifted_e = cam_to_world((rays_e * d_est[..., None]).reshape(-1, 3), R, d, c).reshape(ny, nx, 3).astype(np.float32)
+                cam_e = rays_e * d_est[..., None]
+                k_dec = scale_correction(cam_e, dvis, args)
+                lifted_e = cam_to_world((cam_e * k_dec).reshape(-1, 3), R, d, c).reshape(ny, nx, 3).astype(np.float32)
                 X_dec = harmonic_fill(np.where(dvis[..., None], lifted_e, 0).astype(np.float32), dvis)
-                dec = dict(dvis=dvis, lifted_e=lifted_e, X_dec=X_dec)
+                dec = dict(dvis=dvis, lifted_e=lifted_e, X_dec=X_dec, k=k_dec)
+            err = lambda X, m: float(np.linalg.norm((X - pos)[m], axis=-1).mean() * 100) if m.any() else float("nan")
+            if args.h5_out:
+                if dec is not None:
+                    X, k, m = dec["X_dec"], dec["k"], dec["dvis"]
+                else:
+                    X = harmonic_fill(np.where(pvis[..., None], lifted, 0).astype(np.float32), pvis)
+                    k, m = k_or, pvis
+                write_h5(os.path.join(args.h5_out, f"{stem}.h5"), X, v["h5"],
+                         {"degraded_from": os.path.basename(v["h5"]), "chain": f"photo chain, corr {args.corr}",
+                          "visible_frac": float(m.mean()), "scale_geo": s_geo, "scale_fix": k,
+                          "view_R": R.ravel(), "view_d": d, "err_all_cm": err(X, np.ones_like(vis))})
+                rec = dict(stem=stem, h5=v["h5"], scale_geo=s_geo, scale_fix=k, visible_frac=float(m.mean()),
+                           err_vis_cm=err(X, m), err_all_cm=err(X, np.ones_like(vis)), seconds=time.time() - t0)
+                recs.append(rec)
+                print(f"{stem:34s} visible {rec['visible_frac']:.2f} | visible err {rec['err_vis_cm']:5.2f} cm | all "
+                      f"{rec['err_all_cm']:5.2f} cm | scale fix {k:.3f} | {rec['seconds']:.1f}s", flush=True)
+                continue
             # ladder
             X_hidden = harmonic_fill(pos, vis)  # true visible positions, hidden filled
             X_stereo = harmonic_fill(np.where(pvis[..., None], lifted, 0).astype(np.float32), pvis)
@@ -175,8 +258,8 @@ def main():
                 variants[f"photo_s{s}"] = grid_input(Xs, None, 1, "oracle")
                 variants[f"hidden_s{s}"] = grid_input(gaussian_filter(X_hidden, sigma=(s, s, 0), mode="nearest"),
                                                       None, 1, "override", g_override=c)
-            err = lambda X, m: float(np.linalg.norm((X - pos)[m], axis=-1).mean() * 100) if m.any() else float("nan")
             rec = dict(stem=stem, set=os.path.basename(os.path.normpath(pdir)), h5=v["h5"], scale_geo=s_geo,
+                       scale_fix=k_or, scale_fix_dec=dec["k"] if dec is not None else float("nan"),
                        visible_frac=float(vis.mean()), photo_visible_frac=float(pvis.mean()),
                        err_vis_stereo_cm=err(lifted, pvis), err_hidden_fill_true_cm=err(X_hidden, ~vis),
                        err_hidden_fill_stereo_cm=err(X_stereo, ~pvis), err_all_stereo_cm=err(X_stereo, np.ones_like(vis)),
@@ -196,6 +279,13 @@ def main():
                   f"from stereo {rec['err_hidden_fill_stereo_cm']:5.1f} | all {rec['err_all_stereo_cm']:5.2f} | "
                   f"drift err {rec['drift_err_cm']:4.1f} of {rec['drift_cm']:4.0f} cm | {rec['seconds']:.1f}s")
         med = lambda k: float(np.nanmedian([r[k] for r in recs]))
+        if args.h5_out:
+            summary = {k: med(k) for k in ["visible_frac", "err_vis_cm", "err_all_cm"]}
+            summary.update(n=len(recs), n_rescaled=int(sum(r["scale_fix"] != 1.0 for r in recs)))
+            print(os.path.basename(os.path.normpath(pdir)), json.dumps(summary))
+            with open(os.path.join(args.h5_out, f"chain_{os.path.basename(os.path.normpath(pdir))}.json"), "w") as fh:
+                json.dump({"args": vars(args), "records": recs, "summary": summary}, fh, indent=1)
+            continue
         keys = ["visible_frac", "photo_visible_frac", "err_vis_stereo_cm", "err_hidden_fill_true_cm",
                 "err_hidden_fill_stereo_cm", "err_all_stereo_cm", "drift_err_cm"]
         if args.corr == "decoded":

@@ -40,3 +40,23 @@ stacked = base.copy()
 stacked[4:, :, 2] = 0.001  # upper half lifted 1mm (resting-contact analogue)
 r = count_self_intersections(np.concatenate([base, stacked], axis=0).reshape(2 * n, n, 3))
 print("stepped sheet (expect 0):", r)
+
+# degenerate geometry (exploded sheets): reported as not run, without hashing (J-007 OOM 2026-10-31)
+g = np.concatenate([base, stacked], axis=0).reshape(2 * n, n, 3).copy()
+g[3, 3] = np.nan
+r = count_self_intersections(g)
+assert r["piercing_pairs"] is None and r["degenerate"] == "non-finite", r
+big = np.zeros((64, 64, 3))
+big[..., 0], big[..., 1] = np.meshgrid(np.arange(64) * 0.008, np.arange(64) * 0.008)
+assert count_self_intersections(big)["piercing_pairs"] == 0
+g = big.copy()
+g[30, 30] = [1e3, -1e3, 1e3]  # one vertex flung 1 km: its 6 triangles span ~1e17 cells
+r = count_self_intersections(g)
+assert r["piercing_pairs"] is None and "hash cells" in r["degenerate"], r
+g = big.copy()
+g[:40, :40] = [1e3, -1e3, 1e3]  # many vertices flung (>1% of triangles huge): coarse cells, bounded pairs
+r2 = count_self_intersections(g)
+assert r2["piercing_pairs"] is None or r2["truncated"], r2
+r3 = count_self_intersections(np.zeros((64, 64, 3)))  # collapsed to a point: one cell, 3e7 pairs
+assert r3["piercing_pairs"] is None and "candidate pairs" in r3["degenerate"], r3
+print("degenerate grids reported, not hashed:", r["degenerate"], "|", r2.get("degenerate", r2), "|", r3["degenerate"])

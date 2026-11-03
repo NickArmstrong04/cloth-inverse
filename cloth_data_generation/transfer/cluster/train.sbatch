@@ -3,7 +3,7 @@
 # Submit from transfer/ (inside or outside an allocation):
 #   sbatch cluster/train.sbatch <splits_dir> [epochs] [extra train.py args...]
 # e.g.
-#   sbatch cluster/train.sbatch /home/naa79/scratch_pi_sz622/naa79/cloth_data/ds768_night_splits 300
+#   sbatch cluster/train.sbatch /nfs/roberts/scratch/pi_sz622/naa79/cloth/cloth_data/ds768_night_splits 300
 #   sbatch --partition=gpu_h100 cluster/train.sbatch <splits_dir> 300 --bs 32
 # First run also builds the tensor cache (<split>_pool1.pt, ~15 GB for 1000 768-samples)
 # next to the splits; later runs start in seconds.

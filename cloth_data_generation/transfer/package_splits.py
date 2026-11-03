@@ -15,7 +15,9 @@ import shutil
 import h5py
 import numpy as np
 
-KEEP_TEST = ("final_grid", "final_vel", "force_params", "sim_config", "seed")
+# release_grid/_vel exist only in rest-captured datasets: the alternative capture state that
+# train.py --grid release evaluates on (M20-c/d failed on test files without it, 2026-11-01)
+KEEP_TEST = ("final_grid", "final_vel", "release_grid", "release_vel", "force_params", "sim_config", "seed")
 KEEP_FRAMES = ("intermediate_grids", "intermediate_vels", "intermediate_times")  # with --test-keep-frames (M16-b)
 
 
