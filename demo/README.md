@@ -1,4 +1,4 @@
-# Demo log (measurements; 2026-11-01)
+# Demo: decisions and measurements (2026-11-01 onward)
 
 ## 128-vs-256 grid decision (step 2)
 

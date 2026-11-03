@@ -4,6 +4,11 @@ The story: (1) successful prediction in a virtual environment, for cloth and for
 (2) ingest a real-world scene with SAM or similar Meta tools and state how to undo the
 deformation; (3) a broader or more technical system. Decided 2026-10-28.
 
+Status 2026-11-03: stage 1 done (M16-a 1.0 cm / 4.3 deg with the exact mesh, M20-a3 2.8 / 6.6 on
+paper at rest); stage 2 proven on rendered photos (M21-c 7.4 cm / 17.0 deg through SAM 3.1 + VGGT
++ coded print, `cloth_results/RESULTS.md` M21) and live in the demo; stage 3 not started. The
+sections below are the dated record of how those decisions were reached.
+
 ## Data generation for that story (the bench profile, 2026-10-28)
 
 What the first datasets lacked for the real-world target, and what changed:

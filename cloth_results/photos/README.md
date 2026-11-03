@@ -1,4 +1,9 @@
-# Synthetic photos (rung 4b, step 1)
+# The photo chain: synthetic photos, SAM, VGGT, the coded print (rung 4b)
+
+Working record of the perception stage, in the order it was built. The summary table of every
+Meta model used, with the headline numbers from this file, is in the root `README.md`.
+
+## Synthetic photos (rung 4b, step 1)
 
 Test pictures of deformed sheets rendered from `final_grid` with
 `cloth_data_generation/inverse/photo.py`, made 2026-10-30 for planning the SAM step.
