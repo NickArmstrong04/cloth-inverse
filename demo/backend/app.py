@@ -9,6 +9,10 @@ Endpoints:
     GET  /jobs/{job_id}   {"status", "progress", "result" | "error"}.
                           Polling every 500 ms is fine.
     GET  /healthz          {"status", "warm"}.
+    POST /camera          {"forces": [...] x2} -> {"job_id"}: the live camera path
+                          (camera.py): the pushes on rest-state paper (dataset physics,
+                          ~2 min), then photo -> SAM 3.1 -> VGGT -> decoded grid -> M21-c.
+                          Same /jobs polling; result is a camera.package payload.
 
 Result payload: 30 frames of vertex positions downsampled to 64x64 as a
 float16 base64 string ``[30, 64, 64, 3]``; the full-resolution final state
@@ -37,6 +41,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import inference as inf
 from simulate import SimService, downsample_frames, encode_frames, validate_forces
 from cache import load_cache, nearest
+import camera as cam
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -58,6 +63,8 @@ _lock = threading.Lock()
 _svc: SimService | None = None
 _ckpt = None
 _entries: list = []
+CAMERA_TIMEOUT_S = float(os.environ.get("CAMERA_TIMEOUT_S", "600"))
+_cam: dict = {}  # model, sim, ref: warmed on the first /camera job
 
 
 def _warm():
@@ -173,6 +180,20 @@ def create_app() -> FastAPI:
         _executor.submit(_warm_and_run, job_id, forces)
         return {"job_id": job_id}
 
+    @app.post("/camera")
+    def camera(body: dict):
+        if "forces" not in body:
+            raise HTTPException(422, "missing 'forces'")
+        try:
+            cam.scrunch_forces(body["forces"], [{"sigma_cells": 6.0, "radius_cells": 18.0}])
+        except (ValueError, TypeError, KeyError) as e:
+            raise HTTPException(422, str(e))
+        job_id = uuid.uuid4().hex[:12]
+        with _lock:
+            _jobs[job_id] = {"status": "queued", "progress": 0.0}
+        _executor.submit(_run_camera, job_id, body["forces"])
+        return {"job_id": job_id}
+
     @app.get("/jobs/{job_id}")
     def job(job_id: str):
         with _lock:
@@ -184,6 +205,40 @@ def create_app() -> FastAPI:
                     **({"error": j["error"]} if "error" in j else {})}
 
     return app
+
+
+def _warm_camera():
+    with _lock:
+        ready = bool(_cam)
+    if ready:
+        return
+    import json
+    import tempfile
+    from eval_resim import Simulator
+    ref = json.load(open(os.path.join(_HERE, "rest_reference.json")))
+    work = tempfile.mkdtemp(prefix="camera_")
+    c = {"ref": ref, "work": work, "model": cam.Model(), "sim": Simulator(ref["sim_config"], workdir=work)}
+    with _lock:
+        _cam.update(c)
+
+
+def _run_camera(job_id: str, forces: list[dict]):
+    import random
+    import shutil
+    t0 = time.time()
+    try:
+        _set(job_id, status="simulating", progress=0.02)
+        _warm_camera()
+        work = os.path.join(_cam["work"], job_id)
+        stage = lambda s, p: _set(job_id, status=s, progress=p)
+        fut = _sim_pool.submit(cam.run_live, _cam["model"], _cam["sim"], forces, _cam["ref"]["sim_config"],
+                               _cam["ref"]["force_footprint"], work, random.randrange(10 ** 6), stage)
+        out = fut.result(timeout=CAMERA_TIMEOUT_S)
+        out["timings"]["total_s"] = time.time() - t0
+        _set(job_id, status="done", progress=1.0, result=out)
+        shutil.rmtree(work, ignore_errors=True)
+    except Exception as e:
+        _set(job_id, status="failed", error=f"camera path: {type(e).__name__}: {str(e)[-400:]}")
 
 
 def _warm_and_run(job_id: str, forces: list[dict]):

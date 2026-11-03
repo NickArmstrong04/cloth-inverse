@@ -1,0 +1,431 @@
+{
+ "entries": [
+  {
+   "id": "g00",
+   "stem": "sample_slot0061_seed150063_v0",
+   "camera": {
+    "pos_cm": 5.814935684204102,
+    "dir_deg": 13.030998229980469,
+    "impulse_rel": 0.5589486956596375
+   },
+   "mesh": {
+    "pos_cm": 2.317312717437744,
+    "dir_deg": 7.477337837219238,
+    "impulse_rel": 0.3006773889064789
+   },
+   "coverage": {
+    "camera_sees": 0.207977294921875,
+    "decoded": 0.167755126953125,
+    "scale_fix": 1.0,
+    "lift_err_visible_cm": 1.232028603553772
+   }
+  },
+  {
+   "id": "g01",
+   "stem": "sample_slot0100_seed150101_v0",
+   "camera": {
+    "pos_cm": 4.344261169433594,
+    "dir_deg": 13.432199478149414,
+    "impulse_rel": 0.2692781090736389
+   },
+   "mesh": {
+    "pos_cm": 3.6822426319122314,
+    "dir_deg": 7.208934783935547,
+    "impulse_rel": 0.329568088054657
+   },
+   "coverage": {
+    "camera_sees": 0.322174072265625,
+    "decoded": 0.217437744140625,
+    "scale_fix": 1.0,
+    "lift_err_visible_cm": 1.8427501916885376
+   }
+  },
+  {
+   "id": "g02",
+   "stem": "sample_slot0104_seed150106_v0",
+   "camera": {
+    "pos_cm": 6.7742390632629395,
+    "dir_deg": 11.812294006347656,
+    "impulse_rel": 0.9722480773925781
+   },
+   "mesh": {
+    "pos_cm": 0.29123181104660034,
+    "dir_deg": 12.390350341796875,
+    "impulse_rel": 1.2963379621505737
+   },
+   "coverage": {
+    "camera_sees": 0.52386474609375,
+    "decoded": 0.2318115234375,
+    "scale_fix": 1.0,
+    "lift_err_visible_cm": 7.019197940826416
+   }
+  },
+  {
+   "id": "g03",
+   "stem": "sample_slot0146_seed100146_v0",
+   "camera": {
+    "pos_cm": 5.774194240570068,
+    "dir_deg": 14.034002304077148,
+    "impulse_rel": 0.7065491676330566
+   },
+   "mesh": {
+    "pos_cm": 5.452987194061279,
+    "dir_deg": 8.18227767944336,
+    "impulse_rel": 0.6939898729324341
+   },
+   "coverage": {
+    "camera_sees": 0.5851593017578125,
+    "decoded": 0.469085693359375,
+    "scale_fix": 1.0,
+    "lift_err_visible_cm": 4.461470603942871
+   }
+  },
+  {
+   "id": "g04",
+   "stem": "sample_slot0178_seed150179_v0",
+   "camera": {
+    "pos_cm": 4.142749309539795,
+    "dir_deg": 8.418815612792969,
+    "impulse_rel": 0.47052979469299316
+   },
+   "mesh": {
+    "pos_cm": 4.606715679168701,
+    "dir_deg": 2.4799904823303223,
+    "impulse_rel": 0.539447009563446
+   },
+   "coverage": {
+    "camera_sees": 0.361083984375,
+    "decoded": 0.19244384765625,
+    "scale_fix": 1.0,
+    "lift_err_visible_cm": 7.650059700012207
+   }
+  },
+  {
+   "id": "g05",
+   "stem": "sample_slot0221_seed150222_v0",
+   "camera": {
+    "pos_cm": 9.824893951416016,
+    "dir_deg": 11.255928039550781,
+    "impulse_rel": 0.6115204691886902
+   },
+   "mesh": {
+    "pos_cm": 7.850414276123047,
+    "dir_deg": 9.833117485046387,
+    "impulse_rel": 0.6563258767127991
+   },
+   "coverage": {
+    "camera_sees": 0.2921142578125,
+    "decoded": 0.1365966796875,
+    "scale_fix": 1.5096260104510875,
+    "lift_err_visible_cm": 1.5722638368606567
+   }
+  },
+  {
+   "id": "g06",
+   "stem": "sample_slot0265_seed150266_v0",
+   "camera": {
+    "pos_cm": 10.53188705444336,
+    "dir_deg": 19.44069480895996,
+    "impulse_rel": 0.45489707589149475
+   },
+   "mesh": {
+    "pos_cm": 3.616241931915283,
+    "dir_deg": 5.268859386444092,
+    "impulse_rel": 0.3859838545322418
+   },
+   "coverage": {
+    "camera_sees": 0.08526611328125,
+    "decoded": 0.0283966064453125,
+    "scale_fix": 1.9368534749768251,
+    "lift_err_visible_cm": 13.532885551452637
+   }
+  },
+  {
+   "id": "g07",
+   "stem": "sample_slot0289_seed150290_v0",
+   "camera": {
+    "pos_cm": 11.382767677307129,
+    "dir_deg": 17.607013702392578,
+    "impulse_rel": 0.3518454432487488
+   },
+   "mesh": {
+    "pos_cm": 2.041200637817383,
+    "dir_deg": 5.2755608558654785,
+    "impulse_rel": 0.21569812297821045
+   },
+   "coverage": {
+    "camera_sees": 0.0319061279296875,
+    "decoded": 0.0288543701171875,
+    "scale_fix": 1.0,
+    "lift_err_visible_cm": 3.6113829612731934
+   }
+  },
+  {
+   "id": "g08",
+   "stem": "sample_slot0294_seed150296_v0",
+   "camera": {
+    "pos_cm": 16.582807540893555,
+    "dir_deg": 53.356136322021484,
+    "impulse_rel": 0.5515228509902954
+   },
+   "mesh": {
+    "pos_cm": 0.8408756852149963,
+    "dir_deg": 18.7362003326416,
+    "impulse_rel": 0.40393683314323425
+   },
+   "coverage": {
+    "camera_sees": 0.152862548828125,
+    "decoded": 0.0110321044921875,
+    "scale_fix": 1.0,
+    "lift_err_visible_cm": 0.25392723083496094
+   }
+  },
+  {
+   "id": "g09",
+   "stem": "sample_slot0297_seed100297_v0",
+   "camera": {
+    "pos_cm": 9.2102689743042,
+    "dir_deg": 22.11725616455078,
+    "impulse_rel": 3.7918448448181152
+   },
+   "mesh": {
+    "pos_cm": 4.21560001373291,
+    "dir_deg": 6.083800315856934,
+    "impulse_rel": 1.4484028816223145
+   },
+   "coverage": {
+    "camera_sees": 0.134368896484375,
+    "decoded": 0.0373687744140625,
+    "scale_fix": 1.0,
+    "lift_err_visible_cm": 82.53875732421875
+   }
+  },
+  {
+   "id": "g10",
+   "stem": "sample_slot0302_seed150304_v0",
+   "camera": {
+    "pos_cm": 3.4089467525482178,
+    "dir_deg": 13.459951400756836,
+    "impulse_rel": 0.29928168654441833
+   },
+   "mesh": {
+    "pos_cm": 0.3464243412017822,
+    "dir_deg": 11.27193832397461,
+    "impulse_rel": 0.010504418052732944
+   },
+   "coverage": {
+    "camera_sees": 0.3339691162109375,
+    "decoded": 0.2396392822265625,
+    "scale_fix": 1.0,
+    "lift_err_visible_cm": 0.9569072127342224
+   }
+  },
+  {
+   "id": "g11",
+   "stem": "sample_slot0342_seed150343_v0",
+   "camera": {
+    "pos_cm": 2.5908873081207275,
+    "dir_deg": 12.11457633972168,
+    "impulse_rel": 1.7465846538543701
+   },
+   "mesh": {
+    "pos_cm": 3.7446155548095703,
+    "dir_deg": 17.06378173828125,
+    "impulse_rel": 1.1632037162780762
+   },
+   "coverage": {
+    "camera_sees": 0.350494384765625,
+    "decoded": 0.2486572265625,
+    "scale_fix": 1.5138171906183757,
+    "lift_err_visible_cm": 3.502690076828003
+   }
+  },
+  {
+   "id": "g12",
+   "stem": "sample_slot0354_seed100354_v0",
+   "camera": {
+    "pos_cm": 9.267721176147461,
+    "dir_deg": 6.656670093536377,
+    "impulse_rel": 0.23591724038124084
+   },
+   "mesh": {
+    "pos_cm": 4.457305908203125,
+    "dir_deg": 4.5822954177856445,
+    "impulse_rel": 0.5869362950325012
+   },
+   "coverage": {
+    "camera_sees": 0.4443817138671875,
+    "decoded": 0.349395751953125,
+    "scale_fix": 1.0,
+    "lift_err_visible_cm": 2.797347068786621
+   }
+  },
+  {
+   "id": "g13",
+   "stem": "sample_slot0373_seed100373_v0",
+   "camera": {
+    "pos_cm": 5.102521896362305,
+    "dir_deg": 12.38041877746582,
+    "impulse_rel": 0.8577514290809631
+   },
+   "mesh": {
+    "pos_cm": 4.478488922119141,
+    "dir_deg": 4.41533088684082,
+    "impulse_rel": 0.5635488629341125
+   },
+   "coverage": {
+    "camera_sees": 0.317138671875,
+    "decoded": 0.21990966796875,
+    "scale_fix": 1.0,
+    "lift_err_visible_cm": 3.9794492721557617
+   }
+  },
+  {
+   "id": "g14",
+   "stem": "sample_slot0379_seed150381_v0",
+   "camera": {
+    "pos_cm": 5.6422343254089355,
+    "dir_deg": 7.835411071777344,
+    "impulse_rel": 0.2775067985057831
+   },
+   "mesh": {
+    "pos_cm": 3.2949886322021484,
+    "dir_deg": 4.021862506866455,
+    "impulse_rel": 0.4160751402378082
+   },
+   "coverage": {
+    "camera_sees": 0.508514404296875,
+    "decoded": 0.358734130859375,
+    "scale_fix": 1.0,
+    "lift_err_visible_cm": 3.1974549293518066
+   }
+  },
+  {
+   "id": "g15",
+   "stem": "sample_slot0380_seed150381_v0",
+   "camera": {
+    "pos_cm": 4.433480739593506,
+    "dir_deg": 15.81033706665039,
+    "impulse_rel": 0.29839709401130676
+   },
+   "mesh": {
+    "pos_cm": 3.336444854736328,
+    "dir_deg": 4.000036239624023,
+    "impulse_rel": 0.41727277636528015
+   },
+   "coverage": {
+    "camera_sees": 0.388153076171875,
+    "decoded": 0.25579833984375,
+    "scale_fix": 1.0,
+    "lift_err_visible_cm": 0.6894841194152832
+   }
+  },
+  {
+   "id": "g16",
+   "stem": "sample_slot0418_seed150419_v0",
+   "camera": {
+    "pos_cm": 4.215808868408203,
+    "dir_deg": 11.534740447998047,
+    "impulse_rel": 0.7242326140403748
+   },
+   "mesh": {
+    "pos_cm": 3.117927312850952,
+    "dir_deg": 10.51101303100586,
+    "impulse_rel": 0.6592431664466858
+   },
+   "coverage": {
+    "camera_sees": 0.5775146484375,
+    "decoded": 0.5518341064453125,
+    "scale_fix": 1.0,
+    "lift_err_visible_cm": 2.467621088027954
+   }
+  },
+  {
+   "id": "g17",
+   "stem": "sample_slot0462_seed150463_v0",
+   "camera": {
+    "pos_cm": 7.798334121704102,
+    "dir_deg": 13.734262466430664,
+    "impulse_rel": 0.0279389638453722
+   },
+   "mesh": {
+    "pos_cm": 2.893141746520996,
+    "dir_deg": 5.611819744110107,
+    "impulse_rel": 0.38271796703338623
+   },
+   "coverage": {
+    "camera_sees": 0.509490966796875,
+    "decoded": 0.4220733642578125,
+    "scale_fix": 1.0,
+    "lift_err_visible_cm": 1.650938630104065
+   }
+  },
+  {
+   "id": "g18",
+   "stem": "sample_slot0489_seed100489_v0",
+   "camera": {
+    "pos_cm": 5.544610023498535,
+    "dir_deg": 9.858901977539062,
+    "impulse_rel": 0.5655403137207031
+   },
+   "mesh": {
+    "pos_cm": 2.9950180053710938,
+    "dir_deg": 6.526567459106445,
+    "impulse_rel": 0.540276050567627
+   },
+   "coverage": {
+    "camera_sees": 0.3387298583984375,
+    "decoded": 0.2761077880859375,
+    "scale_fix": 1.0,
+    "lift_err_visible_cm": 2.000623941421509
+   }
+  },
+  {
+   "id": "g19",
+   "stem": "sample_slot0502_seed150503_v0",
+   "camera": {
+    "pos_cm": 13.550774574279785,
+    "dir_deg": 25.154870986938477,
+    "impulse_rel": 0.49478334188461304
+   },
+   "mesh": {
+    "pos_cm": 4.772706508636475,
+    "dir_deg": 3.0727312564849854,
+    "impulse_rel": 0.7471579313278198
+   },
+   "coverage": {
+    "camera_sees": 0.3144989013671875,
+    "decoded": 0.1539459228515625,
+    "scale_fix": 1.0,
+    "lift_err_visible_cm": 0.5235651731491089
+   }
+  }
+ ],
+ "summary": {
+  "camera": {
+   "pos_cm": 7.296916222572326,
+   "dir_deg": 15.652273964881896,
+   "impulse_rel": 0.7133559332229197,
+   "pos_cm_median": 5.794564962387085
+  },
+  "mesh": {
+   "pos_cm": 3.4175942182540893,
+   "dir_deg": 7.700690305233001,
+   "impulse_rel": 0.587865210743621,
+   "pos_cm_median": 3.4763433933258057
+  }
+ },
+ "reference": {
+  "camera": {
+   "pos_cm": 7.4,
+   "dir_deg": 17.0,
+   "pos_cm_median": 6.5
+  },
+  "mesh": {
+   "pos_cm": 3.4,
+   "dir_deg": 7.3
+  }
+ },
+ "n": 20,
+ "source": "first sheets in name order of the 100-sheet hosted SAM 3.1 test run (RESULTS.md M21)"
+}

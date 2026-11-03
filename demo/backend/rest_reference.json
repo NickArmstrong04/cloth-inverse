@@ -1,0 +1,70 @@
+{
+ "source": "sample_slot0061_seed150063.h5",
+ "sim_config": {
+  "sheet": {
+   "size_x": 0.5,
+   "size_y": 0.5,
+   "nx": 256,
+   "ny": 256,
+   "mass_per_area": 0.08,
+   "tri_ke": 10000.0,
+   "tri_ka": 10000.0,
+   "tri_kd": 100.0,
+   "edge_ke": 200.0,
+   "edge_kd": 0.0,
+   "particle_radius": 0.001,
+   "self_contact_margin": 0.0005,
+   "self_contact_gap": 0.00025,
+   "material": "paper",
+   "plastic_yield_curvature": 50.0,
+   "plastic_rate": 1.0,
+   "plastic_soften": 0.1,
+   "plastic_damage_gamma": 0.0,
+   "bend_scale_resolution": true,
+   "self_contact_mu": null,
+   "table": false,
+   "gravity": 9.81,
+   "table_friction": 0.5,
+   "z_jitter": 0.1,
+   "jitter_seed": 150063,
+   "contact_ke": null
+  },
+  "sim": {
+   "fps": 60,
+   "substeps": 30,
+   "iterations": 20,
+   "t_capture": 3.54809811827999,
+   "n_snapshots": 5,
+   "margin": 0.0005,
+   "gap": 0.00025,
+   "buffer_vt": 64,
+   "buffer_ee": 128,
+   "ramp_frac": 0.0,
+   "deterministic": false,
+   "capture_every": 0,
+   "force_every_substep": true,
+   "use_graph": true,
+   "device": "cuda:0",
+   "settle_mode": "dynamic",
+   "drag": 10.0,
+   "rest_vmax": 0.01,
+   "rest_frames": 10,
+   "rest_metric": "vrms"
+  },
+  "nx": 256,
+  "ny": 256,
+  "t_capture": 3.54809811827999
+ },
+ "force_footprint": [
+  {
+   "sigma_cells": 6.0,
+   "radius_cells": 18.0,
+   "duration": 0.5480981182799902
+  },
+  {
+   "sigma_cells": 6.0,
+   "radius_cells": 18.0,
+   "duration": 0.5478560838522866
+  }
+ ]
+}

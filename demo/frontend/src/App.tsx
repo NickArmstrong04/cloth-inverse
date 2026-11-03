@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
 import { ACCENTS, REVERSAL, SceneView, type PlacedForce, type Stage } from './Scene';
-import { b64ToFrames, dirFromAzEl, getJob, postSimulate, type JobResult } from './api';
+import { b64ToFrames, dirFromAzEl, getJob, postSimulate, type CameraResult, type JobResult } from './api';
+import { CameraPanel } from './Camera';
 
 interface ForceForm extends PlacedForce {
   az: number;
@@ -73,6 +74,14 @@ export default function App() {
   const [dark, setDark] = useState(true);
   const [cachedNote, setCachedNote] = useState(false);
   const controlsRef = useRef<OrbitControlsImpl>(null!);
+  const [mode, setMode] = useState<'mesh' | 'camera'>('mesh');
+  const [camEntry, setCamEntry] = useState<CameraResult | null>(null);
+  const [camView, setCamView] = useState<'camera' | 'true'>('camera');
+  const [showMeshPred, setShowMeshPred] = useState(false);
+  const camFrames = useMemo(() => {
+    if (!camEntry) return null;
+    return b64ToFrames(camView === 'camera' ? camEntry.grids.camera : camEntry.grids.true).data;
+  }, [camEntry, camView]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = dark ? '' : 'light';
@@ -198,27 +207,58 @@ export default function App() {
   return (
     <div className="app">
       <div className="stage-wrap">
-        <SceneView
-          frames={frames}
-          frame={frame}
-          stage={stage}
-          placed={placed}
-          allForms={forms}
-          result={result ? { predicted: result.predicted_forces, reversal: result.reversal_forces, showTrue, showPred, showRev } : null}
-          onPlace={onPlace}
-          controlsRef={controlsRef}
-          dark={dark}
-        />
-        <div className="stage-hint">{hint(stage, active, placed, locked)}</div>
+        {mode === 'mesh' ? (
+          <SceneView
+            frames={frames}
+            frame={frame}
+            stage={stage}
+            placed={placed}
+            allForms={forms}
+            result={result ? { predicted: result.predicted_forces, reversal: result.reversal_forces, showTrue, showPred, showRev } : null}
+            onPlace={onPlace}
+            controlsRef={controlsRef}
+            dark={dark}
+          />
+        ) : (
+          <SceneView
+            frames={camFrames}
+            frame={0}
+            stage="done"
+            placed={[true, true]}
+            allForms={camEntry ? camEntry.true_forces : []}
+            result={camEntry ? { predicted: camEntry.camera.predicted_forces, reversal: [], showTrue: true, showPred: true,
+              showRev: false, extra: camEntry.mesh.predicted_forces, showExtra: showMeshPred } : null}
+            onPlace={() => {}}
+            controlsRef={controlsRef}
+            dark={dark}
+          />
+        )}
+        <div className="stage-hint">
+          {mode === 'mesh'
+            ? hint(stage, active, placed, locked)
+            : camView === 'camera'
+              ? "The sheet as rebuilt from the photos (hidden side filled in). Solid arrows: true pushes. Faded: the camera path's guess."
+              : 'The true sheet from the simulator. Solid arrows: true pushes. Faded: the camera path\'s guess.'}
+        </div>
       </div>
       <div className="panel">
         <div className="topbar">
           <h2>Cloth inverse demo</h2>
           <div className="spacer" />
+          <div className="tabs">
+            <button className={mode === 'mesh' ? '' : 'ghost'} onClick={() => setMode('mesh')}>Mesh</button>
+            <button className={mode === 'camera' ? '' : 'ghost'} onClick={() => setMode('camera')}>Camera</button>
+          </div>
           <button className="ghost" onClick={() => setDark((d) => !d)}>{dark ? 'Light' : 'Dark'}</button>
           <button className="ghost" onClick={() => controlsRef.current?.reset()}>Reset view</button>
         </div>
 
+        {mode === 'camera' && (
+          <CameraPanel entry={camEntry} onEntry={setCamEntry} view={camView} setView={setCamView}
+            showMesh={showMeshPred} setShowMesh={setShowMeshPred}
+            forms={forms.map((f) => ({ u: f.u, v: f.v, direction: f.direction, magnitude: f.magnitude, duration: f.duration }))} />
+        )}
+        {mode === 'mesh' && (<>
         {forms.map((f, k) => (
           <div className={`force-card c${k + 1}${k === active ? ' active' : ''}`} key={k}
             onPointerDownCapture={() => select(k)} onFocusCapture={() => select(k)}
@@ -312,6 +352,8 @@ export default function App() {
           </div>
         )}
 
+        </>)}
+
         <details className="how">
           <summary>How it works</summary>
           <p>1. The backend simulates your two pushes on a 0.5 m sheet (Newton/VBD, zero gravity).</p>
@@ -325,16 +367,17 @@ export default function App() {
         </details>
 
         <details className="how">
-          <summary>Camera path (under construction)</summary>
-          <p>What a camera would see: synthetic photo of a simulated sheet,
-            the renderer's oracle mask, and the SAM 3 mask (prompt "fabric",
-            IoU 0.98). This is the perception input being built — the model
-            above runs on the simulator mesh, not on this image.</p>
-          <img src="camera-tile.png" alt="Synthetic photo, oracle mask, SAM 3 mask" style={{ width: '100%' }} />
+          <summary>Camera path: how it works</summary>
+          <p>1. The pushes crease a sheet of paper (Newton/VBD with plastic hinges) that settles to rest.</p>
+          <p>2. Two synthetic photos 20° apart of the sheet wearing a coded print.</p>
+          <p>3. SAM 3.1 (Meta Model API, prompt "fabric") segments the sheet; open-weight SAM 3 gives the same accuracy.</p>
+          <p>4. VGGT (Meta) lifts the pair to metric depth with the known camera motion; the sheet's known 50 cm size checks the scale.</p>
+          <p>5. The printed code tells which point of the sheet each pixel shows; the hidden side is filled in smoothly.</p>
+          <p>6. M21-c, trained on grids rebuilt this way, recovers both pushes. Typical: 7.4 cm / 17° from the camera vs 3.4 cm / 7° from the true mesh.</p>
         </details>
 
         <footer className="stack">
-          PyTorch · Newton/Warp VBD sim · M16-a cnn_reg+hybrid (1.0 cm / 4.3° / 0.156) · React + three.js
+          PyTorch · Newton/Warp VBD sim · M16-a cnn_reg+hybrid (1.0 cm / 4.3° / 0.156) · camera: SAM 3.1 + VGGT + M21-c · React + three.js
         </footer>
       </div>
     </div>

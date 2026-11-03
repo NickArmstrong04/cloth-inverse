@@ -33,10 +33,70 @@ export interface JobResult {
 }
 
 export interface JobStatus {
-  status: 'queued' | 'simulating' | 'predicting' | 'done' | 'failed';
+  status: 'queued' | 'simulating' | 'camera' | 'predicting' | 'done' | 'failed';
   progress: number;
   result?: JobResult;
   error?: string;
+}
+
+/** Camera path (backend camera.py): photo -> SAM 3.1 -> VGGT -> decoded grid -> M21-c. */
+export interface CameraPrediction {
+  predicted_forces: ForceEx[];
+  metrics: { per_force: Metric[]; mean: Metric };
+}
+
+export interface CameraResult {
+  id?: string;
+  stem: string;
+  live: boolean;
+  true_forces: ForceEx[];
+  images: { photo: string; mask: string | null };
+  mask_source: string;
+  grids: { camera: string; true: string; shape: number[] };
+  camera: CameraPrediction;
+  mesh: CameraPrediction;
+  coverage: { camera_sees: number | null; decoded: number | null; scale_fix: number | null; lift_err_visible_cm: number | null };
+  reference: { camera: { pos_cm: number; dir_deg: number; pos_cm_median: number }; mesh: { pos_cm: number; dir_deg: number } };
+  timings?: Record<string, number>;
+  adjustments?: string[];
+}
+
+export interface GalleryIndex {
+  n: number;
+  entries: { id: string; stem: string; camera: Metric; mesh: Metric; coverage: CameraResult['coverage'] }[];
+  summary: { camera: Metric & { pos_cm_median: number }; mesh: Metric & { pos_cm_median: number } };
+  source: string;
+}
+
+export async function getGalleryIndex(): Promise<GalleryIndex> {
+  const r = await fetch('gallery/index.json');
+  if (!r.ok) throw new Error(`gallery index: ${r.status}`);
+  return (await r.json()) as GalleryIndex;
+}
+
+export async function getGalleryEntry(id: string): Promise<CameraResult> {
+  const r = await fetch(`gallery/${id}.json`);
+  if (!r.ok) throw new Error(`gallery ${id}: ${r.status}`);
+  return (await r.json()) as CameraResult;
+}
+
+export async function postCamera(forces: ForceInput[]): Promise<string> {
+  const r = await fetch(`${API}/camera`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ forces }),
+  });
+  if (!r.ok) {
+    const detail = await r.json().catch(() => ({}));
+    throw new Error((detail as { detail?: string }).detail ?? `POST /camera: ${r.status}`);
+  }
+  return ((await r.json()) as { job_id: string }).job_id;
+}
+
+export async function getCameraJob(jobId: string): Promise<{ status: JobStatus['status']; progress: number; result?: CameraResult; error?: string }> {
+  const r = await fetch(`${API}/jobs/${jobId}`);
+  if (!r.ok) throw new Error(`GET /jobs: ${r.status}`);
+  return await r.json();
 }
 
 const API = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:8000';

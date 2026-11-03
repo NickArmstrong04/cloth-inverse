@@ -68,3 +68,13 @@ details.how summary { cursor: pointer; font-weight: 600; }
 footer.stack { color: var(--muted); font-size: 11.5px; border-top: 1px solid var(--line); padding-top: 8px; }
 .topbar { display: flex; gap: 8px; align-items: center; }
 .topbar .spacer { flex: 1; }
+
+/* camera mode */
+.tabs { display: flex; gap: 4px; }
+.tabs button { padding: 4px 10px; }
+.camera { display: flex; flex-direction: column; gap: 6px; }
+.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.tiles figure { margin: 0; }
+.tiles img { width: 100%; display: block; border-radius: var(--radius); border: 1px solid var(--line); }
+.tiles figcaption { color: var(--muted); font-size: 11.5px; margin-top: 2px; }
+.camera .row label { width: auto; }

@@ -9,6 +9,8 @@ export const GRID = 64;
 export const SHEET = 0.5;
 export const ACCENTS = ['#ff5a5a', '#3aa0ff'];
 export const REVERSAL = '#37d67a';
+/** Camera mode: the prediction from the true mesh (perfect information). */
+export const MESH_PRED = '#f2c14e';
 
 export interface PlacedForce {
   u: number;
@@ -206,16 +208,17 @@ export function SceneView({
   stage: Stage;
   placed: boolean[];
   allForms: PlacedForce[];
-  result: { predicted: ForceEx[]; reversal: ForceEx[]; showTrue: boolean; showPred: boolean; showRev: boolean } | null;
+  result: { predicted: ForceEx[]; reversal: ForceEx[]; showTrue: boolean; showPred: boolean; showRev: boolean;
+    extra?: ForceEx[]; showExtra?: boolean } | null;
   onPlace: (u: number, v: number) => void;
   controlsRef: RefObject<OrbitControlsImpl>;
   dark: boolean;
 }) {
-  const last = frames ? 29 : 0;
+  const last = frames ? Math.max(0, Math.round(frames.length / (GRID * GRID * 3)) - 1) : 0;
   const markers = useMemo(
     () => allForms.map((f, k) => (placed[k] ? { at: anchorOf(frames, 0, f.u, f.v), color: ACCENTS[k % 2] } : null)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [allForms, placed, frames === null],
+    [allForms, placed, frames],
   );
   // Before a result: one arrow per placed push arriving at its marker, length
   // proportional to the impulse (magnitude x duration), so the chosen angle
@@ -239,9 +242,13 @@ export function SceneView({
       if (!result.showRev) return;
       items.push({ at: anchorOf(frames, last, f.u, f.v), dir: f.direction, impulse: f.impulse, color: REVERSAL, opacity: 0.9 });
     });
+    (result.extra ?? []).forEach((f) => {
+      if (!result.showExtra) return;
+      items.push({ at: anchorOf(frames, last, f.u, f.v), dir: f.direction, impulse: f.impulse, color: MESH_PRED, opacity: 0.8 });
+    });
     return items;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [result, frames === null]);
+  }, [result, frames]);
 
   const trueArrows = useMemo(() => {
     if (!result || !result.showTrue) return [];
@@ -253,7 +260,7 @@ export function SceneView({
       opacity: 1,
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [result, allForms, frames === null]);
+  }, [result, allForms, frames]);
 
   return (
     <Canvas camera={{ position: [0.58, -0.72, 0.7], fov: 42 }} style={{ background: dark ? '#101418' : '#eef1f5' }}>
