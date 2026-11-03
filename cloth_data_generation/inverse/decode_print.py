@@ -271,6 +271,7 @@ def main():
     ap.add_argument("--min-area", type=int, default=6)
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--panels", action="store_true")
+    ap.add_argument("--base-only", action="store_true", help="skip stereo partner views (grid_from_views uses base views only)")
     args = ap.parse_args()
     for pdir in args.photos:
         man = json.load(open(os.path.join(pdir, "manifest.json")))
@@ -285,6 +286,8 @@ def main():
         for gp in sorted(glob.glob(os.path.join(pdir, "*_gt.npz")))[: args.limit or None]:
             stem = os.path.basename(gp)[: -len("_gt.npz")]
             gt = np.load(gp)
+            if args.base_only and 0 <= int(gt["partner"]) < int(stem[stem.rfind("_v") + 2:]):
+                continue
             img = np.asarray(Image.open(os.path.join(pdir, stem + ".png")).convert("RGB"), np.float32) / 255
             mask = gt["mask"]
             if not args.oracle_mask:

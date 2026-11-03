@@ -21,6 +21,7 @@ from vggt.utils.pose_enc import pose_encoding_to_extri_intri
 dev = torch.device("cuda"); dtype = torch.bfloat16
 model = load_vggt(dev)
 use_sam = "--sam" in sys.argv
+stereo_only = "--stereo-only" in sys.argv  # skip the single-view pass (dataset building: only the pair is used)
 WINDOW = float(sys.argv[sys.argv.index("--window") + 1]) if "--window" in sys.argv else 1.4
 _skip = {str(WINDOW)}
 pdirs = [a for a in sys.argv[1:] if not a.startswith("--") and a not in _skip]
@@ -134,10 +135,14 @@ for pdir in pdirs:
         size = int(g["size"]); ext = math.tan(math.radians(float(g["fov_deg"])) / 2)
         u = ((cc + 0.5) / size - 0.5) * 2 * ext; vv = (0.5 - (rr + 0.5) / size) * 2 * ext
         # single
-        d1, K1, _ = run([os.path.join(pdir, stem + ".png")])[0]
-        dv1 = -unproject_vggt(mask, d1, K1)[:, 2]
-        st1, aff1, quad1 = fits(dv1, do, u, vv, ref)
-        s_or = float(np.median(do) / np.median(dv1))
+        if stereo_only:
+            nan2 = [float("nan")] * 2
+            st1, aff1, quad1, dv1, s_or = (lambda _d: nan2), nan2, nan2, None, 1.0
+        else:
+            d1, K1, _ = run([os.path.join(pdir, stem + ".png")])[0]
+            dv1 = -unproject_vggt(mask, d1, K1)[:, 2]
+            st1, aff1, quad1 = fits(dv1, do, u, vv, ref)
+            s_or = float(np.median(do) / np.median(dv1))
         # stereo
         (d2, K2, C0), (d2p, _, C1) = run([os.path.join(pdir, stem + ".png"), os.path.join(pdir, pstem + ".png")])
         dv2 = -unproject_vggt(mask, d2, K2)[:, 2]
@@ -163,7 +168,7 @@ for pdir in pdirs:
         s_base = b_true / max(b_pred, 1e-6)
         s_or2 = float(np.median(do) / np.median(dv2))
         row = dict(stem=stem, set=os.path.basename(os.path.normpath(pdir)), baseline_cm=b_true * 100,
-                   single_oracle_scale=st1(dv1 * s_or), single_affz=aff1, single_quad=quad1,
+                   single_oracle_scale=st1(None if dv1 is None else dv1 * s_or), single_affz=aff1, single_quad=quad1,
                    stereo_oracle_scale=st2(dv2 * s_or2), stereo_baseline_scale=st2(dv2 * s_base),
                    stereo_affz=aff2, stereo_quad=quad2, scale_err=s_base / s_or2 - 1,
                    stereo_geo_scale=st2(dv2 * s_geo), stereo_geo_scale_trueK=st2(dv2k * s_geo),

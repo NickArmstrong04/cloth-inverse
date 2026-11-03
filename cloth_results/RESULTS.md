@@ -591,3 +591,91 @@ vertices localised (p90 80%), 1.2 px median error. Through the full chain the de
 sit at 2.7 cm (= oracle-correspondence stereo), the filled grid at 7.3 cm; M16-a scores the same
 on decoded and oracle correspondences (16.9 vs 16.5 cm), so the model side (M19) is the limit.
 The photo-only chain is complete end to end; details photos/README.md Phase B.
+
+## T1: the real photo chain on rest-state paper (2026-11-01, JOBS.md T1-chain 31669679)
+
+First run of the whole chain on the photo-track data, every step real: 20 test sheets of
+`ds256_paper_rest_splits` rendered as 20 deg coded-print stereo pairs (`photos/rest20_coded`),
+hosted SAM 3.1 masks (`sam_api.py --photos`; 71/80 views found by phrase), VGGT stereo +
+known-motion scale, coded-print decode, `grid_from_views.py`, `eval_grid.py`. 34 base views have
+both masks. 3m41s for the whole job on one GPU (VGGT 60 s, decode 68 s, grids 52 s), MaxRSS 11 GB.
+
+| model (34 base views) | oracle grid | hidden (true visible + fill) | stereo | photo (all photo-derived) | photo, decoded corr. |
+|---|---|---|---|---|---|
+| M20-a2 (clean training) | 3.5 cm / 9.3 deg | 12.0 / 24.7 | 15.9 / 44.6 | 16.4 / 46.0 | 16.3 / 46.4 |
+| M20-e (photo-like training) | 6.4 / 10.4 | 7.3 / 12.0 | 12.5 / 30.5 | 12.9 / 35.7 | 13.4 / 32.3 |
+| **M20-g (photo-like + clean mix)** | 3.8 / 8.3 | 5.5 / 10.8 | 8.8 / 17.6 | **9.0 / 22.8** | **10.9 / 27.9** |
+| M20-f20 (fused pair) | 5.8 / 16.1 | 6.8 / 17.3 | 8.8 / 21.8 | 9.6 / 25.1 (mag 2.8) | 11.7 / 30.1 (mag 4.4) |
+
+Chance on this set: 15.4 cm / 46.4 deg. Reading:
+- The degrade_split proxy is optimistic: M20-e scores 5.9 cm / 11 deg on its simulated photo-like
+  test but 12.9 / 35.7 through the real chain. The gap is the stereo row (hidden -> stereo costs
+  M20-e 5 cm / 18 deg), so the measured-noise model in degrade_split does not capture VGGT's
+  real error on these sheets. Next lever: train on grids from the actual chain (render + VGGT
+  on the training split; ~2 s per pair, about 1 GPU-hour for 1460 grids).
+- M20-g is the best photo-path model: 9.0 cm / 22.8 deg with oracle correspondences, 10.9 / 27.9
+  fully photo-derived, i.e. clearly above chance but ~2.5x its clean number. M20-f20's magnitude
+  blows up on real grids (rel. 2.8-4.4).
+- Scale: known-motion scale error median 0.9%, p90 5.7%, but 4 of 34 views alias at -23 to -41%:
+  the coded print does not remove the photometric aliases the checker had.
+- For the demo (item 1): use M20-g and say on screen that the photo path is ~10 cm / ~25 deg.
+
+## M21: training on grids from the real photo chain (2026-11-02, JOBS.md M21)
+
+The demo's camera path (coded-print stereo render -> hosted SAM 3.1 -> VGGT stereo + known-motion
+scale -> coded-print decode -> grid -> model) on 100 sheets of the 1808-set test split (fresh render,
+none of them in any 1808-set training split). Fully photo-derived grids (`photo_dec`), pos cm / dir deg,
+mean (median); 175 base views with both SAM masks:
+
+| model | trained on | clean test (181) | real chain | real chain + scale fix |
+|---|---|---|---|---|
+| M20-a3 | clean grids | 2.8 / 6.6 | 17.4 / 51.5 | 17.3 / 49.8 |
+| M20-e2 | degrade_split photo-like | 3.5 / 7.7 | 15.9 / 32.7 | 15.2 / 30.9 (10.0 / 21.9) |
+| M20-g2 | photo-like + clean | 3.4 / 7.1 | 16.6 / 29.3 | 16.1 / 27.9 (9.8 / 21.9) |
+| M20-f180_2 | fused front + back | 3.5 / 6.9 | 12.7 / 23.5 | 12.2 / 21.5 (8.0 / 15.5) |
+| M21-a | real-chain grids | 5.3 / 13.7 | 8.4 / 19.9 | 8.1 / 19.6 (6.9 / 15.7) |
+| **M21-b** | real-chain + clean | 3.9 / 9.0 | 7.7 / 17.6 | **7.4 / 17.2 (6.1 / 13.7)** |
+| **M21-c** | M20-g2 fine-tuned on M21-b's mix | 3.4 / 7.3 | 7.7 / 17.8 | **7.4 / 17.0 (6.5 / 12.4)** |
+
+Chance 15.4 / 48.8. Reading:
+- degrade_split's simulated photos do not predict the real chain: the M20 photo-like models score
+  4.4-5.3 cm there and 12-16 cm here (the stereo lift: M20-e2 hidden fill 4.9 -> oracle-corr. lift 13.9).
+- Training on the chain's own grids (`cluster/chain_split.sbatch`, J-010) halves the real-chain error
+  and removes most of the tail (mean / median 7.4 / 6.1 vs 15.2 / 10.0 for M20-e2).
+- M21-c keeps M20-g2's clean accuracy (3.4 cm) at M21-b's photo accuracy: the demo checkpoint.
+- Known-size scale check (`grid_from_views.py --scale-fix 0.15`, calibrated in `scale_prior.py` on the
+  34 T1 views): 15 of 175 views rescaled, 0.3-1.0 cm and 1-3 deg better for every model.
+- Masks: hosted SAM 3.1 found 88% of views (352 / 400); the renderer-mask run gives the same M21
+  numbers within 0.1 cm, so segmentation is not the limit where it succeeds; the misses are what the
+  Muse Spark re-prompting agent (T2: 9 / 9 recovered) is for.
+
+
+## M22: simulation-in-the-loop refinement, 3 guesses (2026-11-02, JOBS.md M22)
+
+`inverse/refine.py`. The network (M21-c) guesses the force pair, the guess is simulated with the dataset's
+physics (true footprint, jitter seed != the sample's), the network reads its own simulated sheet, and the next guess is
+`y + step * (y_0 - f(sim(y)))` (fixed point of f(sim(y)) = f(obs)). The fit (centred RMSE of the simulated sheet against the
+observation) scores each simulated guess. First 40 test sheets, the same sheets in every arm, ~95 s per simulation.
+
+| arm | guess 1 (network) | guess 2 | guess 3 | guess 4 (unsimulated) | best-by-fit of 1-3 | oracle best of 1-3 |
+|---|---|---|---|---|---|---|
+| perfect info, step 1 | 3.48 / 7.1 (med 3.50) | 2.92 / 7.0 | 3.19 / 6.5 | 3.41 / 7.5 | 2.96 / 6.1 (med 2.32) | 2.42 / 6.8 |
+| **perfect info, step 0.5** | 3.48 / 7.1 (med 3.50) | 2.98 / 6.5 | 2.82 / 6.2 | **2.83 / 5.9 (med 2.34)** | 2.93 / 6.3 | 2.56 / 6.6 |
+| photo path (SAM chain grid), step 1 | 7.34 / 15.4 (med 6.09) | 7.64 / 16.6 | 7.65 / 17.4 | 7.98 / 16.9 | 7.40 / 16.2 | 6.05 / 15.4 (n=38) |
+
+(pos cm / dir deg, means; first 40 test sheets. Guess 1 on these 40 is 3.48 cm vs 3.4 on the full 181-sheet test.)
+
+Reading:
+- With perfect information, three simulated guesses take M21-c from 3.5 to 2.8 cm (-19%; median 3.5 -> 2.3 cm, -33%) and
+  7.1 -> 5.9 deg. The damped step (0.5) is needed: the full step overshoots (guess 3 worse than guess 2, magnitude error
+  0.48 -> 1.02), the damped one improves monotonically and leaves magnitude almost unchanged (0.48 -> 0.56).
+  The gain is all on sheets the network gets wrong: guess-1 error >= 3 cm (27/40) improves by 0.8-0.9 cm, < 3 cm (13/40)
+  does not move (the update noise is f's own error, ~3.4 cm self-consistency at the truth).
+- The fit is a weak selector between guesses of one sheet: within-sample corr(fit, pos error) 0.1, best-by-fit picks the
+  truly best guess 42-48% of the time. The chaos floor (true forces re-simulated from another jitter) fits at 0.77 cm vs
+  ~3.9 cm for the guesses, so the signal exists, but the fit landscape is not monotone in the label error at 3 cm.
+- On the photo path the loop does not help (7.3 -> 7.4-8.0 cm). The true forces fit the photo grid no better than the
+  guesses (floor 8.3 cm vs 8.4 cm): the reconstruction error (harmonic fill of the ~50% hidden vertices, decode drift)
+  swamps the force signal in the observation-space fit, and f's correction inherits the 7 cm photo error.
+- Next for the photo path: compare the simulation with the observation only on the vertices the camera saw
+  (visible mask + depth along camera rays, i.e. render the guess and compare in image/depth space), and use the damped step.
