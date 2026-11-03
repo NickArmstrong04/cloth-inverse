@@ -162,6 +162,7 @@ function ForceArrow({
   color,
   opacity,
   incoming = false,
+  flyIn,
 }: {
   at: THREE.Vector3;
   dir: [number, number, number];
@@ -170,14 +171,18 @@ function ForceArrow({
   opacity: number;
   /** Head on the anchor, tail back along -dir: a push arriving at the dot. */
   incoming?: boolean;
+  /** 0..1: the arrow slides in along its own direction from out of frame (presentation mode). */
+  flyIn?: number;
 }) {
   const d = useMemo(() => new THREE.Vector3(...dir).normalize(), [dir]);
   const len = Math.max(0.03, 0.34 * impulse);
   const quat = useMemo(() => new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), d), [d]);
+  const fly = flyIn == null ? 1 : Math.min(1, Math.max(0, flyIn));
   const pos = useMemo(
-    () => at.clone().addScaledVector(d, incoming ? -(len + 0.009) : 0.004),
-    [at, d, incoming, len],
+    () => at.clone().addScaledVector(d, (incoming ? -(len + 0.009) : 0.004) - (1 - fly) * 1.3),
+    [at, d, incoming, len, fly],
   );
+  if (fly <= 0) return null;
   const shaftLen = len * 0.72;
   const headLen = len * 0.28;
   return (
@@ -212,6 +217,7 @@ export function SceneView({
   onPlace,
   controlsRef,
   dark,
+  flyIn,
 }: {
   frames: Float32Array | null;
   frame: number;
@@ -223,12 +229,16 @@ export function SceneView({
   onPlace: (u: number, v: number) => void;
   controlsRef: RefObject<OrbitControlsImpl>;
   dark: boolean;
+  /** presentation mode: 0..1 progress of the preview arrows flying in (default 1 = in place) */
+  flyIn?: number;
 }) {
   const last = frames ? Math.max(0, Math.round(frames.length / (GRID * GRID * 3)) - 1) : 0;
+  // markers and preview arrows sit on the sheet as it is shown now (the deformed sheet when a
+  // run is loaded), not on the flat sheet
   const markers = useMemo(
-    () => allForms.map((f, k) => (placed[k] ? { at: anchorOf(frames, 0, f.u, f.v), color: ACCENTS[k % 2] } : null)),
+    () => allForms.map((f, k) => (placed[k] ? { at: anchorOf(frames, frame, f.u, f.v), color: ACCENTS[k % 2] } : null)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [allForms, placed, frames],
+    [allForms, placed, frames, frame],
   );
   // Before a result: one arrow per placed push arriving at its marker, length
   // proportional to the impulse (magnitude x duration), so the chosen angle
@@ -237,10 +247,11 @@ export function SceneView({
     if (result) return [];
     return allForms.map((f, k) =>
       placed[k]
-        ? { at: anchorOf(null, 0, f.u, f.v), dir: f.direction, impulse: f.magnitude * f.duration, color: ACCENTS[k % 2], opacity: 0.95 }
+        ? { at: anchorOf(frames, frame, f.u, f.v), dir: f.direction, impulse: f.magnitude * f.duration, color: ACCENTS[k % 2], opacity: 0.95 }
         : null,
     );
-  }, [result, allForms, placed]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [result, allForms, placed, frames, frame]);
   const arrows = useMemo(() => {
     if (!result) return [];
     const items: { at: THREE.Vector3; dir: [number, number, number]; impulse: number; color: string; opacity: number }[] = [];
@@ -279,7 +290,7 @@ export function SceneView({
       <directionalLight position={[-0.5, 0.5, -0.6]} intensity={0.35} />
       <SheetMesh frames={frames} frame={frame} stage={stage} onPlace={onPlace} />
       {markers.map((m, k) => m && <Marker key={k} at={m.at} color={m.color} />)}
-      {previewArrows.map((a, k) => a && <ForceArrow key={`v${k}`} {...a} incoming />)}
+      {previewArrows.map((a, k) => a && <ForceArrow key={`v${k}`} {...a} incoming flyIn={flyIn} />)}
       {trueArrows.map((a, k) => (
         <ForceArrow key={`t${k}`} {...a} />
       ))}

@@ -90,6 +90,7 @@ export default function App() {
   const nFrames = frames ? Math.max(1, Math.round(frames.length / (64 * 64 * 3))) : 30;
   const last = nFrames - 1;
   const [frame, setFrame] = useState(0);
+  const [flyIn, setFlyIn] = useState(1);
   const [playing, setPlaying] = useState(false);
   const [loop, setLoop] = useState(true);
   const [job, setJob] = useState<{ id: string; progress: number; error?: string } | null>(null);
@@ -299,7 +300,18 @@ export default function App() {
       pause: () => setPlaying(false),
       marks: (on) => setMarksOff(!on),
       flat: (on) => setFlat(on),
-      panel: (on) => { setPanelIn(on); if (on) setMarksOff(false); },
+      panel: (on) => setPanelIn(on),
+      flyArrows: (ms = 900) => new Promise((resolve) => {
+        setMarksOff(false);
+        setFlyIn(0);
+        const t0 = performance.now();
+        const tick = () => {
+          const u = Math.min(1, (performance.now() - t0) / ms);
+          setFlyIn(1 - Math.pow(1 - u, 3)); // ease out
+          if (u < 1) requestAnimationFrame(tick); else resolve();
+        };
+        requestAnimationFrame(tick);
+      }),
       working: (on) => { if (on) { setJob({ id: 'present', progress: 0.3 }); setStage('running'); setResult(null); setCam(null); } else { setJob(null); setStage('ready'); } },
       result: (on) => {
         const d = presentData.current;
@@ -376,6 +388,7 @@ export default function App() {
             onPlace={onPlace}
             controlsRef={controlsRef}
             dark={dark}
+            flyIn={flyIn}
           />
           {!PRESENT && (
             <div className="stage-hint">
