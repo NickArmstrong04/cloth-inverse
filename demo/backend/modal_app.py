@@ -52,8 +52,11 @@ image = (
         "einops==0.8.2",
         "safetensors==0.8.0",
         "huggingface_hub==2.4.0",
-        "vggt @ git+https://github.com/facebookresearch/vggt@a288dd0",
     )
+    # vggt pins numpy<2 in its pyproject, but the chain was measured with numpy 2.5.4
+    # (sam3env has vggt next to numpy 2.5.4); its real deps are pinned above.
+    .pip_install("vggt @ git+https://github.com/facebookresearch/vggt@a288dd0",
+                 extra_options="--no-deps")
     .add_local_dir(os.path.join(_REPO, "demo", "backend"), "/app/demo/backend")
     .add_local_dir(os.path.join(_REPO, "cloth_data_generation", "transfer", "cloth_sim"),
                    "/app/cloth_data_generation/transfer/cloth_sim")
