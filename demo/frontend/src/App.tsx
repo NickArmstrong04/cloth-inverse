@@ -33,9 +33,10 @@ const MODEL_MENU: ModelInfo[] = [
 ];
 
 const DEFAULTS: ForceForm[] = [
-  // Default sides swapped 2026-11-03 (push 1 was at 0.3/0.6, push 2 at 0.7/0.4); directions unchanged.
-  { u: 0.7, v: 0.4, az: -68, el: 57, direction: [0, 0, 1], magnitude: 0.8, duration: 0.5 },
-  { u: 0.3, v: 0.6, az: 90, el: -72, direction: [0, 0, 1], magnitude: 0.5, duration: 0.4 },
+  // Default sides and directions swapped 2026-11-03: push 1 now pushes down (el -72) from
+  // 0.7/0.4, push 2 up (el 57) from 0.3/0.6; magnitudes and durations stay with their push.
+  { u: 0.7, v: 0.4, az: 90, el: -72, direction: [0, 0, 1], magnitude: 0.8, duration: 0.5 },
+  { u: 0.3, v: 0.6, az: -68, el: 57, direction: [0, 0, 1], magnitude: 0.5, duration: 0.4 },
 ];
 
 function withDir(f: ForceForm): ForceForm {
