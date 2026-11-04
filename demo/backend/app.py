@@ -199,7 +199,7 @@ def _paper_model(name: str):
     return m
 
 
-def _run_paper(job_id: str, forces: list[dict], name: str):
+def _run_paper(job_id: str, forces: list[dict], name: str, seed: int | None = None):
     """Mesh path on the rest-state paper physics for M20a3 / M21c: the pushes clamped to the
     training range, the paper simulated to rest (30 snapshots for playback), the model on the
     exact final grid (positions only)."""
@@ -217,7 +217,7 @@ def _run_paper(job_id: str, forces: list[dict], name: str):
         h5 = os.path.join(_cam["work"], f"mesh_{job_id}.h5")
         sim.sim.n_snapshots = SNAPSHOTS
         t0 = time.time()
-        fut = _sim_pool.submit(sim.run, fs, t_cap, random.randrange(10 ** 6), h5)
+        fut = _sim_pool.submit(sim.run, fs, t_cap, seed if seed is not None else random.randrange(10 ** 6), h5)
         grid, _vel = fut.result(timeout=CAMERA_TIMEOUT_S)
         sim_s = time.time() - t0
         with h5py.File(h5, "r") as h:
@@ -291,11 +291,14 @@ def create_app() -> FastAPI:
                 cam.scrunch_forces(forces, [{"sigma_cells": 6.0, "radius_cells": 18.0}])
         except ValueError as e:
             raise HTTPException(422, str(e))
+        seed = body.get("seed")  # optional (2026-11-03): fixes the paper re-sim for recordings
+        if seed is not None and not isinstance(seed, int):
+            raise HTTPException(422, "'seed' must be an integer")
         job_id = uuid.uuid4().hex[:12]
         with _lock:
             _jobs[job_id] = {"status": "queued", "progress": 0.0}
         if MODELS[name]["physics"] == "paper":
-            _executor.submit(_run_paper, job_id, forces, name)
+            _executor.submit(_run_paper, job_id, forces, name, seed)
         else:
             _executor.submit(_warm_and_run, job_id, forces)
         return {"job_id": job_id}

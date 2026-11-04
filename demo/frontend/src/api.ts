@@ -39,6 +39,8 @@ export interface JobResult {
   model?: string;
   physics?: 'cloth' | 'paper';
   adjustments?: string[];
+  /** Set on recorded present/entry*.json files (record_entry.py). */
+  source?: { recorded?: string; entry?: number; seed?: number | null; api?: string };
 }
 
 export interface ModelInfo {

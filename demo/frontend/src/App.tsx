@@ -199,21 +199,24 @@ export default function App() {
 
   // The precomputed run from the demo video (cache entry 10, the same files presentation
   // mode replays): shown at once, pushes set and locked, no backend call. Judges skip the wait.
+  // With another model selected, the same pushes through that model (entry_<model>.json,
+  // 2026-11-03); without such a file the M16-a run is shown and the menu follows it.
   const showDemoRun = useCallback(async () => {
     try {
       const d = presentData.current ?? (await loadPresent());
       presentData.current = d;
-      const { data } = b64ToFrames(d.entry.frames);
-      setForms(d.entry.true_forces.map((t) => {
+      const entry = (model !== 'M16a' && d.entries[model]) || d.entry;
+      const { data } = b64ToFrames(entry.frames);
+      setForms(entry.true_forces.map((t) => {
         const dir = t.direction as [number, number, number];
         return withDir({ u: t.u, v: t.v, magnitude: t.magnitude, duration: t.duration, direction: dir, ...azElFromDir(dir) });
       }));
       setPlaced([true, true]);
       setPinned(true);
-      setModel(d.entry.model ?? 'M16a');
+      setModel(entry.model ?? 'M16a');
       setFrames(data);
       setFrame(0);
-      setResult(d.entry);
+      setResult(entry);
       setCachedNote(false);
       setDemoRun(true);
       setJob(null);
@@ -224,7 +227,7 @@ export default function App() {
     } catch (e) {
       setJob({ id: '', progress: 0, error: `demo run: ${e}` });
     }
-  }, []);
+  }, [model]);
 
   // For the demo run the camera path is the recorded job, replayed tile by tile (~1 s each).
   const replayDemoCamera = useCallback(() => {
@@ -562,7 +565,8 @@ export default function App() {
         {result && (
           <div>
             <h3>Model vs your pushes</h3>
-            {demoRun && <div className="notice">The precomputed run from the demo video: pushes, simulation and prediction as recorded, no server call.</div>}
+            {demoRun && (result.model ?? 'M16a') === 'M16a' && <div className="notice">The precomputed run from the demo video: pushes, simulation and prediction as recorded, no server call.</div>}
+            {demoRun && result.model && result.model !== 'M16a' && <div className="notice">The demo video's pushes through {menu.find((m) => m.name === result.model)?.label ?? result.model}, precomputed on the live backend{result.source?.recorded ? ` (${result.source.recorded})` : ''}: no server call.</div>}
             {cachedNote && <div className="err">Not a live prediction: the simulation timed out or the GPU was busy, so this is the nearest
               precomputed result re-scored against your pushes. Press Start over and Push again once the server is warm.</div>}
             {result.model && result.model !== 'M16a' && (

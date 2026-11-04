@@ -12,8 +12,13 @@ export const PRESENT_FLAT = PRESENT && new URLSearchParams(window.location.searc
 
 export interface PresentData {
   entry: JobResult;
+  /** The same pushes through the other models (public/present/entry_<model>.json, recorded with
+   *  demo/backend/record_entry.py), so "View the demo video's run" shows the selected model (2026-11-03). */
+  entries: Record<string, JobResult>;
   camera: { job: CameraJob; timeline: { t: number; status: string }[] } | null;
 }
+
+const OTHER_MODELS = ['M20a3', 'M21c'];
 
 export async function loadPresent(): Promise<PresentData> {
   const entry = (await (await fetch('/present/entry.json')).json()) as JobResult;
@@ -22,7 +27,14 @@ export async function loadPresent(): Promise<PresentData> {
     const r = await fetch('/present/camera.json');
     if (r.ok) camera = (await r.json()) as PresentData['camera'];
   } catch { /* strip stays hidden */ }
-  return { entry, camera };
+  const entries: Record<string, JobResult> = {};
+  await Promise.all(OTHER_MODELS.map(async (m) => {
+    try {
+      const r = await fetch(`/present/entry_${m}.json`);
+      if (r.ok) entries[m] = (await r.json()) as JobResult;
+    } catch { /* that model falls back to the M16-a entry */ }
+  }));
+  return { entry, entries, camera };
 }
 
 /** Camera-path statuses in backend order (camera.py / app._run_camera). */

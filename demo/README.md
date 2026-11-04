@@ -74,6 +74,16 @@ button next to Push (`App.tsx` `showDemoRun`): result shown at once with the pus
 locked, a "Show the camera path for this run" button replays the recorded camera job into the
 step strip (~1 s per tile), no backend call either way. Judges skip the wait.
 
+The button follows the model menu (2026-11-03 evening): with "Pseudo camera" or "Positions
+only" selected it shows the same pushes through that model from `public/present/entry_M21c.json`
+or `entry_M20a3.json`, recorded on the live backend with `demo/backend/record_entry.py --model
+M21c --entry 10` (the paper re-sim, 30 frames, the model on the exact final grid, the clamped
+pushes in `adjustments`). The notice above the table names the model and the recording date.
+The paper re-sim seed was random on the backend of that evening; `POST /simulate` takes an
+optional `seed` since the same commit, so after the next deploy `--seed 2` re-records the paper
+runs with the crease pattern the camera strip shows. Without the file the M16-a run is shown and
+the menu switches to it, as before.
+
 `public/present/camera.json` re-recorded 2026-11-03 against the live Modal backend
 (`record_camera_job.py --forces-json <old camera.json> --seed 2 --api <modal url>`): SAM 3.1 live
 (prompt "fabric", 1 instance, 2.2 s) and a Muse Spark verdict; the earlier file came from the local
