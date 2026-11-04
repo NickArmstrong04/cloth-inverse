@@ -7,11 +7,46 @@ photographs with Meta's SAM 3.1, VGGT and Muse Spark.
 
 | | |
 |---|---|
-| **Live demo** | https://uncrumple-demo.vercel.app (the backend scales to zero when idle: the first push after a quiet spell takes 1-2 min, every one after that about 10 s) |
-| **Submission video** | [`demo/demo.mp4`](demo/demo.mp4) (2 min 27 s, silent cut of the live site) |
+| **Live demo** | https://uncrumple-demo.vercel.app (a GPU container stays warm during judging, 2026-11-05 to 11-09; a push takes about 10 s on the default model) |
+| **Submission video** | https://www.youtube.com/watch?v=gC5Nzkt-WR4 ("Uncrumple Demo", 3 min, narrated); [`demo/demo.mp4`](demo/demo.mp4) is a 2 min 27 s silent capture of the live site kept as a backup |
 | **Results** | [`cloth_results/RESULTS.md`](cloth_results/RESULTS.md) (every model, dated), [`cloth_results/photos/README.md`](cloth_results/photos/README.md) (the photo chain) |
 | **Meta models** | In the pipeline: Meta Model API `sam-3.1`, `muse-spark-1.3`; open weights SAM 3 (`facebook/sam3`), VGGT (`facebook/VGGT-1B`), DINOv2 (ablation). In the build: Muse Spark for planning, Muse Code for the first demo scaffold. Details in [Use of Meta AI tooling](#use-of-meta-ai-tooling). |
 | **Built** | 2026-10-27 to 2026-11-04 for the Meta AI Developer Hackathon. First commit 2026-10-27 22:49 ET; all code, data and results in this repository date from inside the building period. |
+
+## Summary
+
+A thin sheet (cloth or paper) remembers how it was loaded: creases, folds and stretch are the
+integral of the forces that acted on it. This project asks the inverse question. Given only the
+deformed geometry, **where** was the sheet pushed, in **which direction**, **how hard** and for
+**how long**, and which pushes would undo the deformation?
+
+The work runs in three stages, all in this repository:
+
+1. **Virtual.** A GPU simulator (NVIDIA Newton / Warp, VBD solver with self-contact) crumples a
+   0.5 m sheet with two Gaussian force patches. Thousands of such samples, generated as Slurm
+   job arrays, train a convolutional inverse model that recovers both pushes from the final
+   mesh. Predictions are checked by re-simulating them and comparing the resulting shape.
+2. **Through a camera.** The same sheet is rendered as two photographs 20 degrees apart.
+   SAM 3.1 finds the sheet, VGGT lifts it to a metric point cloud, a printed code gives
+   per-vertex correspondences, hidden vertices are filled in, and a model trained on exactly
+   these camera-derived grids recovers the pushes. Muse Spark writes the verdict.
+3. **Live demo.** A judge pushes the sheet in the browser, watches it crumple, and sees the
+   model's guess, the reversal, and every camera-path step with the Meta model that ran it.
+
+At a glance (test-set means; position error in cm, direction error in degrees):
+
+| setting | model | position | direction | source |
+|---|---|---|---|---|
+| Exact mesh with velocities (cloth, captured at release) | M16-a | **1.0 cm** | **4.3°** | `RESULTS.md` "M15 / M16-a" |
+| Exact mesh, positions only (paper settled to rest) | M20-a3 | 2.8 cm | 6.6° | `RESULTS.md` "M21" |
+| Camera chain: two rendered photos, SAM 3.1, VGGT, decoded print | M21-c | 7.4 cm | 17.0° | `RESULTS.md` "M21" |
+| Same M21-c model on the exact grid | M21-c | 3.4 cm | 7.3° | `RESULTS.md` "M21" |
+| Chance (random pushes) | | 14 cm | 94° | `RESULTS.md` "M16" |
+
+Re-simulating M16-a's predicted pushes reproduces the sheet to 0.018 m centred RMSE (chance 0.126,
+identical inputs replay bit-exactly below 1e-4). SAM 3.1 finds the sheet in 64 of 64 rendered
+views at median IoU 0.990; the VGGT stereo lift reaches 1.42 cm median depth error with no
+ground-truth scale.
 
 ## Impact
 
@@ -190,7 +225,8 @@ What a judge does, in about a minute:
 - **Stack.** FastAPI on Modal (one A10G, Warp and the checkpoints loaded once per container),
   React + Vite + three.js on Vercel, PyTorch throughout. Design decisions and measurements, such
   as why the demo simulates at 256 rather than 128, are in [`demo/README.md`](demo/README.md).
-- **Video.** [`demo/demo.mp4`](demo/demo.mp4) is a 2 min 27 s capture of the live site in its
+- **Video.** The narrated submission video is on YouTube: https://www.youtube.com/watch?v=gC5Nzkt-WR4.
+  [`demo/demo.mp4`](demo/demo.mp4) is a 2 min 27 s silent capture of the live site in its
   presentation mode (scripted replay of a recorded run, no backend waits).
 
 ## Repository layout
@@ -265,41 +301,6 @@ checkpoint in `demo/backend/checkpoints/M16a/` and `META_API_KEY` for the camera
 
 Built by Nick Armstrong, Alex Venezie, and Josh Elieson for the Meta AI Developer Hackathon,
 2026-10-27 to 2026-11-04.
-
-## Summary
-
-A thin sheet (cloth or paper) remembers how it was loaded: creases, folds and stretch are the
-integral of the forces that acted on it. This project asks the inverse question. Given only the
-deformed geometry, **where** was the sheet pushed, in **which direction**, **how hard** and for
-**how long**, and which pushes would undo the deformation?
-
-The work runs in three stages, all in this repository:
-
-1. **Virtual.** A GPU simulator (NVIDIA Newton / Warp, VBD solver with self-contact) crumples a
-   0.5 m sheet with two Gaussian force patches. Thousands of such samples, generated as Slurm
-   job arrays, train a convolutional inverse model that recovers both pushes from the final
-   mesh. Predictions are checked by re-simulating them and comparing the resulting shape.
-2. **Through a camera.** The same sheet is rendered as two photographs 20 degrees apart.
-   SAM 3.1 finds the sheet, VGGT lifts it to a metric point cloud, a printed code gives
-   per-vertex correspondences, hidden vertices are filled in, and a model trained on exactly
-   these camera-derived grids recovers the pushes. Muse Spark writes the verdict.
-3. **Live demo.** A judge pushes the sheet in the browser, watches it crumple, and sees the
-   model's guess, the reversal, and every camera-path step with the Meta model that ran it.
-
-At a glance (test-set means; position error in cm, direction error in degrees):
-
-| setting | model | position | direction | source |
-|---|---|---|---|---|
-| Exact mesh with velocities (cloth, captured at release) | M16-a | **1.0 cm** | **4.3°** | `RESULTS.md` "M15 / M16-a" |
-| Exact mesh, positions only (paper settled to rest) | M20-a3 | 2.8 cm | 6.6° | `RESULTS.md` "M21" |
-| Camera chain: two rendered photos, SAM 3.1, VGGT, decoded print | M21-c | 7.4 cm | 17.0° | `RESULTS.md` "M21" |
-| Same M21-c model on the exact grid | M21-c | 3.4 cm | 7.3° | `RESULTS.md` "M21" |
-| Chance (random pushes) | | 14 cm | 94° | `RESULTS.md` "M16" |
-
-Re-simulating M16-a's predicted pushes reproduces the sheet to 0.018 m centred RMSE (chance 0.126,
-identical inputs replay bit-exactly below 1e-4). SAM 3.1 finds the sheet in 64 of 64 rendered
-views at median IoU 0.990; the VGGT stereo lift reaches 1.42 cm median depth error with no
-ground-truth scale.
 
 ## References
 

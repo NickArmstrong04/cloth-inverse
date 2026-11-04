@@ -33,7 +33,7 @@ M21-c, then Muse Spark (`narrate.py`). Its `GET /jobs/{id}` carries `stages` (on
 finished step with base64 JPEGs and numbers) while `status` names the running step. Smoke test
 outside the service: `SIM_PY=... SAM_PY=... python test_live.py [--no-narrate]`.
 
-## Modal deploy (one A10G, scales to zero when idle)
+## Modal deploy (one A10G, kept warm during judging; min_containers=0 to scale to zero)
 
 ```bash
 modal setup                                          # first time only
