@@ -198,7 +198,8 @@ export default function App() {
   }, [result, cam]);
 
   // The precomputed run from the demo video (cache entry 10, the same files presentation
-  // mode replays): shown at once, pushes set and locked, no backend call. Judges skip the wait.
+  // mode replays): shown at once, pushes set and locked, no backend call, and the recorded
+  // camera path replays under the canvas. Judges skip the wait.
   // With another model selected, the same pushes through that model (entry_<model>.json,
   // 2026-11-03); without such a file the M16-a run is shown and the menu follows it.
   const showDemoRun = useCallback(async () => {
@@ -224,6 +225,12 @@ export default function App() {
       setStage('done');
       setLoop(false);
       setPlaying(true);
+      // As in the video: the recorded camera path replays into the step strip by itself, one
+      // tile per second, once the sheet has played (2026-11-03). The button stays as a fallback.
+      if (d.camera) {
+        const job = d.camera.job;
+        setTimeout(() => void replayCamera(job, 1.0, setCam), 2500);
+      }
     } catch (e) {
       setJob({ id: '', progress: 0, error: `demo run: ${e}` });
     }
