@@ -7,7 +7,7 @@ photographs with Meta's SAM 3.1, VGGT and Muse Spark.
 
 | | |
 |---|---|
-| **Live demo** | https://uncrumple-demo.vercel.app (a GPU container stays warm during judging, 2026-11-05 to 11-09; a push takes about 10 s on the default model) |
+| **Live demo** | https://uncrumple-demo.vercel.app (a GPU container stays warm 08:00-23:00 ET on the judging days, 2026-11-05 to 11-09; a push then takes about 10 s on the default model, or 1-2 min more off-hours while the server starts) |
 | **Submission video** | https://www.youtube.com/watch?v=gC5Nzkt-WR4 ("Uncrumple Demo", 3 min, narrated); [`demo/demo.mp4`](demo/demo.mp4) is a 2 min 27 s silent capture of the live site kept as a backup |
 | **Results** | [`cloth_results/RESULTS.md`](cloth_results/RESULTS.md) (every model, dated), [`cloth_results/photos/README.md`](cloth_results/photos/README.md) (the photo chain) |
 | **Meta models** | In the pipeline: Meta Model API `sam-3.1`, `muse-spark-1.3`; open weights SAM 3 (`facebook/sam3`), VGGT (`facebook/VGGT-1B`), DINOv2 (ablation). In the build: Muse Spark for planning, Muse Code for the first demo scaffold. Details in [Use of Meta AI tooling](#use-of-meta-ai-tooling). |

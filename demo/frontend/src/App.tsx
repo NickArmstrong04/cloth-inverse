@@ -519,7 +519,7 @@ export default function App() {
           {stage === 'running' ? 'Working…' : 'Push'}
         </button>
         {stage !== 'running' && stage !== 'done' && !PRESENT && (
-          <button className="ghost" onClick={showDemoRun}>View the demo video's run (precomputed, no wait)</button>
+          <button className="highlight" onClick={showDemoRun}>View the demo video's run (precomputed, no wait)</button>
         )}
         {stage === 'running' && job?.startedAt && !job.error && (
           <div className="notice">
