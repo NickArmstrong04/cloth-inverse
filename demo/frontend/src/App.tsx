@@ -4,7 +4,7 @@ import { ACCENTS, REVERSAL, SceneView, type PlacedForce, type Stage } from './Sc
 import { b64ToFrames, dirFromAzEl, getCameraJob, getJob, getModels, postCamera, postSimulate, type JobResult, type ModelInfo } from './api';
 import { StepStrip, type CamState } from './StepStrip';
 import * as THREE from 'three';
-import { PRESENT, bindKeys, loadPresent, noteFrame, replayCamera, type PresentApi, type PresentData } from './present';
+import { PRESENT, PRESENT_FLAT, bindKeys, loadPresent, noteFrame, replayCamera, type PresentApi, type PresentData } from './present';
 
 interface ForceForm extends PlacedForce {
   az: number;
@@ -114,7 +114,7 @@ export default function App() {
   const [cursor, setCursor] = useState<{ x: number; y: number; down: boolean }>({ x: -100, y: -100, down: false });
   const [cursorOn, setCursorOn] = useState(false); // presentation mode: the fake cursor only when the capture asks for it
   const [marksOff, setMarksOff] = useState(PRESENT);
-  const [flat, setFlat] = useState(false);
+  const [flat, setFlat] = useState(PRESENT_FLAT);
   const [showPred, setShowPred] = useState(true);
   const [showRev, setShowRev] = useState(true);
   const [dark, setDark] = useState(true);
@@ -323,8 +323,8 @@ export default function App() {
       const { data } = b64ToFrames(d.entry.frames);
       const n = Math.max(1, Math.round(data.length / (64 * 64 * 3)));
       setFrames(data);
-      setFrame(n - 1);
-      noteFrame(n - 1);
+      setFrame(PRESENT_FLAT ? 0 : n - 1);
+      noteFrame(PRESENT_FLAT ? 0 : n - 1);
       setForms(d.entry.true_forces.map((t) => {
         const dir = t.direction as [number, number, number];
         return withDir({ u: t.u, v: t.v, magnitude: t.magnitude, duration: t.duration, direction: dir, ...azElFromDir(dir) });

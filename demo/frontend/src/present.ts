@@ -7,6 +7,8 @@ import type { CameraJob, CamStatus, JobResult } from './api';
 import type { CamState } from './StepStrip';
 
 export const PRESENT = new URLSearchParams(window.location.search).get('present') === '1';
+/** `&flat=1`: open on the undeformed sheet at frame 0 (the video's take 1 plays the deformation from it; 2026-11-03). */
+export const PRESENT_FLAT = PRESENT && new URLSearchParams(window.location.search).get('flat') === '1';
 
 export interface PresentData {
   entry: JobResult;
