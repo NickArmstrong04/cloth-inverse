@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib';
-import { ACCENTS, REVERSAL, SceneView, type PlacedForce, type Stage } from './Scene';
+import { ACCENTS, PREDICTED, REVERSAL, SceneView, type PlacedForce, type Stage } from './Scene';
 import { b64ToFrames, dirFromAzEl, getCameraJob, getJob, getModels, postCamera, postSimulate, type JobResult, type ModelInfo } from './api';
 import { StepStrip, type CamState } from './StepStrip';
 import * as THREE from 'three';
@@ -64,7 +64,7 @@ function hint(stage: Stage, active: number, placed: boolean[], locked: boolean[]
       : `Push ${k} is locked — sheet clicks move push ${other + 1} instead.`;
   }
   if (stage === 'done') {
-    return 'Solid arrows: your pushes. Faded: predicted. Green: reversal. The pushes and the sheet are locked with this result — press "Run another simulation" to reset the sheet.';
+    return 'Solid arrows: your pushes. Faded yellow: predicted. Green: reversal. The pushes and the sheet are locked with this result — press "Run another simulation" to reset the sheet.';
   }
   if (!placed[active]) {
     return `Push ${k} selected — click the sheet to place it (${COLOUR[active]} marker). Drag to orbit, wheel to zoom, right-drag to pan.`;
@@ -586,9 +586,9 @@ export default function App() {
               <span><span className="swatch" style={{ background: ACCENTS[0] }} />true 1</span>
               <span><span className="swatch" style={{ background: ACCENTS[1] }} />true 2</span>
               <span><span className="swatch" style={{ background: REVERSAL }} />reversal</span>
-              <span><span className="swatch faded" style={{ background: ACCENTS[0] }} /><span className="swatch faded" style={{ background: ACCENTS[1] }} />predicted (faded)</span>
+              <span><span className="swatch faded" style={{ background: PREDICTED }} />predicted (yellow, faded)</span>
             </div>
-            <p className="notice">Solid arrows are the pushes you set; the faded arrows next to them are the model's guess of each push from the end state alone.</p>
+            <p className="notice">Solid arrows are the pushes you set; the faded yellow arrows next to them are the model's guess of each push from the end state alone.</p>
             <p className="notice">How far off is the model's guess of each push? Lower is better.</p>
             <table className="metrics">
               <thead><tr>
@@ -636,7 +636,7 @@ export default function App() {
           <p>1. The backend simulates your two pushes on a 0.5 m sheet (Newton/VBD, zero gravity).</p>
           <p>2. It observes the full deformed mesh: positions and velocities.</p>
           <p>3. The inverse model (M16-a: CNN, hybrid strain/curvature input) recovers both pushes.</p>
-          <p>4. Predicted pushes appear faded next to yours.</p>
+          <p>4. Predicted pushes appear in faded yellow next to yours.</p>
           <p>5. Reversal: the predicted pushes negated — what would undo the deformation.</p>
           <p>6. Under the canvas, the same pushes go through a camera: paper sheet, two photos, SAM 3.1 finds the sheet,
             VGGT gives depth, the printed code gives correspondences, M21-c guesses from that grid, Muse Spark writes the verdict.</p>

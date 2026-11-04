@@ -140,4 +140,4 @@ input[type=range]:disabled, input[type=checkbox]:disabled { opacity: 0.45; curso
 /* Playback toggles: four checkboxes on one wrapping line (the fixed 86 px card label width cut the fourth off). */
 .row.toggles { flex-wrap: wrap; gap: 6px 14px; }
 .row.toggles label { width: auto; flex: none; white-space: nowrap; color: var(--ink); }
-.swatch.faded { opacity: 0.4; }
+.swatch.faded { opacity: 0.55; }

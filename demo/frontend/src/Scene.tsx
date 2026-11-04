@@ -9,6 +9,8 @@ export const GRID = 64;
 export const SHEET = 0.5;
 export const ACCENTS = ['#ff5a5a', '#3aa0ff'];
 export const REVERSAL = '#37d67a';
+/** Both predicted pushes, one colour (Nick, 2026-11-03: yellow rather than each push's accent). */
+export const PREDICTED = '#ffd23f';
 /** Camera mode: the prediction from the true mesh (perfect information). */
 export const MESH_PRED = '#f2c14e';
 
@@ -260,7 +262,7 @@ export function SceneView({
     const items: { at: THREE.Vector3; dir: [number, number, number]; impulse: number; color: string; opacity: number }[] = [];
     result.predicted.forEach((f, k) => {
       if (!result.showPred) return;
-      items.push({ at: anchorOf(frames, last, f.u, f.v), dir: f.direction, impulse: f.impulse, color: ACCENTS[k % 2], opacity: 0.45 });
+      items.push({ at: anchorOf(frames, last, f.u, f.v), dir: f.direction, impulse: f.impulse, color: PREDICTED, opacity: 0.55 });
     });
     result.reversal.forEach((f) => {
       if (!result.showRev) return;
