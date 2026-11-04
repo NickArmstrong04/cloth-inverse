@@ -227,9 +227,9 @@ export default function App() {
       setPlaying(true);
       // As in the video: the recorded camera path replays into the step strip by itself, one
       // tile per second, once the sheet has played (2026-11-03). The button stays as a fallback.
-      // Not for "Positions only" (M20a3): the strip is the camera path (photos, SAM 3.1, VGGT,
-      // M21-c), which that model has nothing to do with.
-      if (d.camera && entry.model !== 'M20a3') {
+      // Only for "Pseudo camera" (M21c): the strip is the camera path (photos, SAM 3.1, VGGT,
+      // M21-c), which the other models take no part in (Nick, 2026-11-03).
+      if (d.camera && entry.model === 'M21c') {
         const job = d.camera.job;
         setTimeout(() => void replayCamera(job, 1.0, setCam), 2500);
       }
@@ -546,10 +546,10 @@ export default function App() {
         {(stage === 'running' || stage === 'done') && (
           <button className="ghost" onClick={reset}>Start over</button>
         )}
-        {stage === 'done' && result && !cam && !PRESENT && !demoRun && result.model !== 'M20a3' && (
+        {stage === 'done' && result && !cam && !PRESENT && !demoRun && result.model === 'M21c' && (
           <button className="ghost" onClick={runCamera}>Run the camera path on these pushes (~3-5 min)</button>
         )}
-        {stage === 'done' && result && !cam && !PRESENT && demoRun && result.model !== 'M20a3' && presentData.current?.camera && (
+        {stage === 'done' && result && !cam && !PRESENT && demoRun && result.model === 'M21c' && presentData.current?.camera && (
           <button className="ghost" onClick={replayDemoCamera}>Show the camera path for this run (recorded, ~10 s)</button>
         )}
 
