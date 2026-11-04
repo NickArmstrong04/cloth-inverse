@@ -299,7 +299,7 @@ checkpoint in `demo/backend/checkpoints/M16a/` and `META_API_KEY` for the camera
 
 ## Team
 
-Built by Nick Armstrong, Alex Venezie, and Josh Elieson for the Meta AI Developer Hackathon,
+Built by [Nick Armstrong](https://www.linkedin.com/in/nick-armstrong-62715b2b3/), [Alex Venezie](https://www.linkedin.com/in/alexandervenezie/), and [Josh Elieson](https://www.linkedin.com/in/josh-elieson/) for the Meta AI Developer Hackathon,
 2026-10-27 to 2026-11-04.
 
 ## References
