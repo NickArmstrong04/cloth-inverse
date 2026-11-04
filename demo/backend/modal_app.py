@@ -79,17 +79,15 @@ app = modal.App("cloth-demo")
 vol = modal.Volume.from_name("cloth-demo-checkpoints", create_if_missing=True)
 
 
-# Warm container for judging (2026-11-03): the decorator's min_containers=1 makes a fresh
-# deploy warm at once (no 1-2 min cold start: container + Warp + checkpoint). The hourly
-# ``set_warm_pool`` cron below then sets it to 1 inside WARM_DAYS x WARM_HOURS (ET) and 0
-# outside, so the A10G (about $1.10/h) is paid for ~15 h/day instead of 24. After the
-# judging window every tick sets 0, i.e. scale to zero when idle. scaledown_window 1200
-# (the maximum; was 600): off-hours a judge's session stays warm between pushes.
+# Scale to zero when idle (no warm container; decision 2026-11-03 evening, a warm A10G is
+# about $1.10/h): the first request after idle pays the cold start (container + Warp +
+# checkpoint, ~1-2 min) and the frontend says so. scaledown_window 1200 (the maximum; was
+# 600): a judge's session stays warm 20 min between pushes.
 # Exactly one container, many concurrent requests (2026-11-03): jobs live in app.py's
 # in-memory ``_jobs``. Without ``@modal.concurrent`` a container took one request at a
 # time, so the frontend's polling of two jobs made the autoscaler start a second
 # container, which knew no jobs and answered ``GET /jobs/<id>`` with 404.
-@app.function(image=image, gpu="A10G", min_containers=1, max_containers=1,
+@app.function(image=image, gpu="A10G", min_containers=0, max_containers=1,
               scaledown_window=1200, timeout=600, volumes={"/vol": vol},
               secrets=[modal.Secret.from_name("meta-api")])
 @modal.concurrent(max_inputs=32)
@@ -106,23 +104,3 @@ def web():
         "http://localhost:5173,https://uncrumple-demo.vercel.app,https://cloth-inverse.vercel.app")
     from app import create_app  # noqa: E402
     return create_app()
-
-
-# Judging window, Eastern time. Edit and redeploy to change; outside the window the pool is 0.
-WARM_DAYS = ("2026-11-04", "2026-11-05", "2026-11-06", "2026-11-07", "2026-11-08", "2026-11-09")
-WARM_HOURS = range(8, 23)  # 08:00 to 22:59 ET; the 23:05 tick turns the container off
-
-
-@app.function(schedule=modal.Cron("5 * * * *", timezone="America/New_York"), timeout=120)
-def set_warm_pool():
-    """Hourly (xx:05 ET): keep one container during the judging hours, none otherwise.
-
-    Runs on a CPU container for a second, so it costs nothing to speak of. The decorator's
-    min_containers=1 is restored by every deploy; this tick corrects it within the hour.
-    """
-    from datetime import datetime
-    from zoneinfo import ZoneInfo
-    now = datetime.now(ZoneInfo("America/New_York"))
-    want = 1 if (now.strftime("%Y-%m-%d") in WARM_DAYS and now.hour in WARM_HOURS) else 0
-    web.autoscaler.update(min_containers=want)
-    print(f"{now:%Y-%m-%d %H:%M} ET: min_containers={want}")

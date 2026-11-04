@@ -33,7 +33,7 @@ M21-c, then Muse Spark (`narrate.py`). Its `GET /jobs/{id}` carries `stages` (on
 finished step with base64 JPEGs and numbers) while `status` names the running step. Smoke test
 outside the service: `SIM_PY=... SAM_PY=... python test_live.py [--no-narrate]`.
 
-## Modal deploy (one A10G; warm 08:00-23:00 ET on the judging days, scale to zero otherwise)
+## Modal deploy (one A10G, scales to zero when idle)
 
 ```bash
 modal setup                                          # first time only
@@ -48,19 +48,10 @@ Jobs are kept in the container's memory (`_jobs`), so the function is pinned to
 busy container made Modal start a second one, which knew no jobs and answered the
 frontend's polling with `GET /jobs: 404`. Redeploy to apply.
 
-Warm pool (2026-11-03). The decorator has `min_containers=1`, so a deploy is warm at once.
-The scheduled `set_warm_pool` (every hour at xx:05 ET) then sets 1 inside `WARM_DAYS` x
-`WARM_HOURS` (2026-11-04 to 11-09, 08:00-22:59 ET) and 0 outside, so the A10G at about
-$1.10/h costs about $17/day instead of $26 (Modal pricing page, 2026-11-03; the Starter plan
-includes $30/month of credit). Off-hours the first push pays the 1-2 min cold start and
-`scaledown_window=1200` keeps the container 20 min after the last request. Check with
-`modal app list` (one running container during warm hours) and `modal app logs cloth-demo`
-(one `min_containers=...` line per hour). To force the pool by hand without a deploy:
-
-```bash
-modal run demo/backend/modal_app.py::set_warm_pool        # applies the schedule's value now
-python -c "import modal; modal.Function.from_name('cloth-demo','web').autoscaler.update(min_containers=1)"
-```
+Scale to zero (decision 2026-11-03 evening, after a warm-pool schedule was tried and dropped
+for cost: a warm A10G is about $1.10/h, $26/day): `min_containers=0`, so the first push after
+an idle spell pays the 1-2 min cold start, and `scaledown_window=1200` (Modal's maximum) keeps
+the container 20 min after the last request.
 
 Then `CORS_ORIGINS=https://<vercel-app>.vercel.app,http://localhost:5173`
 via `modal deploy` env (or `modal secret`), redeploy to apply.
