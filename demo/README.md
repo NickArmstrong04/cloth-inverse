@@ -78,7 +78,10 @@ The button follows the model menu (2026-11-03 evening): with "Pseudo camera" or 
 only" selected it shows the same pushes through that model from `public/present/entry_M21c.json`
 or `entry_M20a3.json`, recorded on the live backend with `demo/backend/record_entry.py --model
 M21c --entry 10` (the paper re-sim, 30 frames, the model on the exact final grid, the clamped
-pushes in `adjustments`). The notice above the table names the model and the recording date.
+pushes in `adjustments`). The notice above the table names the model and the recording date. The recorded camera strip
+replays by itself after the result (2.5 s later, one tile per second) except for "Positions only",
+which gets no "Under the hood" and no camera button in live runs either: the strip is the camera
+path (photos, SAM 3.1, VGGT, M21-c) and that model takes no part in it (Nick, 2026-11-03).
 The paper re-sim seed was random on the backend of that evening; `POST /simulate` takes an
 optional `seed` since the same commit, so after the next deploy `--seed 2` re-records the paper
 runs with the crease pattern the camera strip shows. Without the file the M16-a run is shown and
