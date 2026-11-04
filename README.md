@@ -198,7 +198,7 @@ result, in [`cloth_results/JOBS.md`](cloth_results/JOBS.md); 25 dated result sec
 
 https://uncrumple-demo.vercel.app
 
-What a judge does, in about a minute:
+What to do, in about a minute:
 
 1. Click two points on the floating sheet. Each click places a push; the cards set its
    direction (azimuth and elevation, anywhere on the sphere), magnitude and duration within
